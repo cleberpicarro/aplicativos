@@ -1,0 +1,29 @@
+# Blueprint do Render: cria o app e o banco PostgreSQL de uma vez.
+# No painel do Render: New > Blueprint > escolha este repositório.
+services:
+  - type: web
+    name: nerus-tasks
+    runtime: node
+    plan: free
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: nerus-db
+          property: connectionString
+      # Ambiente de teste: cria a equipe de exemplo (senha nerus2026) se o banco estiver vazio.
+      # Para uso real, mude para "false" e crie o primeiro administrador.
+      - key: SEED_DEMO
+        value: "true"
+
+databases:
+  - name: nerus-db
+    plan: free
+    databaseName: nerus
+    user: nerus

@@ -22,7 +22,9 @@ export const config = {
   port: Number(process.env.PORT ?? 3000),
   host: process.env.HOST ?? '0.0.0.0',
   databaseUrl: process.env.DATABASE_URL ?? 'postgres://nerus:nerus@localhost:5432/nerus',
-  appUrl: (process.env.APP_URL ?? 'http://localhost:5173').replace(/\/$/, ''),
+  // No Render, RENDER_EXTERNAL_URL é preenchida automaticamente com o endereço público.
+  appUrl: (process.env.APP_URL ?? process.env.RENDER_EXTERNAL_URL ?? 'http://localhost:5173').replace(/\/$/, ''),
+  seedDemo: process.env.SEED_DEMO === 'true',
   production: process.env.NODE_ENV === 'production',
   timezone: 'America/Sao_Paulo',
   sessionDays: 30,

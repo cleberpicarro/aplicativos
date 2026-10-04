@@ -105,6 +105,10 @@ export async function buildApp({ pool, logger = false, serveWeb = false }: AppOp
     return { ok: true };
   });
 
+  app.get('/api/health', async () => {
+    await pool.query('SELECT 1');
+    return { ok: true };
+  });
   app.get('/api/me', async (req) => misc.me(pool, need(req)));
 
   /* ---------------- quadros e fases ---------------- */

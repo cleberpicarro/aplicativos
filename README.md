@@ -69,7 +69,11 @@ docker run -p 3000:3000 \
   nerus-tasks
 ```
 
-No **Render** ou no **Railway**, crie um serviço a partir deste repositório usando o `Dockerfile`, adicione um PostgreSQL gerenciado e configure as variáveis acima. O e-mail sai pelo Google Workspace, com uma conta dedicada e uma senha de app. Se o provedor bloquear SMTP no plano escolhido, troque o envio em `apps/api/src/lib/mailer.ts` pela API do Gmail.
+### Render (blueprint pronto)
+
+O arquivo `render.yaml` cria o app e o banco de uma vez. No painel do Render, escolha **New → Blueprint**, selecione este repositório e o branch, e clique em **Apply**. Com `SEED_DEMO=true` (o padrão do blueprint), a equipe de exemplo é criada no primeiro início (senha `nerus2026`). Para uso real, mude `SEED_DEMO` para `false` antes de criar o banco e crie o primeiro administrador com `npm run admin:create`.
+
+No **Railway** ou em outro provedor, crie um serviço a partir deste repositório usando o `Dockerfile`, adicione um PostgreSQL gerenciado e configure as variáveis acima. O e-mail sai pelo Google Workspace, com uma conta dedicada e uma senha de app. Se o provedor bloquear SMTP no plano escolhido, troque o envio em `apps/api/src/lib/mailer.ts` pela API do Gmail.
 
 Sem compilar, também dá para rodar com `npm run build && npm start`.
 
