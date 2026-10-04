@@ -14,6 +14,10 @@ function apiRoot(): string {
 }
 export const API_ROOT = apiRoot();
 
+// Lê o .env da raiz do projeto, se existir (as variáveis já definidas no ambiente têm prioridade).
+const envFile = path.resolve(API_ROOT, '../../.env');
+if (fs.existsSync(envFile) && typeof process.loadEnvFile === 'function') process.loadEnvFile(envFile);
+
 export const config = {
   port: Number(process.env.PORT ?? 3000),
   host: process.env.HOST ?? '0.0.0.0',

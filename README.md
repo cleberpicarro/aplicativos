@@ -17,11 +17,19 @@ A especificação completa está em [`docs/especificacao.md`](docs/especificacao
 
 ## Rodar localmente
 
-Requisitos: Node 20+ e PostgreSQL 16. O banco pode vir do `docker compose up -d db mail` ou de uma instalação local.
+Requisitos: Node 20.12+ e PostgreSQL 16.
+
+O banco pode vir do Docker (`docker compose up -d db mail`, que já cria o usuário e o banco) ou de uma instalação local do PostgreSQL. Na instalação local, crie o usuário e o banco uma vez:
+
+```bash
+psql -U postgres -c "CREATE USER nerus WITH PASSWORD 'nerus';" -c "CREATE DATABASE nerus OWNER nerus;"
+```
+
+Depois:
 
 ```bash
 npm install
-cp .env.example .env            # ajuste DATABASE_URL; sem SMTP_HOST os e-mails só aparecem no log
+cp .env.example .env            # opcional: os padrões já apontam para o banco acima; sem SMTP_HOST os e-mails só aparecem no log da API
 npm run db:seed:demo            # cria o banco e a equipe de exemplo (senha de todos: nerus2026)
 npm run dev:api                 # API em http://localhost:3000
 npm run dev:web                 # app em http://localhost:5173

@@ -15,5 +15,5 @@
     "db:seed:demo": "npm run db:seed:demo -w apps/api",
     "admin:create": "npm run admin:create -w apps/api"
   },
-  "engines": { "node": ">=20" }
+  "engines": { "node": ">=20.12" }
 }
