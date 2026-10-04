@@ -51,3 +51,11 @@ Pontos levantados no teste da primeira versão (https://nerus-tasks.onrender.com
 15. **+ Quadro** e **Importar do Trello** foram para a direita da barra de abas, discretos, junto do menu “…”.
 16. **Mover para** no cartão aberto: escolha de quadro e fase. O log registra de qual quadro e fase a tarefa saiu.
 17. **Painel:** nova aba, primeira tela de quem tem equipe, com resumo, carga por pessoa, próximos 14 dias e tarefas paradas. Cada número ou barra abre Tarefas delegadas já filtrada (com o botão **Limpar filtro**).
+
+## Quarta rodada (anotado, ainda não implementado)
+
+Teste como diretor, CEO e administração.
+
+| # | Ponto | Tela | Status |
+|---|---|---|---|
+| 18 | **Clicar no logo SyncTask abre e fecha a barra lateral**, além do botão “Recolher menu” no rodapé (que continua). Vale com a barra aberta ou recolhida; a escolha continua lembrada no navegador. | Todas | Anotado |
