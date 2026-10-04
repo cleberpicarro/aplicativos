@@ -46,7 +46,8 @@ export function InboxPage() {
         </div>
       )}
       <div className="capture-tip">
-        <span>Para guardar uma página da web como tarefa, arraste</span> <BookmarkletButton /> <span>para a barra de favoritos do navegador. Ao clicar nele em qualquer site, a página vem para esta caixa de entrada.</span>
+        <span>Para guardar uma página da web como tarefa, arraste</span> <BookmarkletButton /> <span>para a barra de favoritos do navegador (clique nele para ver como). Ao clicar nele em qualquer site, a página vem para esta caixa de entrada. Ou</span>{' '}
+        <button className="link" onClick={() => go('/capturar')}>cole um link</button>.
       </div>
       {accepting && <AcceptDialog card={accepting} onClose={() => setAccepting(null)} />}
       {declining && <DeclineDialog card={declining} onClose={() => setDeclining(null)} />}

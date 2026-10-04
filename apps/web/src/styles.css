@@ -479,3 +479,8 @@ table.t tr.off td { color: var(--faint); }
   .bar-track { grid-column: 1 / -1; grid-row: 2; }
   .load-own { display: none; }
 }
+.cap-help p, .cap-help ol { margin: 0 0 10px; }
+.cap-help ol { padding-left: 1.3rem; }
+.cap-help li { margin-bottom: 4px; }
+.cap-help h4 { margin: 14px 0 6px; font-size: 0.9rem; font-weight: 600; }
+.cap-help kbd { font: 400 0.8rem var(--mono); border: 1px solid var(--edge); border-radius: 4px; padding: 0 4px; }
