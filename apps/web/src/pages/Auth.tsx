@@ -8,7 +8,7 @@ function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div className="auth">
       <div className="auth-card">
-        <div className="brand"><img src="/icon.svg" alt="" />Nerus Tasks</div>
+        <div className="brand"><img src="/icon.svg" alt="" />SyncTask</div>
         {children}
       </div>
     </div>

@@ -44,7 +44,7 @@ describe('delegação (RN-14 a RN-19)', () => {
     const t = await newTask(ctx, 'gest', 'Levantar custos', day(5));
     const d = await delegateTask(ctx, 'gest', t.id, 'func', { note: 'Preciso por categoria.' });
     expect(d.code).not.toBe(t.code);
-    expect(d.code).toMatch(/^NT-\d{6}$/);
+    expect(d.code).toMatch(/^ST-\d{6}$/);
     const inbox = (await call('func', 'GET', '/api/inbox')).body;
     expect(inbox.map((c: any) => c.code)).toContain(d.code);
     const child = (await call('func', 'GET', `/api/cards/${d.cardId}`)).body;
@@ -254,14 +254,14 @@ describe('quadros, fases e checklist', () => {
 describe('código da tarefa (seção 8)', () => {
   it('tem 6 dígitos no mínimo e passa de 999.999 sem erro', async () => {
     const a = await newTask(ctx, 'func', 'A');
-    expect(a.code).toMatch(/^NT-0000\d\d$/);
+    expect(a.code).toMatch(/^ST-0000\d\d$/);
     await ctx.pool.query(`SELECT setval('card_code_seq', 999999, false)`);
     const b = await newTask(ctx, 'func', 'B');
     const c = await newTask(ctx, 'func', 'C');
-    expect(b.code).toBe('NT-999999');
-    expect(c.code).toBe('NT-1000000');
+    expect(b.code).toBe('ST-999999');
+    expect(c.code).toBe('ST-1000000');
     const found = (await call('func', 'GET', '/api/search?q=1000000')).body;
-    expect(found.byCode.code).toBe('NT-1000000');
+    expect(found.byCode.code).toBe('ST-1000000');
   });
 });
 
@@ -380,7 +380,7 @@ describe('importação do Trello', () => {
     expect(board.name).toBe('Marketing 2026');
     expect(board.lists.map((l: any) => l.name)).toEqual(['A fazer', 'Em andamento', 'Concluído']);
     const camp = board.cards.find((c: any) => c.title === 'Campanha de lançamento');
-    expect(camp.code).toMatch(/^NT-\d{6}$/);
+    expect(camp.code).toMatch(/^ST-\d{6}$/);
     expect(camp.checklist).toEqual({ done: 1, total: 3 });
     expect(board.cards.find((c: any) => c.title === 'Fotos do evento').completedAt).not.toBeNull();
 
@@ -402,5 +402,126 @@ describe('importação do Trello', () => {
     const ok = { boardName: 'X', lists: [{ name: 'L', cards: [] }] };
     expect((await call('admin', 'POST', '/api/import/trello', ok)).status).toBe(403);
     expect((await call('gest', 'POST', '/api/import/trello', ok)).status).toBe(200);
+  });
+});
+
+describe('terceira rodada', () => {
+  it('código ST- e links antigos com NT- continuam funcionando', async () => {
+    const t = await newTask(ctx, 'func', 'Código novo');
+    expect(t.code).toMatch(/^ST-\d{6}$/);
+    const legacy = t.code.replace('ST-', 'NT-');
+    expect((await call('func', 'GET', `/api/cards/by-code/${legacy}`)).body.card.id).toBe(t.id);
+    expect((await call('func', 'GET', `/api/search?q=${legacy}`)).body.byCode.id).toBe(t.id);
+  });
+
+  it('ordena a fase por nome, criação e prazo (item 11)', async () => {
+    const b = await newTask(ctx, 'func', 'Banana', day(1));
+    await newTask(ctx, 'func', 'abacaxi', day(5));
+    await newTask(ctx, 'func', 'Cereja');
+    const order = async () => {
+      const boards = (await call('func', 'GET', '/api/boards')).body;
+      const board = (await call('func', 'GET', `/api/boards/${boards[0].id}`)).body;
+      return board.cards.filter((x: any) => x.listId === b.listId).sort((x: any, y: any) => x.position - y.position).map((x: any) => x.title);
+    };
+    await call('func', 'POST', `/api/lists/${b.listId}/sort`, { by: 'title' });
+    expect(await order()).toEqual(['abacaxi', 'Banana', 'Cereja']);
+    await call('func', 'POST', `/api/lists/${b.listId}/sort`, { by: 'due' });
+    expect(await order()).toEqual(['Banana', 'abacaxi', 'Cereja']);
+    await call('func', 'POST', `/api/lists/${b.listId}/sort`, { by: 'created' });
+    expect(await order()).toEqual(['Banana', 'abacaxi', 'Cereja']);
+    expect((await call('func', 'POST', `/api/lists/${b.listId}/sort`, { by: 'cor' })).status).toBe(422);
+    expect((await call('func2', 'POST', `/api/lists/${b.listId}/sort`, { by: 'title' })).status).toBe(404);
+  });
+
+  it('cor do quadro (item 12)', async () => {
+    const boards = (await call('func', 'GET', '/api/boards')).body;
+    expect((await call('func', 'PATCH', `/api/boards/${boards[0].id}`, { color: 'azul' })).status).toBe(200);
+    expect((await call('func', 'GET', `/api/boards/${boards[0].id}`)).body.color).toBe('azul');
+    expect((await call('func', 'PATCH', `/api/boards/${boards[0].id}`, { color: 'neon' })).status).toBe(422);
+    expect((await call('func', 'PATCH', `/api/boards/${boards[0].id}`, { color: null })).status).toBe(200);
+    expect((await call('func2', 'PATCH', `/api/boards/${boards[0].id}`, { color: 'azul' })).status).toBe(404);
+  });
+
+  it('move para outro quadro, para o topo e para o fim (itens 10 e 16)', async () => {
+    const t1 = await newTask(ctx, 'func', 'Primeira');
+    await newTask(ctx, 'func', 'Segunda');
+    const other = (await call('func', 'POST', '/api/boards', { name: 'Pessoal' })).body;
+    const otherBoard = (await call('func', 'GET', `/api/boards/${other.id}`)).body;
+    expect((await call('func', 'POST', `/api/cards/${t1.id}/move`, { listId: otherBoard.lists[1].id })).status).toBe(200);
+    const ev = (await call('admin', 'GET', `/api/cards/${t1.id}/events`)).body.at(-1);
+    expect(ev).toMatchObject({ type: 'moved', before: { board: 'Meu trabalho', list: 'A fazer' }, after: { board: 'Pessoal', list: 'Fazendo' } });
+    // topo / fim dentro da fase
+    const t3 = await newTask(ctx, 'func', 'Terceira');
+    await call('func', 'POST', `/api/cards/${t3.id}/move`, { listId: t3.listId, place: 'top' });
+    const order = async () => {
+      const board = (await call('func', 'GET', `/api/boards/${(await call('func', 'GET', '/api/boards')).body[0].id}`)).body;
+      return board.cards.filter((x: any) => x.listId === t3.listId).sort((x: any, y: any) => x.position - y.position).map((x: any) => x.title);
+    };
+    expect(await order()).toEqual(['Terceira', 'Segunda']);
+    await call('func', 'POST', `/api/cards/${t3.id}/move`, { listId: t3.listId, place: 'end' });
+    expect(await order()).toEqual(['Segunda', 'Terceira']);
+  });
+
+  it('captura da web vai para a caixa de entrada (item 14)', async () => {
+    const r = await call('func', 'POST', '/api/capture', { title: 'Artigo sobre gestão', url: 'https://exemplo.com/artigo', text: 'trecho importante' });
+    expect(r.status).toBe(200);
+    expect(r.body.code).toMatch(/^ST-/);
+    const inbox = (await call('func', 'GET', '/api/inbox')).body;
+    const c = inbox.find((x: any) => x.id === r.body.id);
+    expect(c).toMatchObject({ source: 'web', title: 'Artigo sobre gestão', inInbox: true });
+    expect(c.description).toBe('https://exemplo.com/artigo\n\n“trecho importante”');
+    await acceptTask(ctx, 'func', r.body.id);
+    expect((await call('func', 'POST', `/api/cards/${r.body.id}/complete`)).status).toBe(200);
+    // sem título: usa o domínio
+    const r2 = await call('func', 'POST', '/api/capture', { title: '', url: 'https://www.exemplo.com.br/x' });
+    expect((await call('func', 'GET', `/api/cards/${r2.body.id}`)).body.card.title).toBe('www.exemplo.com.br');
+    expect((await call('func', 'POST', '/api/capture', { title: 'x', url: 'javascript:alert(1)' })).status).toBe(422);
+    expect((await call('admin', 'POST', '/api/capture', { title: 'x', url: 'https://a.com' })).status).toBe(403);
+  });
+
+  it('compartilhar do Android leva à tela de captura, tirando o link do texto', async () => {
+    const r = await ctx.app.inject({ method: 'GET', url: '/compartilhar?title=Not%C3%ADcia&text=Veja%20isto%20https%3A%2F%2Fsite.com%2Fa' });
+    expect(r.statusCode).toBe(302);
+    const loc = new URLSearchParams(r.headers.location!.split('?')[1]);
+    expect(r.headers.location).toMatch(/^\/#\/capturar\?/);
+    expect(loc.get('url')).toBe('https://site.com/a');
+    expect(loc.get('text')).toBe('Veja isto');
+    expect(loc.get('title')).toBe('Notícia');
+  });
+
+  it('painel do gestor (item 17)', async () => {
+    const late = await newTask(ctx, 'gest', 'Atrasada', day(-2));
+    const soon = await newTask(ctx, 'gest', 'Vence logo', day(3));
+    const later = await newTask(ctx, 'gest', 'Vence depois', day(20));
+    const done = await newTask(ctx, 'gest', 'Concluída');
+    const dl = await delegateTask(ctx, 'gest', late.id, 'func');
+    const ds = await delegateTask(ctx, 'gest', soon.id, 'func');
+    await delegateTask(ctx, 'gest', later.id, 'func2');
+    const dd = await delegateTask(ctx, 'gest', done.id, 'func2');
+    await acceptTask(ctx, 'func', ds.cardId);
+    await acceptTask(ctx, 'func2', dd.cardId);
+    await call('func2', 'POST', `/api/cards/${dd.cardId}/complete`);
+    // simula tempo parado: aceite pendente e ciente pendente há 3 dias; sem movimento há 10 dias
+    await ctx.pool.query(`UPDATE delegations SET updated_at = now() - interval '3 days' WHERE id IN ($1, $2)`, [dl.delegationId, dd.delegationId]);
+    await ctx.pool.query('ALTER TABLE card_events DISABLE TRIGGER card_events_immutable');
+    await ctx.pool.query(`UPDATE card_events SET created_at = now() - interval '10 days' WHERE card_id = $1`, [ds.cardId]);
+    await ctx.pool.query('ALTER TABLE card_events ENABLE TRIGGER card_events_immutable');
+    await ctx.pool.query(`UPDATE delegations SET updated_at = now() - interval '10 days' WHERE id = $1`, [ds.delegationId]);
+
+    const r = await call('gest', 'GET', '/api/dashboard');
+    expect(r.status).toBe(200);
+    expect(r.body.summary).toEqual({ open: 3, late: 1, awaitingAck: 1, declined: 0 });
+    const f = r.body.people.find((p: any) => p.id === ctx.users.func.id);
+    const f2 = r.body.people.find((p: any) => p.id === ctx.users.func2.id);
+    expect(f).toMatchObject({ late: 1, dueSoon: 1, onTime: 0 });
+    expect(f2).toMatchObject({ late: 0, dueSoon: 0, onTime: 1 });
+    expect(r.body.agenda.overdue.map((c: any) => c.title)).toEqual(['Atrasada']);
+    expect(r.body.agenda.days).toHaveLength(14);
+    expect(r.body.agenda.days[3].cards.map((c: any) => c.title)).toEqual(['Vence logo']);
+    expect(r.body.stalled.notAccepted.map((x: any) => x.card.title)).toEqual(['Atrasada']);
+    expect(r.body.stalled.awaitingAck.map((x: any) => x.card.title)).toEqual(['Concluída']);
+    expect(r.body.stalled.noMovement.map((x: any) => x.card.title)).toEqual(['Vence logo']);
+    // funcionário sem equipe: painel vazio
+    expect((await call('func', 'GET', '/api/dashboard')).body.summary).toEqual({ open: 0, late: 0, awaitingAck: 0, declined: 0 });
   });
 });

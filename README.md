@@ -1,4 +1,6 @@
-# Nerus Tasks
+# SyncTask
+
+<img src="apps/web/public/icon.svg" width="48" alt="">
 
 Quadros pessoais no estilo Trello, com **delegação hierárquica** (CEO → Diretores → Gestores → Funcionários), ciente do superior, log imutável e avisos por e-mail.
 
@@ -6,9 +8,11 @@ A especificação completa está em [`docs/especificacao.md`](docs/especificacao
 
 ## O que tem nesta versão
 
-- **Meus quadros:** quadros e fases livres (criar, renomear, reordenar, arquivar fase vazia), tarefas com código `NT-000001`, prazo, descrição, checklist, comentários e privacidade. As tarefas se arrastam entre as fases.
+- **Meus quadros:** quadros e fases livres (criar, renomear, reordenar, arquivar fase vazia), tarefas com código `ST-000001` (links antigos com `NT-` continuam funcionando), prazo, descrição, checklist, comentários e privacidade. As tarefas se arrastam entre as fases e dentro da mesma fase (com linha indicando onde vão cair). Cada fase pode ser ordenada por nome, data de criação ou prazo, cada quadro pode ter uma cor de fundo, e no cartão aberto **Mover para** leva a tarefa a outro quadro e fase, ao topo ou ao fim.
 - **Delegação:** o botão **Delegar** fica dentro da tarefa e só aceita um subordinado direto. A delegação cria um cartão ligado, com código próprio. A pessoa recebe na **Caixa de entrada**, onde aceita ou devolve com justificativa. Depois de concluída, a tarefa fica aguardando o ciente. Quem delegou pode dar o ciente (arquiva), reabrir com comentário, redelegar ou cancelar.
-- **Tarefas delegadas:** tela principal de quem tem subordinados. Mostra o que precisa da sua ação e um grupo por pessoa, com os contadores abertas · atrasadas · aguardando ciente · devolvidas · próprias.
+- **Painel:** primeira tela de quem tem subordinados. Resumo (em aberto, atrasadas, aguardando ciente, devolvidas), carga por pessoa (no prazo / vence em 7 dias / atrasadas), agenda dos próximos 14 dias e tarefas paradas. Cada número ou barra abre **Tarefas delegadas** já filtrada.
+- **Tarefas delegadas:** onde se age. Mostra o que precisa da sua ação e um grupo por pessoa, em colunas fixas, com os contadores abertas · atrasadas · aguardando ciente · devolvidas · próprias, e o botão Expandir/Recolher tudo.
+- **Capturar da web:** o botão **+ SyncTask** (arrastado para a barra de favoritos) e o **Compartilhar** do Android criam uma tarefa com o título, o link e o trecho selecionado da página. Ela cai na Caixa de entrada marcada como “capturada da web”.
 - **Transferir:** para um subordinado, um colega do mesmo nível ou o superior direto. Numa tarefa delegada, quem delegou continua acompanhando.
 - **Log:** registro imutável de tudo o que acontece com cada tarefa, garantido por trigger no banco. É visível para a administração, o CEO e a diretoria.
 - **Importar do Trello:** em Meus quadros, escolha o JSON exportado de um quadro do Trello. Ele vira um quadro novo seu, com listas, cartões, prazos, checklists e comentários. O arquivo é lido no navegador e só os dados necessários vão para o servidor. Ficam de fora os itens arquivados, as etiquetas e os anexos.
@@ -49,7 +53,7 @@ O comando imprime o link para definir a senha. Depois disso, o restante das pess
 ## Testes
 
 ```bash
-npm test          # 30 testes da API (PostgreSQL real, banco nerus_test) + 5 do leitor do Trello
+npm test          # 37 testes da API (PostgreSQL real, banco nerus_test) + 5 do leitor do Trello
 npm run typecheck
 ```
 
@@ -66,7 +70,7 @@ docker run -p 3000:3000 \
   -e APP_URL=https://tarefas.suaempresa.com.br \
   -e SMTP_HOST=smtp.gmail.com -e SMTP_PORT=587 \
   -e SMTP_USER=tarefas@suaempresa.com.br -e SMTP_PASS=senha-de-app \
-  -e MAIL_FROM="Nerus Tasks <tarefas@suaempresa.com.br>" \
+  -e MAIL_FROM="SyncTask <tarefas@suaempresa.com.br>" \
   nerus-tasks
 ```
 

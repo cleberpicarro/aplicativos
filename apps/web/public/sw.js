@@ -1,9 +1,9 @@
-// Service worker do Nerus Tasks: guarda a casca do app para abrir rápido e instalar como PWA.
+// Service worker do SyncTask: guarda a casca do app para abrir rápido e instalar como PWA.
 // Dados (/api) nunca são guardados em cache: as ações sempre exigem conexão.
-const CACHE = 'nerus-shell-v1';
+const CACHE = 'synctask-shell-v1';
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(caches.open(CACHE).then((c) => c.addAll(['/', '/manifest.webmanifest', '/icon.svg', '/icon-192.png'])));
+  event.waitUntil(caches.open(CACHE).then((c) => c.addAll(['/', '/manifest.webmanifest', '/icon.svg', '/icon-192.png', '/icon-512.png'])));
   self.skipWaiting();
 });
 

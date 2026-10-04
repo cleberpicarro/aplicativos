@@ -58,7 +58,7 @@ export async function forgotPassword(db: Db, email: string) {
   await queueEmail(
     db,
     u.email,
-    'Redefinir sua senha do Nerus Tasks',
+    'Redefinir sua senha do SyncTask',
     `Olá, ${u.name.split(' ')[0]}.\n\nPara definir uma nova senha, use o link abaixo (válido por 2 horas):\n\n${config.appUrl}/#/definir-senha?token=${token}\n\nSe não foi você, ignore este e-mail.\n`,
   );
 }

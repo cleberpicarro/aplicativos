@@ -110,6 +110,8 @@ export function CardModal({ code, onClose }: { code: string; onClose: () => void
                 <span>Com <b style={{ fontWeight: 500, color: 'var(--fg)' }}>{owner ? 'você' : card.ownerName}</b></span>
                 {d && <span>· Delegada por {d.delegatorId === me.user.id ? 'você' : d.delegatorName}</span>}
                 {card.transferredFrom && <span>· Transferida por {card.transferredFrom.name}</span>}
+                {card.source === 'web' && <span>· Capturada da web</span>}
+                {card.source === 'trello' && <span>· Importada do Trello</span>}
                 {d?.parentCode && <span>· Desdobramento de <span className="code">{d.parentCode}</span></span>}
               </div>
 
@@ -140,15 +142,7 @@ export function CardModal({ code, onClose }: { code: string; onClose: () => void
                 {d?.suggestedDue && d.suggestedDue !== card.dueDate && <span className="hint">Sugerido: {fullDate(d.suggestedDue)}</span>}
                 {owner && d && <span className="hint">Ao mudar, {firstName(d.delegatorName)} é avisado(a).</span>}
               </div>
-              {owner && board && !archived && card.listId && (
-                <div className="field">
-                  <label htmlFor="c-move" className="label">Fase · {board.name}</label>
-                  <select id="c-move" className="select input" value={card.listId}
-                    onChange={(e) => run(() => post(`/cards/${card.id}/move`, { listId: e.target.value }), 'Tarefa movida.')}>
-                    {board.lists.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
-                  </select>
-                </div>
-              )}
+              {owner && board && !archived && card.listId && <MoveTo cardId={card.id} boardId={board.id} listId={card.listId} />}
               {owner && !d && !archived && (
                 <label className="check">
                   <input type="checkbox" checked={card.isPrivate}
@@ -306,7 +300,8 @@ function describe(e: Ev): { text: string; change?: string } {
     case 'description_changed': return { text: 'alterou a descrição', change: `“${cut(b.description || '')}” → “${cut(a.description || '')}”` };
     case 'due_changed': return { text: 'alterou o prazo', change: `${df(b.dueDate)} → ${df(a.dueDate)}` };
     case 'privacy_changed': return { text: a.isPrivate ? 'tornou a tarefa privada' : 'tornou a tarefa visível' };
-    case 'moved': return { text: `moveu de “${b.list}” para “${a.list}”` };
+    case 'moved': return a.board ? { text: `moveu para outro quadro`, change: `“${b.board} · ${b.list}” → “${a.board} · ${a.list}”` } : { text: `moveu de “${b.list}” para “${a.list}”` };
+    case 'captured': return { text: 'capturou da web', change: a.url ?? undefined };
     case 'accepted': return { text: `aceitou e colocou em “${a.board} · ${a.list}”` };
     case 'checklist_added': return { text: 'adicionou item ao checklist', change: `“${a.text}”` };
     case 'checklist_edited': return { text: 'editou item do checklist', change: `“${b.text}” → “${a.text}”` };
@@ -348,6 +343,43 @@ function EventLog({ cardId }: { cardId: string }) {
           );
         })}
       </ol>
+    </div>
+  );
+}
+
+/** Itens 16 e 10: mover para qualquer quadro e fase da pessoa, ou para o topo/fim da fase atual. */
+function MoveTo({ cardId, boardId, listId }: { cardId: string; boardId: string; listId: string }) {
+  const { run, busy } = useAction();
+  const boards = useQuery({ queryKey: ['boards'], queryFn: () => get<{ id: string; name: string }[]>('/boards') });
+  const [targetBoard, setTargetBoard] = useState(boardId);
+  const lists = useQuery({ queryKey: ['board', targetBoard], queryFn: () => get<{ lists: { id: string; name: string }[] }>(`/boards/${targetBoard}`) });
+  const [targetList, setTargetList] = useState(listId);
+  useEffect(() => { setTargetBoard(boardId); setTargetList(listId); }, [boardId, listId]);
+  const options = lists.data?.lists ?? [];
+  const chosenList = options.some((l) => l.id === targetList) ? targetList : options[0]?.id ?? '';
+  const changed = targetBoard !== boardId || chosenList !== listId;
+  const boardName = boards.data?.find((b) => b.id === targetBoard)?.name;
+  const listName = options.find((l) => l.id === chosenList)?.name;
+  return (
+    <div className="field">
+      <span className="label">Mover para</span>
+      <select className="select input" aria-label="Quadro" value={targetBoard} onChange={(e) => setTargetBoard(e.target.value)}>
+        {boards.data?.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+      </select>
+      <select className="select input" aria-label="Fase" value={chosenList} onChange={(e) => setTargetList(e.target.value)}>
+        {options.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+      </select>
+      {changed ? (
+        <button className="b" disabled={busy || !chosenList}
+          onClick={() => run(() => post(`/cards/${cardId}/move`, { listId: chosenList }), `Tarefa movida para ${targetBoard !== boardId ? `“${boardName}” · ` : ''}“${listName}”.`)}>
+          <Icon name="move" />Mover
+        </button>
+      ) : (
+        <div style={{ display: 'flex', gap: 4 }}>
+          <button className="b sm" style={{ flex: 1 }} disabled={busy} onClick={() => run(() => post(`/cards/${cardId}/move`, { listId, place: 'top' }), 'Tarefa no topo da fase.')}>Para o topo</button>
+          <button className="b sm" style={{ flex: 1 }} disabled={busy} onClick={() => run(() => post(`/cards/${cardId}/move`, { listId, place: 'end' }), 'Tarefa no fim da fase.')}>Para o fim</button>
+        </div>
+      )}
     </div>
   );
 }

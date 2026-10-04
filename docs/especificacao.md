@@ -1,10 +1,12 @@
-# Nerus Tasks: especificação funcional e técnica
+# SyncTask: especificação funcional e técnica
+
+> O aplicativo se chamava **Nerus Tasks** até a terceira rodada de ajustes (ver `docs/feedback.md`, item 13).
 
 | | |
 |---|---|
 | **Versão** | 1.0 (rascunho para validação) |
 | **Data** | 04/10/2026 |
-| **Status** | Jornadas validadas. Amostra visual aprovada. **Primeira versão implementada** (`apps/api`, `apps/web`); ver README. |
+| **Status** | Jornadas validadas. Amostra visual aprovada. **Primeira versão implementada** (`apps/api`, `apps/web`), com três rodadas de ajustes do teste (`docs/feedback.md`); ver README. |
 | **Público** | ~90 a 99 pessoas da Nerus |
 | **Protótipo navegável** | https://claude.ai/artifact/PzRKBmbgfbtbztuQDLnWcd |
 | **Amostra do visual aprovado** | https://claude.ai/artifact/VS56Z1i99KfRCXToV47EHm |
@@ -33,6 +35,7 @@
 18. [Plano de entrega](#18-plano-de-entrega)
 19. [Critérios de aceite](#19-critérios-de-aceite)
 20. [Questões em aberto](#20-questões-em-aberto)
+    - [Painel e captura da web](#20a-painel-e-captura-da-web-terceira-rodada)
 21. [Fora do escopo e evoluções futuras](#21-fora-do-escopo-e-evoluções-futuras)
 
 ---
@@ -258,7 +261,7 @@ Só o administrador:
 
 ### 7.8 Busca
 
-- **RN-36** O campo de busca aceita um **código** (`NT-000123`, `123` ou `nt123`), que abre a tarefa direto, ou um **texto**, que busca no título e na descrição.
+- **RN-36** O campo de busca aceita um **código** (`ST-000123`, `123`, `st123` ou o formato antigo `NT-000123`), que abre a tarefa direto, ou um **texto**, que busca no título e na descrição.
 - **RN-37** A busca só retorna tarefas que o usuário pode ver: as dele e as que ele delegou.
 
 ### 7.9 Transferência de gestão
@@ -277,9 +280,9 @@ Só o administrador:
 
 ## 8. Código da tarefa
 
-- **RN-44** Toda tarefa recebe um código único e legível: **`NT-` seguido de no mínimo 6 dígitos**, por exemplo `NT-000001`.
+- **RN-44** Toda tarefa recebe um código único e legível: **`ST-` seguido de no mínimo 6 dígitos**, por exemplo `ST-000001`. Até a troca de nome o prefixo era `NT-`; os códigos antigos continuam sendo aceitos na busca e nos links (o número é o mesmo).
 - **RN-45** O código é gerado por uma sequência do banco (`BIGINT`). **Nunca é reutilizado**, nem após cancelamento ou arquivamento.
-- **RN-46** **Não há teto.** O número é exibido com zeros à esquerda até 6 dígitos. A partir de 1.000.000 a exibição cresce naturalmente (`NT-1000000`), sem quebrar nada.
+- **RN-46** **Não há teto.** O número é exibido com zeros à esquerda até 6 dígitos. A partir de 1.000.000 a exibição cresce naturalmente (`ST-1000000`), sem quebrar nada.
 - **RN-47** Transferir, redelegar, dar ciente e reabrir **mantêm** o código. Uma nova delegação gera um **novo** cartão, portanto um novo código.
 - **RN-48** O código aparece no cartão, nas listas, na caixa de entrada, na tela Tarefas delegadas, no log e no **assunto dos e-mails**.
 
@@ -370,16 +373,16 @@ Cada evento gera um **aviso no app** e um **e-mail**:
 
 | Evento | Quem recebe | Assunto do e-mail (exemplo) |
 |---|---|---|
-| Nova delegação | subordinado | `[NT-000123] Marina delegou: Conferir notas fiscais` |
-| Delegação devolvida | delegador | `[NT-000123] João devolveu: Conferir notas fiscais` |
-| Prazo alterado | delegador | `[NT-000123] Prazo alterado para 10/10` |
-| Tarefa concluída (aguardando ciente) | delegador | `[NT-000123] Concluída, aguardando seu ciente` |
-| Tarefa reaberta | subordinado | `[NT-000123] Reaberta por Marina` |
-| Ciente dado (arquivada) | subordinado | `[NT-000123] Ciente dado, tarefa arquivada` |
-| Tarefa transferida para você | destino | `[NT-000123] Carlos transferiu para você` |
-| Delegação cancelada | subordinado | `[NT-000123] Delegação cancelada` |
+| Nova delegação | subordinado | `[ST-000123] Marina delegou: Conferir notas fiscais` |
+| Delegação devolvida | delegador | `[ST-000123] João devolveu: Conferir notas fiscais` |
+| Prazo alterado | delegador | `[ST-000123] Prazo alterado para 10/10` |
+| Tarefa concluída (aguardando ciente) | delegador | `[ST-000123] Concluída, aguardando seu ciente` |
+| Tarefa reaberta | subordinado | `[ST-000123] Reaberta por Marina` |
+| Ciente dado (arquivada) | subordinado | `[ST-000123] Ciente dado, tarefa arquivada` |
+| Tarefa transferida para você | destino | `[ST-000123] Carlos transferiu para você` |
+| Delegação cancelada | subordinado | `[ST-000123] Delegação cancelada` |
 | Gestão transferida | pessoa, novo e antigo superior | `Mudança de gestão: João agora responde a Paulo` |
-| Convite / definir senha | pessoa nova | `Seu acesso ao Nerus Tasks` |
+| Convite / definir senha | pessoa nova | `Seu acesso ao SyncTask` |
 
 ### 11.2 Regras
 
@@ -397,18 +400,22 @@ Cada evento gera um **aviso no app** e um **e-mail**:
 
 Menu lateral, **nesta ordem**:
 
-1. **Meus quadros**
-2. **Caixa de entrada** (com contador)
-3. **Tarefas delegadas** (só para quem tem subordinados; contador do que precisa de ação, em âmbar)
-4. **Avisos** (contador de não lidos)
-5. **Pessoas** (só para o administrador)
+1. **Painel** (só para quem tem subordinados; é a tela inicial dessas pessoas)
+2. **Meus quadros**
+3. **Caixa de entrada** (com contador)
+4. **Tarefas delegadas** (só para quem tem subordinados; contador do que precisa de ação, em âmbar)
+5. **Avisos** (contador de não lidos)
+6. **Pessoas** (só para o administrador)
 
 No topo de cada tela: título, campo de **busca** (texto ou código) e controle **A− / A+**. No celular, o menu vira uma barra horizontal rolável.
 
 ### 12.2 Meus quadros
 
-- Abas com os quadros da pessoa e o botão **+ Quadro**.
-- Colunas de fases, com rolagem horizontal própria. Cada coluna tem nome, contador e menu (renomear, mover, arquivar).
+- Abas com os quadros da pessoa à esquerda; à direita, discretos, **+ Quadro**, **Importar do Trello** e o menu **…** do quadro (renomear, **cor do quadro**, nova fase).
+- **Cor do quadro:** paleta de 8 cores suaves (azul, verde, amarelo, laranja, vermelho, roxo, rosa, cinza) com versões para os temas claro e escuro. Fica gravada no quadro, não no navegador.
+- Colunas de fases, com rolagem horizontal própria. Cada coluna tem nome, contador e menu (renomear, mover, **ordenar por** nome, data de criação ou prazo, arquivar). Ordenar reorganiza a fase uma vez; o arrastar continua valendo depois.
+- Arrastar funciona entre fases e **dentro da mesma fase**: uma linha mostra onde a tarefa vai cair (acima ou abaixo do cartão, conforme a metade em que o ponteiro está).
+- No cartão aberto, **Mover para** escolhe quadro e fase, ou leva a tarefa **para o topo / para o fim** da fase. Mudar de quadro fica no log com o quadro e a fase de origem.
 - **+ Fase** ao final.
 - **Cartão no quadro:** botão de concluir (círculo), título (até 2 linhas), código, prazo, progresso do checklist e ícones (delegada por, repassada para, privada, aguardando ciente, reaberta).
 - Arrastar e soltar entre fases. No celular, usar "Mover para" dentro do cartão.
@@ -428,7 +435,7 @@ No topo de cada tela: título, campo de **busca** (texto ou código) e controle 
 - Checklist, com progresso.
 - Mover para outra fase.
 - Privacidade, só em tarefa própria.
-- Bloco **Desdobramento**: "Repassada para X (status)" ou "Desdobramento da tarefa NT-…".
+- Bloco **Desdobramento**: "Repassada para X (status)" ou "Desdobramento da tarefa ST-…".
 - Comentários.
 - **Log:** só para administrador, CEO e diretores.
 - **Ações do detentor:** Concluir ou Desfazer, Delegar (se tiver subordinados e não houver delegação ativa), Transferir e Devolver ao delegador (se for delegação em andamento).
@@ -560,7 +567,7 @@ Restrição: `manager.level = level - 1`, validada na aplicação e em trigger.
 |---|---|---|
 | id | uuid PK | |
 | seq | bigint único | da sequência `card_code_seq` |
-| code | text gerado | `'NT-' \|\| lpad(seq::text, 6, '0')`. Acima de 6 dígitos mostra o número inteiro |
+| code | text gerado | `'ST-' \|\| lpad(seq::text, 6, '0')`. Acima de 6 dígitos mostra o número inteiro |
 | owner_id | uuid FK users | detentor |
 | list_id | uuid FK lists null | nulo = na caixa de entrada |
 | position | float8 | |
@@ -752,6 +759,28 @@ Os testes automáticos da API e o roteiro manual devem comprovar:
 | Q6 | **Tela inicial:** todos abrem em Meus quadros, ou quem tem subordinados abre em Tarefas delegadas? | navegação |
 | Q7 | Quem pode **editar o checklist** de uma tarefa delegada: só o detentor (como assumido aqui) ou também o delegador? | permissões |
 | Q8 | Os contadores **próprias** devem incluir tarefas concluídas não arquivadas? Esta especificação assume **só abertas**. | contadores |
+
+---
+
+## 20a. Painel e captura da web (terceira rodada)
+
+### Painel (quem tem subordinados)
+
+Usa só as tarefas que a pessoa delegou, com a mesma visibilidade de Tarefas delegadas (RN-34).
+
+- **Resumo:** em aberto (aguardando aceite ou em andamento), atrasadas, aguardando seu ciente e devolvidas.
+- **Carga por pessoa:** barra empilhada por subordinado direto: no prazo ou sem prazo (cinza), vence em até 7 dias (âmbar), atrasadas (vermelho), com legenda e dica ao passar o mouse; ao lado, o total aberto e as tarefas próprias (RN-35).
+- **Próximos 14 dias:** tarefas em aberto por dia de vencimento, com as atrasadas no topo.
+- **Paradas:** sem aceite há mais de 2 dias, sem movimento (nenhum evento no log) há mais de 7 dias e aguardando ciente há mais de 2 dias.
+- Cada número ou barra abre Tarefas delegadas com filtro (`#/delegadas?filtro=abertas|atrasadas|semana|noprazo|ciente|devolvidas&pessoa=<id>`).
+- Fora por enquanto: indicador de entregas no prazo e visão da cadeia inteira para diretor e CEO.
+
+### Capturar da web
+
+- **Favorito “+ SyncTask”** (bookmarklet): abre uma janela pequena do app com o título, o endereço e o texto selecionado da página atual. A pessoa confere o título e salva.
+- **Android:** o PWA instalado aparece no **Compartilhar** (`share_target`, `GET /compartilhar`, que redireciona para a mesma tela de captura).
+- A tarefa vai para a **caixa de entrada** de quem capturou (`cards.source = 'web'`), com o link e o trecho na descrição, e o log registra `captured`. Só aceita endereços `http://` ou `https://`.
+- Extensão do Chrome fica para depois, conforme o uso.
 
 ---
 

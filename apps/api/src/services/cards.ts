@@ -58,6 +58,7 @@ export interface CardDto {
   };
   child: null | { delegationId: string; cardId: string; code: string; ownerName: string; status: string; reopened: boolean };
   checklist: { done: number; total: number };
+  source: string | null;
   createdAt: string;
 }
 
@@ -101,6 +102,7 @@ export function toCardDto(r: any): CardDto {
         }
       : null,
     checklist: { done: r.cl_done, total: r.cl_total },
+    source: r.source ?? null,
     createdAt: r.created_at,
   };
 }
@@ -133,7 +135,8 @@ export async function loadCard(db: Db, actor: Actor, cardId: string, opts: { loc
 }
 
 export function parseCode(input: string): number | null {
-  const m = /^\s*(?:nt\s*-?\s*)?0*(\d{1,15})\s*$/i.exec(input);
+  // Aceita ST-000123, NT-000123 (código antigo), st123 ou só o número.
+  const m = /^\s*(?:[ns]t\s*-?\s*)?0*(\d{1,15})\s*$/i.exec(input);
   return m ? Number(m[1]) : null;
 }
 

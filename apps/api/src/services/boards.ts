@@ -5,6 +5,9 @@ import { selectCards, nextPosition } from './cards.js';
 
 export const DEFAULT_LISTS = ['A fazer', 'Fazendo', 'Feito'];
 
+/** Cores de fundo disponíveis para um quadro (item 12). Os tons de cada uma ficam no front-end. */
+export const BOARD_COLORS = ['azul', 'verde', 'amarelo', 'laranja', 'vermelho', 'roxo', 'rosa', 'cinza'] as const;
+
 export async function createBoard(db: Db, ownerId: string, name: string) {
   const clean = name.trim();
   if (!clean) throw badRequest('Dê um nome ao quadro.');
@@ -34,7 +37,7 @@ export async function ownList(db: Db, actor: Actor, listId: string) {
 }
 
 export async function listBoards(db: Db, actor: Actor) {
-  return many(db, 'SELECT id, name, position FROM boards WHERE owner_id = $1 AND archived_at IS NULL ORDER BY position', [actor.id]);
+  return many(db, 'SELECT id, name, position, color FROM boards WHERE owner_id = $1 AND archived_at IS NULL ORDER BY position', [actor.id]);
 }
 
 export async function boardDetail(db: Db, actor: Actor, boardId: string) {
@@ -46,13 +49,35 @@ export async function boardDetail(db: Db, actor: Actor, boardId: string) {
     `l.board_id = $1 AND c.owner_id = $2 AND c.archived_at IS NULL AND (d.id IS NULL OR d.status NOT IN ('DECLINED','CANCELED'))`,
     [boardId, actor.id],
   );
-  return { id: board.id, name: board.name, lists, cards };
+  return { id: board.id, name: board.name, color: board.color, lists, cards };
 }
 
 export async function renameBoard(db: Db, actor: Actor, boardId: string, name: string) {
   await ownBoard(db, actor, boardId);
   if (!name.trim()) throw badRequest('Dê um nome ao quadro.');
   await db.query('UPDATE boards SET name = $2 WHERE id = $1', [boardId, name.trim()]);
+}
+
+export async function setBoardColor(db: Db, actor: Actor, boardId: string, color: string | null) {
+  await ownBoard(db, actor, boardId);
+  if (color !== null && !(BOARD_COLORS as readonly string[]).includes(color)) throw badRequest('Cor inválida.');
+  await db.query('UPDATE boards SET color = $2 WHERE id = $1', [boardId, color]);
+}
+
+/** Item 11: reorganiza a fase de uma vez. Depois disso, o arrastar continua valendo. */
+export async function sortList(db: Db, actor: Actor, listId: string, by: 'title' | 'created' | 'due') {
+  await ownList(db, actor, listId);
+  const order = {
+    title: 'lower(c.title), c.seq',
+    created: 'c.created_at, c.seq',
+    due: 'c.due_date NULLS LAST, c.seq',
+  }[by];
+  await db.query(
+    `UPDATE cards SET position = o.n FROM (
+       SELECT c.id, row_number() OVER (ORDER BY ${order}) AS n FROM cards c WHERE c.list_id = $1 AND c.archived_at IS NULL
+     ) o WHERE cards.id = o.id`,
+    [listId],
+  );
 }
 
 export async function createList(db: Db, actor: Actor, boardId: string, name: string) {

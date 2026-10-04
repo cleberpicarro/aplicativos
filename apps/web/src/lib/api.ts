@@ -52,6 +52,8 @@ export interface Card {
   };
   child: null | { delegationId: string; cardId: string; code: string; ownerName: string; status: DelegationStatus; reopened: boolean };
   checklist: { done: number; total: number };
+  source: 'web' | 'trello' | null;
+  createdAt: string;
 }
 
 export interface Me {
@@ -73,6 +75,7 @@ export interface CardDetail {
 export interface Board {
   id: string;
   name: string;
+  color: string | null;
   lists: { id: string; name: string; position: number }[];
   cards: Card[];
 }

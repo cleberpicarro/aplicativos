@@ -71,8 +71,8 @@ export async function importTrello(db: Db, actor: Actor, data: TrelloImport) {
         : c.description;
       const card = await one(
         db,
-        `INSERT INTO cards (owner_id, list_id, position, title, description, due_date, completed_at, created_by)
-         VALUES ($1, $2, $3, $4, $5, $6, CASE WHEN $7 THEN now() END, $1) RETURNING id`,
+        `INSERT INTO cards (owner_id, list_id, position, title, description, due_date, completed_at, created_by, source)
+         VALUES ($1, $2, $3, $4, $5, $6, CASE WHEN $7 THEN now() END, $1, 'trello') RETURNING id`,
         [actor.id, list.id, j + 1, c.title, description, c.dueDate, c.completed],
       );
       await logEvent(db, card.id, actor.id, 'imported', undefined, { source: 'Trello', board: data.boardName, list: listName });

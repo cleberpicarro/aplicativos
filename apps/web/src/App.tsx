@@ -13,6 +13,8 @@ import { NotificationsPage } from './pages/Notifications';
 import { PeoplePage } from './pages/People';
 import { ForgotPage, LoginPage, SetPasswordPage } from './pages/Auth';
 import { HelpPage } from './pages/Help';
+import { CapturePage } from './pages/Capture';
+import { DashboardPage } from './pages/Dashboard';
 
 const FS = [12, 13, 14, 15, 16, 18];
 const FS_KEY = 'nerus.fs';
@@ -42,10 +44,12 @@ export function App() {
   if (route.path === '/esqueci') return <ForgotPage />;
   if (me.isLoading) return <div className="auth"><p className="loading">Carregando…</p></div>;
   if (me.error || !me.data) return <LoginPage />;
+  if (route.path === '/capturar') return <CapturePage params={route.params} />;
   return <Shell />;
 }
 
 const PAGES: Record<string, { title: string }> = {
+  '/painel': { title: 'Painel' },
   '/quadros': { title: 'Meus quadros' },
   '/entrada': { title: 'Caixa de entrada' },
   '/delegadas': { title: 'Tarefas delegadas' },
@@ -98,21 +102,23 @@ function Shell() {
   const toggleSide = () => setCollapsed((c) => { store('nerus.side', c ? 'open' : 'closed'); return !c; });
 
   const hasReports = me.directReports.length > 0;
-  const home = !me.user.inHierarchy ? '/pessoas' : hasReports ? '/delegadas' : '/quadros';
+  const home = !me.user.inHierarchy ? '/pessoas' : hasReports ? '/painel' : '/quadros';
   let page = route.path;
   const cardCode = page.startsWith('/tarefa/') ? decodeURIComponent(page.slice(8)) : null;
   if (cardCode) page = lastPage.current;
   else if (!PAGES[page]) page = home;
-  if (!cardCode) lastPage.current = page;
+  // Guarda também os filtros (?filtro=...) para voltar ao mesmo lugar ao fechar uma tarefa.
+  if (!cardCode) lastPage.current = PAGES[route.path] && route.params.toString() ? `${page}?${route.params}` : page;
 
   useEffect(() => {
     if (!cardCode && !PAGES[route.path]) go(home);
   }, [route.path]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
-    document.title = `${cardCode ?? PAGES[page]?.title ?? ''} · Nerus Tasks`;
+    document.title = `${cardCode ?? PAGES[page]?.title ?? ''} · SyncTask`;
   }, [page, cardCode]);
 
   const nav: { path: string; label: string; icon: IconName; n?: number; attn?: boolean; show: boolean }[] = [
+    { path: '/painel', label: 'Painel', icon: 'chart', show: hasReports },
     { path: '/quadros', label: 'Meus quadros', icon: 'board', show: me.user.inHierarchy },
     { path: '/entrada', label: 'Caixa de entrada', icon: 'inbox', n: me.counts.inbox, show: me.user.inHierarchy },
     { path: '/delegadas', label: 'Tarefas delegadas', icon: 'users', n: me.counts.needAction, attn: true, show: hasReports },
@@ -130,7 +136,7 @@ function Shell() {
   return (
     <div className={`app${collapsed ? ' collapsed' : ''}`}>
       <aside className="side">
-        <div className="brand"><img src="/icon.svg" alt="" /><span>Nerus Tasks</span></div>
+        <div className="brand"><img src="/icon.svg" alt="" /><span>SyncTask</span></div>
         <div className="who" title={collapsed ? `${me.user.name} · ${me.user.roleTitle}` : undefined}>
           <Avatar name={me.user.name} large /><div style={{ minWidth: 0 }}><b>{me.user.name}</b><small>{me.user.roleTitle}</small></div>
         </div>
@@ -168,6 +174,7 @@ function Shell() {
             </button>
           </div>
         </div>
+        {page === '/painel' && <DashboardPage />}
         {page === '/quadros' && <BoardsPage />}
         {page === '/entrada' && <InboxPage />}
         {page === '/delegadas' && <DelegatedPage />}

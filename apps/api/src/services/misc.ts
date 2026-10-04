@@ -28,7 +28,7 @@ export async function me(db: Db, actor: Actor) {
 export async function search(db: Db, actor: Actor, q: string) {
   const query = q.trim();
   if (!query) return { byCode: null, results: [] };
-  if (parseCode(query) !== null && /^\s*(nt|\d)/i.test(query)) {
+  if (parseCode(query) !== null && /^\s*(nt|st|\d)/i.test(query)) {
     const id = await cardIdByCode(db, query);
     if (id) {
       try {

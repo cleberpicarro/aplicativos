@@ -14,6 +14,8 @@ import * as deleg from './services/delegation.js';
 import * as admin from './services/admin.js';
 import * as misc from './services/misc.js';
 import { importTrello, trelloImportSchema } from './services/importer.js';
+import { captureWeb } from './services/capture.js';
+import { dashboard } from './services/dashboard.js';
 import { cardDetail, cardIdByCode, loadCard } from './services/cards.js';
 import { canSeeLog } from './services/actors.js';
 
@@ -126,8 +128,11 @@ export async function buildApp({ pool, logger = false, serveWeb = false }: AppOp
   });
   app.patch('/api/boards/:id', async (req) => {
     const { id } = z.object({ id: uuid }).parse(req.params);
-    const { name } = z.object({ name: z.string().max(80) }).parse(req.body);
-    await inTx((db) => boards.renameBoard(db, need(req), id, name));
+    const body = z.object({ name: z.string().max(80).optional(), color: z.string().max(20).nullable().optional() }).parse(req.body);
+    await inTx(async (db) => {
+      if (body.name !== undefined) await boards.renameBoard(db, need(req), id, body.name);
+      if (body.color !== undefined) await boards.setBoardColor(db, need(req), id, body.color);
+    });
     return { ok: true };
   });
   app.post('/api/boards/:id/lists', async (req) => {
@@ -139,6 +144,12 @@ export async function buildApp({ pool, logger = false, serveWeb = false }: AppOp
     const { id } = z.object({ id: uuid }).parse(req.params);
     const body = z.object({ name: z.string().max(60).optional(), position: z.number().finite().optional() }).parse(req.body);
     await inTx((db) => boards.updateList(db, need(req), id, body));
+    return { ok: true };
+  });
+  app.post('/api/lists/:id/sort', async (req) => {
+    const { id } = z.object({ id: uuid }).parse(req.params);
+    const { by } = z.object({ by: z.enum(['title', 'created', 'due']) }).parse(req.body);
+    await inTx((db) => boards.sortList(db, need(req), id, by));
     return { ok: true };
   });
   app.post('/api/lists/:id/archive', async (req) => {
@@ -172,8 +183,10 @@ export async function buildApp({ pool, logger = false, serveWeb = false }: AppOp
   });
   app.post('/api/cards/:id/move', async (req) => {
     const { id } = z.object({ id: uuid }).parse(req.params);
-    const { listId, position } = z.object({ listId: uuid, position: z.number().finite().optional() }).parse(req.body);
-    await inTx((db) => tasks.moveCard(db, need(req), id, listId, position));
+    const { listId, position, place } = z
+      .object({ listId: uuid, position: z.number().finite().optional(), place: z.enum(['top', 'end']).optional() })
+      .parse(req.body);
+    await inTx((db) => tasks.moveCard(db, need(req), id, listId, position, place));
     return { ok: true };
   });
   app.post('/api/cards/:id/complete', async (req) => {
@@ -275,6 +288,28 @@ export async function buildApp({ pool, logger = false, serveWeb = false }: AppOp
     const { archived } = z.object({ archived: z.enum(['0', '1']).optional() }).parse(req.query);
     return deleg.delegationsOverview(pool, need(req), archived === '1');
   });
+
+  /* ---------------- captura da web (item 14) ---------------- */
+  app.post('/api/capture', async (req) => {
+    const body = z.object({ title: z.string().max(1000), url: z.string().max(2000), text: z.string().max(5000).optional() }).parse(req.body);
+    return inTx((db) => captureWeb(db, need(req), body));
+  });
+  // Destino do "Compartilhar → SyncTask" no Android (share_target do manifesto): leva à tela de captura.
+  app.get('/compartilhar', async (req, reply) => {
+    const q = z.object({ title: z.string().optional(), text: z.string().optional(), url: z.string().optional() }).parse(req.query);
+    let url = q.url ?? '';
+    let text = q.text ?? '';
+    // O Android costuma mandar o link dentro de "text".
+    if (!url) {
+      const m = /https?:\/\/\S+/.exec(text);
+      if (m) { url = m[0]; text = text.replace(m[0], '').trim(); }
+    }
+    const params = new URLSearchParams({ title: q.title ?? '', url, text });
+    return reply.redirect(`/#/capturar?${params.toString()}`);
+  });
+
+  /* ---------------- painel (item 17) ---------------- */
+  app.get('/api/dashboard', async (req) => dashboard(pool, need(req)));
 
   /* ---------------- importação do Trello ---------------- */
   app.post('/api/import/trello', { bodyLimit: 20 * 1024 * 1024 }, async (req) => {

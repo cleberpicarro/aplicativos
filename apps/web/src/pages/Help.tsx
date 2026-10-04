@@ -1,12 +1,15 @@
 import type { ReactNode } from 'react';
 import { StatusIcon, TipIcon } from '../components/ui';
+import { BookmarkletButton } from './Capture';
 
 const SECTIONS: [string, string][] = [
   ['inicio', 'Primeiros passos'],
   ['quadros', 'Meus quadros'],
   ['trello', 'Importar do Trello'],
+  ['capturar', 'Capturar da web'],
   ['entrada', 'Caixa de entrada'],
   ['delegar', 'Delegar'],
+  ['painel', 'Painel'],
   ['acompanhar', 'Tarefas delegadas'],
   ['concluir', 'Concluir, ciente e reabrir'],
   ['devolver', 'Devolver e transferir'],
@@ -35,7 +38,7 @@ export function HelpPage({ isAdmin }: { isAdmin: boolean }) {
   return (
     <div className="page help">
       <p style={{ marginTop: 0 }}>
-        O Nerus Tasks junta duas coisas: <b>quadros pessoais</b>, onde cada um organiza o próprio trabalho como quiser, e{' '}
+        O SyncTask junta duas coisas: <b>quadros pessoais</b>, onde cada um organiza o próprio trabalho como quiser, e{' '}
         <b>delegação</b>, para quem tem equipe saber o que entregou a cada pessoa e em que pé está.
       </p>
 
@@ -52,7 +55,7 @@ export function HelpPage({ isAdmin }: { isAdmin: boolean }) {
       <Sec id="inicio" title="Primeiros passos">
         <ol>
           <li>Você recebe um e-mail com o link para <b>definir sua senha</b>. Depois, entre com seu e-mail e senha.</li>
-          <li>No menu à esquerda ficam <b>Meus quadros</b>, a <b>Caixa de entrada</b>, <b>Tarefas delegadas</b> (só para quem tem equipe) e <b>Avisos</b>.</li>
+          <li>No menu à esquerda ficam o <b>Painel</b> e as <b>Tarefas delegadas</b> (só para quem tem equipe), <b>Meus quadros</b>, a <b>Caixa de entrada</b> e <b>Avisos</b>. Quem tem equipe começa pelo Painel.</li>
           <li>O menu pode ser recolhido pelo botão <b>Recolher menu</b>, no rodapé dele. Recolhido, ele mostra só os ícones.</li>
           <li>No topo, à direita, ficam a <b>busca</b>, o tamanho do texto (<b>A−</b> / <b>A+</b>) e o botão de <b>tema</b>: automático (segue o Windows), claro ou escuro. Cada clique troca o tema.</li>
         </ol>
@@ -61,10 +64,12 @@ export function HelpPage({ isAdmin }: { isAdmin: boolean }) {
       <Sec id="quadros" title="Meus quadros">
         <p>Cada pessoa tem seus quadros e organiza como quiser. Ninguém mais vê os seus quadros.</p>
         <ul>
-          <li><b>Novo quadro:</b> clique em <b>+ Quadro</b>. Ele começa com as fases A fazer, Fazendo e Feito.</li>
-          <li><b>Fases:</b> crie com <b>+ Nova fase</b>. No menu <b>…</b> de cada fase dá para renomear, mover para a esquerda ou direita e arquivar. Só é possível arquivar uma fase vazia.</li>
+          <li><b>Novo quadro:</b> clique em <b>+ Quadro</b>, à direita das abas. Ele começa com as fases A fazer, Fazendo e Feito.</li>
+          <li><b>Menu do quadro:</b> no botão <b>…</b> à direita das abas dá para renomear o quadro, escolher a <b>cor de fundo</b> e criar uma nova fase.</li>
+          <li><b>Fases:</b> no menu <b>…</b> de cada fase dá para renomear, mover para a esquerda ou direita, <b>ordenar por</b> nome, data de criação ou prazo, e arquivar. Ordenar reorganiza a fase uma vez; depois você continua arrastando à vontade. Só é possível arquivar uma fase vazia.</li>
           <li><b>Nova tarefa:</b> clique em <b>+ Adicionar tarefa</b> no fim de uma fase, digite o título e tecle Enter.</li>
-          <li><b>Mover:</b> arraste a tarefa para outra fase. No celular, abra a tarefa e escolha a fase no campo <b>Fase</b>.</li>
+          <li><b>Mover e priorizar:</b> arraste a tarefa para outra fase ou para cima e para baixo na mesma fase. Uma linha azul mostra onde ela vai cair.</li>
+          <li><b>Mover para outro quadro:</b> abra a tarefa e use <b>Mover para</b>: escolha o quadro e a fase. Ali também há <b>Para o topo</b> e <b>Para o fim</b>, úteis no celular.</li>
           <li><b>Abrir:</b> clique no título. Ali você edita título, descrição e prazo, monta o <b>checklist</b> e comenta.</li>
           <li><b>Concluir:</b> clique no círculo à esquerda do título, ou em <b>Concluir</b> dentro da tarefa. A fase não define se a tarefa está concluída: concluir é sempre um clique explícito.</li>
         </ul>
@@ -86,8 +91,24 @@ export function HelpPage({ isAdmin }: { isAdmin: boolean }) {
         </ul>
       </Sec>
 
+      <Sec id="capturar" title="Capturar da web">
+        <p>Viu uma página que vira tarefa (um e-mail no navegador, um chamado, um documento)? Guarde em dois cliques. A tarefa vai para a sua <b>Caixa de entrada</b>, marcada como “capturada da web”, com o link e o trecho selecionado na descrição.</p>
+        <h3>No computador (Chrome, Edge)</h3>
+        <ol>
+          <li>Mostre a barra de favoritos (Ctrl+Shift+B).</li>
+          <li>Arraste este botão para ela: <BookmarkletButton /></li>
+          <li>Em qualquer página, selecione um trecho se quiser e clique em <b>+ SyncTask</b> na barra. Confira o título e clique em <b>Salvar na caixa de entrada</b>.</li>
+        </ol>
+        <h3>No celular (Android)</h3>
+        <ol>
+          <li>Instale o SyncTask: no Chrome, menu <b>⋮</b> → <b>Adicionar à tela inicial</b> (ou <b>Instalar app</b>).</li>
+          <li>Em qualquer página ou app, toque em <b>Compartilhar</b> e escolha <b>SyncTask</b>.</li>
+        </ol>
+        <p>Depois, na caixa de entrada, escolha o quadro e a fase para organizar a tarefa.</p>
+      </Sec>
+
       <Sec id="entrada" title="Caixa de entrada">
-        <p>Tarefas que alguém delegou ou transferiu para você chegam aqui primeiro. Para cada uma:</p>
+        <p>Tarefas que alguém delegou ou transferiu para você, e páginas que você capturou da web, chegam aqui primeiro. Para cada uma:</p>
         <ul>
           <li><b>Aceitar e organizar:</b> escolha o quadro e a fase. A tarefa vai para lá.</li>
           <li><b>Devolver:</b> só para tarefas delegadas. Escreva a justificativa (obrigatória). A tarefa volta para quem delegou.</li>
@@ -106,12 +127,22 @@ export function HelpPage({ isAdmin }: { isAdmin: boolean }) {
         <p className="ex">Exemplo: o diretor delega “Orçamento 2027” ao gestor. O gestor abre essa tarefa e delega parte dela ao funcionário. Cada nível dá o ciente no nível de baixo antes de concluir o seu.</p>
       </Sec>
 
+      <Sec id="painel" title="Painel (para quem tem equipe)">
+        <p>Visão geral de tudo o que você delegou. Cada número ou barra abre <b>Tarefas delegadas</b> já filtrada.</p>
+        <ul>
+          <li><b>Resumo:</b> em aberto, atrasadas, aguardando seu ciente e devolvidas.</li>
+          <li><b>Carga por pessoa:</b> uma barra por subordinado direto, dividida em <b>no prazo ou sem prazo</b> (cinza), <b>vence em até 7 dias</b> (âmbar) e <b>atrasadas</b> (vermelho). Ao lado, quantas tarefas próprias a pessoa tem, só para conhecimento. Use para responder “posso mandar mais tarefas para ela?”.</li>
+          <li><b>Próximos 14 dias:</b> o que vence em cada dia, com as atrasadas no topo.</li>
+          <li><b>Paradas:</b> tarefas sem aceite há mais de 2 dias, sem movimento há mais de 7 dias e aguardando o seu ciente há mais de 2 dias.</li>
+        </ul>
+      </Sec>
+
       <Sec id="acompanhar" title="Tarefas delegadas (para quem tem equipe)">
         <p>Esta é a tela para responder “o que eu deleguei e ainda não foi concluído?”.</p>
         <ul>
           <li><b>Precisam da sua ação:</b> tarefas concluídas aguardando o seu ciente e tarefas devolvidas.</li>
           <li><b>Equipe:</b> um grupo por pessoa, com os contadores <b>abertas · atrasadas · aguardando ciente · devolvidas · próprias</b>. “Próprias” é só a quantidade de tarefas que a pessoa criou para si (o conteúdo é dela).</li>
-          <li>Clique no nome da pessoa para recolher ou expandir. Marque <b>Mostrar arquivadas e canceladas</b> para ver o histórico.</li>
+          <li>Clique no nome da pessoa para recolher ou expandir, ou use <b>Recolher tudo</b> / <b>Expandir tudo</b>. A escolha fica lembrada. Marque <b>Mostrar arquivadas e canceladas</b> para ver o histórico.</li>
         </ul>
         <p>Diretores e CEO também abrem a aba <b>Log</b> das tarefas da sua linha. Veja <button className="link" onClick={() => go('privacidade')}>Privacidade e log</button>.</p>
       </Sec>
@@ -143,7 +174,7 @@ export function HelpPage({ isAdmin }: { isAdmin: boolean }) {
 
       <Sec id="codigo" title="Código, busca e avisos">
         <ul>
-          <li>Toda tarefa tem um <b>código único</b>, como <code>NT-000123</code>. Ele nunca muda e nunca é reutilizado.</li>
+          <li>Toda tarefa tem um <b>código único</b>, como <code>ST-000123</code>. Ele nunca muda e nunca é reutilizado. Links antigos com <code>NT-</code> continuam funcionando.</li>
           <li>Na <b>busca</b>, digite o código (também vale só o número, como <kbd>123</kbd>) ou uma palavra do título ou da descrição. Aparecem só tarefas que você pode ver.</li>
           <li><b>Avisos</b> chegam no app e por e-mail quando: uma tarefa é delegada a você, devolvida, concluída, reaberta, arquivada com ciente, cancelada, transferida para você, ou quando o prazo de uma tarefa que você delegou muda.</li>
         </ul>
@@ -166,6 +197,7 @@ export function HelpPage({ isAdmin }: { isAdmin: boolean }) {
           <dt><StatusIcon status="declined" /> Seta de volta</dt><dd>Devolvida com justificativa (âmbar: pede ação)</dd>
           <dt><StatusIcon status="reopened" /> Seta circular</dt><dd>Reaberta para ser refeita</dd>
           <dt><StatusIcon status="acked" /> Arquivo</dt><dd>Ciente dado, tarefa arquivada</dd>
+          <dt><TipIcon name="inbox" tip="Capturada da web" /> Caixa</dt><dd>Na caixa de entrada: tarefa capturada da web</dd>
           <dt><TipIcon name="into" tip="Delegada por" /> Seta entrando</dt><dd>Delegada a você por alguém acima</dd>
           <dt><TipIcon name="out" tip="Repassada para" /> Seta saindo</dt><dd>Você delegou para alguém da sua equipe</dd>
           <dt><TipIcon name="lock" tip="Privada" /> Cadeado</dt><dd>Tarefa privada</dd>

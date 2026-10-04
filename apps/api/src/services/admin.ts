@@ -50,8 +50,8 @@ export async function sendInvite(db: Db, user: { id: string; name: string; email
   await queueEmail(
     db,
     user.email,
-    'Seu acesso ao Nerus Tasks',
-    `Olá, ${user.name.split(' ')[0]}.\n\nVocê foi cadastrado(a) no Nerus Tasks. Defina sua senha pelo link abaixo (válido por 72 horas):\n\n${link}\n`,
+    'Seu acesso ao SyncTask',
+    `Olá, ${user.name.split(' ')[0]}.\n\nVocê foi cadastrado(a) no SyncTask. Defina sua senha pelo link abaixo (válido por 72 horas):\n\n${link}\n`,
   );
   return token;
 }

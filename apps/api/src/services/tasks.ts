@@ -64,17 +64,31 @@ export async function updateCard(db: Db, actor: Actor, cardId: string, patch: Ca
   }
 }
 
-export async function moveCard(db: Db, actor: Actor, cardId: string, listId: string, position?: number) {
+/**
+ * Move a tarefa para uma fase de qualquer quadro da pessoa (item 16).
+ * `place` coloca no topo ou no fim da fase (item 10); `position` é usada pelo arrastar.
+ */
+export async function moveCard(db: Db, actor: Actor, cardId: string, listId: string, position?: number, place?: 'top' | 'end') {
   const { row, role } = await loadCard(db, actor, cardId, { lock: true });
   if (role !== 'owner') throw forbidden();
   if (row.archived_at) throw conflict('Tarefa arquivada não pode ser movida.');
   if (!row.list_id) throw conflict('Organize a tarefa pela caixa de entrada primeiro.');
   const list = await ownList(db, actor, listId);
-  const pos = position ?? (await nextPosition(db, 'SELECT max(position) AS max FROM cards WHERE list_id = $1', [listId]));
+  let pos = position;
+  if (pos === undefined) {
+    const r = await one<{ min: number | null; max: number | null }>(
+      db, 'SELECT min(position) AS min, max(position) AS max FROM cards WHERE list_id = $1 AND id <> $2 AND archived_at IS NULL', [listId, cardId],
+    );
+    pos = place === 'top' ? (r?.min ?? 1) - 1 : (r?.max ?? 0) + 1;
+  }
   await db.query('UPDATE cards SET list_id = $2, position = $3, updated_at = now() WHERE id = $1', [cardId, listId, pos]);
   if (row.list_id !== listId) {
-    const from = await one(db, 'SELECT name FROM lists WHERE id = $1', [row.list_id]);
-    await logEvent(db, cardId, actor.id, 'moved', { list: from?.name ?? null }, { list: list.name });
+    const from = await one(db, 'SELECT l.name AS list, b.name AS board, b.id AS board_id FROM lists l JOIN boards b ON b.id = l.board_id WHERE l.id = $1', [row.list_id]);
+    const to = await one(db, 'SELECT name FROM boards WHERE id = $1', [list.board_id]);
+    const otherBoard = from && from.board_id !== list.board_id;
+    await logEvent(db, cardId, actor.id, 'moved',
+      otherBoard ? { board: from.board, list: from.list } : { list: from?.list ?? null },
+      otherBoard ? { board: to.name, list: list.name } : { list: list.name });
   }
 }
 
