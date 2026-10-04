@@ -19,3 +19,9 @@ Pontos levantados no teste da primeira versão (https://nerus-tasks.onrender.com
 4. **Documentação:** nova página **Ajuda** (rodapé da barra lateral), com atalhos por papel, explicação de cada tela e conceito, ícones, glossário, perguntas frequentes e o **manual do administrador**. Os botões de ação mostram uma dica ao passar o mouse.
 5. **Cabeçalho compacto:** título, busca, A−/A+ e tema na mesma linha; subtítulos removidos.
 6. **Barras de rolagem nas colunas:** a causa eram as dicas dos ícones, que mesmo invisíveis ocupavam espaço. Agora a dica só existe enquanto aparece, e as barras de rolagem que sobram são finas.
+
+## Terceira rodada (anotado, ainda não implementado)
+
+| # | Ponto | Tela | Status |
+|---|---|---|---|
+| 7 | **Colunas fixas em Tarefas delegadas.** Hoje as colunas mudam de posição conforme o tamanho do texto: (a) os contadores no cabeçalho de cada pessoa se deslocam (“1 aberta” × “3 abertas”, “0 atrasadas” × “1 atrasada”, e “devolvida” só aparece em alguns), então os números não ficam um embaixo do outro; (b) código e prazo ficam em posições diferentes entre “Precisam da sua ação” (que tem a coluna da pessoa) e “Equipe”; (c) os botões de ação têm larguras diferentes (“Dar ciente / Reabrir” × “Redelegar / Cancelar”) e começam em lugares diferentes. Proposta: largura fixa para cada contador (sempre os mesmos, inclusive “devolvidas” com 0), mesma grade de colunas nas duas seções e botões com largura fixa. | Tarefas delegadas | Anotado |
