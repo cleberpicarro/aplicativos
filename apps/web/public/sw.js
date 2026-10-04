@@ -1,0 +1,35 @@
+// Service worker do Nerus Tasks: guarda a casca do app para abrir rápido e instalar como PWA.
+// Dados (/api) nunca são guardados em cache: as ações sempre exigem conexão.
+const CACHE = 'nerus-shell-v1';
+
+self.addEventListener('install', (event) => {
+  event.waitUntil(caches.open(CACHE).then((c) => c.addAll(['/', '/manifest.webmanifest', '/icon.svg', '/icon-192.png'])));
+  self.skipWaiting();
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(caches.keys().then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)))));
+  self.clients.claim();
+});
+
+self.addEventListener('fetch', (event) => {
+  const url = new URL(event.request.url);
+  if (event.request.method !== 'GET' || url.origin !== self.location.origin || url.pathname.startsWith('/api/')) return;
+  if (event.request.mode === 'navigate') {
+    // Rede primeiro; sem rede, a última versão da página.
+    event.respondWith(fetch(event.request).catch(() => caches.match('/')));
+    return;
+  }
+  // Arquivos estáticos (com hash no nome): cache primeiro.
+  event.respondWith(
+    caches.match(event.request).then(
+      (hit) => hit || fetch(event.request).then((res) => {
+        if (res.ok) {
+          const copy = res.clone();
+          caches.open(CACHE).then((c) => c.put(event.request, copy));
+        }
+        return res;
+      }),
+    ),
+  );
+});

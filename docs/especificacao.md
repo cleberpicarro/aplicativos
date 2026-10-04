@@ -4,7 +4,7 @@
 |---|---|
 | **Versão** | 1.0 (rascunho para validação) |
 | **Data** | 04/10/2026 |
-| **Status** | Jornadas validadas. Protótipo navegável e amostra visual aprovados como direção. Desenvolvimento ainda não iniciado. |
+| **Status** | Jornadas validadas. Amostra visual aprovada. **Primeira versão implementada** (`apps/api`, `apps/web`); ver README. |
 | **Público** | ~90 a 99 pessoas da Nerus |
 | **Protótipo navegável** | https://claude.ai/artifact/PzRKBmbgfbtbztuQDLnWcd |
 | **Amostra do visual aprovado** | https://claude.ai/artifact/VS56Z1i99KfRCXToV47EHm |
@@ -739,6 +739,8 @@ Os testes automáticos da API e o roteiro manual devem comprovar:
 ---
 
 ## 20. Questões em aberto
+
+> Para a primeira versão foram adotadas respostas provisórias para todas as questões abaixo. Elas estão listadas no README, em "Decisões provisórias", e podem ser revistas a qualquer momento.
 
 | # | Questão | Impacto |
 |---|---|---|

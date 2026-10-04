@@ -1,7 +1,18 @@
-import { fileURLToPath } from 'node:url';
+import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const here = path.dirname(fileURLToPath(import.meta.url));
+/** Pasta do pacote da API (funciona tanto em src/ quanto compilado em dist/src/). */
+function apiRoot(): string {
+  let dir = path.dirname(fileURLToPath(import.meta.url));
+  while (!fs.existsSync(path.join(dir, 'package.json')) || !fs.existsSync(path.join(dir, 'migrations'))) {
+    const up = path.dirname(dir);
+    if (up === dir) throw new Error('Pasta da API não encontrada.');
+    dir = up;
+  }
+  return dir;
+}
+export const API_ROOT = apiRoot();
 
 export const config = {
   port: Number(process.env.PORT ?? 3000),
@@ -19,5 +30,5 @@ export const config = {
     from: process.env.MAIL_FROM ?? 'Nerus Tasks <tarefas@localhost>',
   },
   // Front-end compilado (servido pela API em produção)
-  webDist: process.env.WEB_DIST ?? path.resolve(here, '../../web/dist'),
+  webDist: process.env.WEB_DIST ?? path.resolve(API_ROOT, '../web/dist'),
 };

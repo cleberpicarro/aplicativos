@@ -341,9 +341,10 @@ export async function buildApp({ pool, logger = false, serveWeb = false }: AppOp
 
   /* ---------------- front-end compilado ---------------- */
   if (serveWeb && fs.existsSync(config.webDist)) {
-    await app.register(fastifyStatic, { root: config.webDist, wildcard: false });
+    await app.register(fastifyStatic, { root: config.webDist });
     app.setNotFoundHandler((req, reply) => {
       if (req.url.startsWith('/api/')) return reply.status(404).send({ error: 'Rota não encontrada.' });
+      if (req.method !== 'GET' || req.url.startsWith('/assets/')) return reply.status(404).send('Não encontrado.');
       return reply.sendFile('index.html');
     });
   } else if (serveWeb) {

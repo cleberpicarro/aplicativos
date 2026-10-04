@@ -1,9 +1,9 @@
 import fs from 'node:fs/promises';
-import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import type { Pool } from './db.js';
+import { API_ROOT } from '../config.js';
 
-const dir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../migrations');
+const dir = path.join(API_ROOT, 'migrations');
 
 export async function migrate(pool: Pool, log: (m: string) => void = () => {}): Promise<void> {
   await pool.query(`CREATE TABLE IF NOT EXISTS schema_migrations (name text PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now())`);
