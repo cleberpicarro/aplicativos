@@ -1,0 +1,172 @@
+import { one, many, type Db } from '../lib/db.js';
+import { badRequest, conflict, forbidden, notFound } from '../lib/errors.js';
+import type { Actor } from './actors.js';
+import { loadCard, nextPosition, cardRef } from './cards.js';
+import { ownList } from './boards.js';
+import { logEvent } from './events.js';
+import { notify } from './notify.js';
+
+const OPEN = ['PENDING_ACCEPT', 'IN_PROGRESS', 'AWAITING_ACK'];
+
+function fmtDate(d: string | null) {
+  if (!d) return 'sem prazo';
+  const [y, m, day] = d.split('-');
+  return `${day}/${m}/${y}`;
+}
+
+export async function createCard(db: Db, actor: Actor, listId: string, title: string) {
+  const clean = title.trim();
+  if (!clean) throw badRequest('Informe o título da tarefa.');
+  await ownList(db, actor, listId);
+  const position = await nextPosition(db, 'SELECT max(position) AS max FROM cards WHERE list_id = $1', [listId]);
+  const c = await one(
+    db,
+    `INSERT INTO cards (owner_id, list_id, position, title, created_by) VALUES ($1, $2, $3, $4, $1) RETURNING id, code, title`,
+    [actor.id, listId, position, clean],
+  );
+  await logEvent(db, c.id, actor.id, 'created', undefined, { title: clean });
+  return c;
+}
+
+export interface CardPatch {
+  title?: string;
+  description?: string;
+  dueDate?: string | null;
+  isPrivate?: boolean;
+}
+
+export async function updateCard(db: Db, actor: Actor, cardId: string, patch: CardPatch) {
+  const { row, role } = await loadCard(db, actor, cardId, { lock: true });
+  if (role !== 'owner') throw forbidden('Só quem tem a tarefa pode editá-la.');
+  if (row.archived_at) throw conflict('Tarefa arquivada não pode ser editada.');
+
+  if (patch.title !== undefined && patch.title.trim() !== row.title) {
+    const t = patch.title.trim();
+    if (!t) throw badRequest('O título não pode ficar vazio.');
+    await db.query('UPDATE cards SET title = $2, updated_at = now() WHERE id = $1', [cardId, t]);
+    await logEvent(db, cardId, actor.id, 'title_changed', { title: row.title }, { title: t });
+  }
+  if (patch.description !== undefined && patch.description !== row.description) {
+    await db.query('UPDATE cards SET description = $2, updated_at = now() WHERE id = $1', [cardId, patch.description]);
+    await logEvent(db, cardId, actor.id, 'description_changed', { description: row.description }, { description: patch.description });
+  }
+  if (patch.dueDate !== undefined && patch.dueDate !== row.due_date) {
+    await db.query('UPDATE cards SET due_date = $2, updated_at = now() WHERE id = $1', [cardId, patch.dueDate]);
+    await logEvent(db, cardId, actor.id, 'due_changed', { dueDate: row.due_date }, { dueDate: patch.dueDate });
+    if (row.d_id && OPEN.includes(row.d_status)) {
+      await notify(db, row.d_delegator_id, 'due_changed', `${actor.name.split(' ')[0]} alterou o prazo para ${fmtDate(patch.dueDate)} (antes ${fmtDate(row.due_date)})`, cardRef(row));
+    }
+  }
+  if (patch.isPrivate !== undefined && patch.isPrivate !== row.is_private) {
+    if (row.d_id && patch.isPrivate) throw conflict('Uma tarefa recebida por delegação não pode ser privada.');
+    await db.query('UPDATE cards SET is_private = $2, updated_at = now() WHERE id = $1', [cardId, patch.isPrivate]);
+    await logEvent(db, cardId, actor.id, 'privacy_changed', { isPrivate: row.is_private }, { isPrivate: patch.isPrivate });
+  }
+}
+
+export async function moveCard(db: Db, actor: Actor, cardId: string, listId: string, position?: number) {
+  const { row, role } = await loadCard(db, actor, cardId, { lock: true });
+  if (role !== 'owner') throw forbidden();
+  if (row.archived_at) throw conflict('Tarefa arquivada não pode ser movida.');
+  if (!row.list_id) throw conflict('Organize a tarefa pela caixa de entrada primeiro.');
+  const list = await ownList(db, actor, listId);
+  const pos = position ?? (await nextPosition(db, 'SELECT max(position) AS max FROM cards WHERE list_id = $1', [listId]));
+  await db.query('UPDATE cards SET list_id = $2, position = $3, updated_at = now() WHERE id = $1', [cardId, listId, pos]);
+  if (row.list_id !== listId) {
+    const from = await one(db, 'SELECT name FROM lists WHERE id = $1', [row.list_id]);
+    await logEvent(db, cardId, actor.id, 'moved', { list: from?.name ?? null }, { list: list.name });
+  }
+}
+
+export async function completeCard(db: Db, actor: Actor, cardId: string) {
+  const { row, role } = await loadCard(db, actor, cardId, { lock: true });
+  if (role !== 'owner') throw forbidden();
+  if (row.archived_at) throw conflict('Tarefa arquivada.');
+  if (row.completed_at) throw conflict('A tarefa já está concluída.');
+  if (row.d_id) {
+    if (row.d_status !== 'IN_PROGRESS') throw conflict('Aceite a tarefa na caixa de entrada antes de concluí-la.');
+    await db.query(`UPDATE delegations SET status = 'AWAITING_ACK', reopened = false, updated_at = now() WHERE id = $1`, [row.d_id]);
+    await notify(db, row.d_delegator_id, 'completed', `${actor.name.split(' ')[0]} concluiu a tarefa: aguardando seu ciente`, cardRef(row));
+  } else if (!row.list_id) {
+    throw conflict('Organize a tarefa pela caixa de entrada primeiro.');
+  }
+  await db.query('UPDATE cards SET completed_at = now(), updated_at = now() WHERE id = $1', [cardId]);
+  await logEvent(db, cardId, actor.id, 'completed');
+}
+
+export async function uncompleteCard(db: Db, actor: Actor, cardId: string) {
+  const { row, role } = await loadCard(db, actor, cardId, { lock: true });
+  if (role !== 'owner') throw forbidden();
+  if (row.archived_at) throw conflict('Tarefa arquivada.');
+  if (!row.completed_at) throw conflict('A tarefa não está concluída.');
+  if (row.d_id) {
+    if (row.d_status !== 'AWAITING_ACK') throw conflict('Não é possível desfazer a conclusão agora.');
+    await db.query(`UPDATE delegations SET status = 'IN_PROGRESS', updated_at = now() WHERE id = $1`, [row.d_id]);
+  }
+  await db.query('UPDATE cards SET completed_at = NULL, updated_at = now() WHERE id = $1', [cardId]);
+  await logEvent(db, cardId, actor.id, 'completion_undone');
+}
+
+/* ---------- checklist (só quem tem a tarefa edita) ---------- */
+
+async function ownerOpenCard(db: Db, actor: Actor, cardId: string) {
+  const { row, role } = await loadCard(db, actor, cardId, { lock: true });
+  if (role !== 'owner') throw forbidden('Só quem tem a tarefa edita o checklist.');
+  if (row.archived_at) throw conflict('Tarefa arquivada.');
+  return row;
+}
+
+export async function addChecklistItem(db: Db, actor: Actor, cardId: string, text: string) {
+  await ownerOpenCard(db, actor, cardId);
+  const t = text.trim();
+  if (!t) throw badRequest('Escreva o item.');
+  const position = await nextPosition(db, 'SELECT max(position) AS max FROM checklist_items WHERE card_id = $1', [cardId]);
+  const item = await one(db, 'INSERT INTO checklist_items (card_id, text, position) VALUES ($1, $2, $3) RETURNING id, text, done, position', [cardId, t, position]);
+  await logEvent(db, cardId, actor.id, 'checklist_added', undefined, { text: t });
+  return item;
+}
+
+export async function updateChecklistItem(db: Db, actor: Actor, cardId: string, itemId: string, patch: { text?: string; done?: boolean }) {
+  await ownerOpenCard(db, actor, cardId);
+  const item = await one(db, 'SELECT * FROM checklist_items WHERE id = $1 AND card_id = $2', [itemId, cardId]);
+  if (!item) throw notFound('Item não encontrado.');
+  if (patch.text !== undefined && patch.text.trim() !== item.text) {
+    if (!patch.text.trim()) throw badRequest('O item não pode ficar vazio.');
+    await db.query('UPDATE checklist_items SET text = $2, updated_at = now() WHERE id = $1', [itemId, patch.text.trim()]);
+    await logEvent(db, cardId, actor.id, 'checklist_edited', { text: item.text }, { text: patch.text.trim() });
+  }
+  if (patch.done !== undefined && patch.done !== item.done) {
+    await db.query('UPDATE checklist_items SET done = $2, updated_at = now() WHERE id = $1', [itemId, patch.done]);
+    await logEvent(db, cardId, actor.id, patch.done ? 'checklist_checked' : 'checklist_unchecked', undefined, { text: item.text });
+  }
+}
+
+export async function deleteChecklistItem(db: Db, actor: Actor, cardId: string, itemId: string) {
+  await ownerOpenCard(db, actor, cardId);
+  const item = await one(db, 'DELETE FROM checklist_items WHERE id = $1 AND card_id = $2 RETURNING text', [itemId, cardId]);
+  if (!item) throw notFound('Item não encontrado.');
+  await logEvent(db, cardId, actor.id, 'checklist_removed', { text: item.text });
+}
+
+/* ---------- comentários (dono e delegador; não editáveis) ---------- */
+
+export async function addComment(db: Db, actor: Actor, cardId: string, body: string) {
+  const { row, role } = await loadCard(db, actor, cardId);
+  if (role === 'auditor') throw forbidden('Só quem tem a tarefa ou quem a delegou pode comentar.');
+  if (row.archived_at) throw conflict('Tarefa arquivada não recebe comentários.');
+  const b = body.trim();
+  if (!b) throw badRequest('Escreva o comentário.');
+  const c = await one(db, 'INSERT INTO comments (card_id, author_id, body) VALUES ($1, $2, $3) RETURNING id, body, created_at', [cardId, actor.id, b]);
+  await logEvent(db, cardId, actor.id, 'comment_added', undefined, { body: b });
+  return c;
+}
+
+export async function cardEvents(db: Db, cardId: string) {
+  return many(
+    db,
+    `SELECT e.id, e.type, e.before, e.after, e.created_at, u.name AS actor_name
+       FROM card_events e LEFT JOIN users u ON u.id = e.actor_id
+      WHERE e.card_id = $1 ORDER BY e.created_at, e.id`,
+    [cardId],
+  );
+}
