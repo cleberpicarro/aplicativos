@@ -4,6 +4,7 @@ import { StatusIcon, TipIcon } from '../components/ui';
 const SECTIONS: [string, string][] = [
   ['inicio', 'Primeiros passos'],
   ['quadros', 'Meus quadros'],
+  ['trello', 'Importar do Trello'],
   ['entrada', 'Caixa de entrada'],
   ['delegar', 'Delegar'],
   ['acompanhar', 'Tarefas delegadas'],
@@ -66,6 +67,22 @@ export function HelpPage({ isAdmin }: { isAdmin: boolean }) {
           <li><b>Mover:</b> arraste a tarefa para outra fase. No celular, abra a tarefa e escolha a fase no campo <b>Fase</b>.</li>
           <li><b>Abrir:</b> clique no título. Ali você edita título, descrição e prazo, monta o <b>checklist</b> e comenta.</li>
           <li><b>Concluir:</b> clique no círculo à esquerda do título, ou em <b>Concluir</b> dentro da tarefa. A fase não define se a tarefa está concluída: concluir é sempre um clique explícito.</li>
+        </ul>
+      </Sec>
+
+      <Sec id="trello" title="Importar do Trello">
+        <p>Dá para trazer um quadro do Trello para os seus quadros. Cada quadro do Trello vira um quadro novo seu.</p>
+        <ol>
+          <li>No Trello, abra o quadro, clique no menu <b>…</b> e escolha <b>Imprimir, exportar e compartilhar</b> → <b>Exportar como JSON</b>. Salve o arquivo.</li>
+          <li>Aqui, em <b>Meus quadros</b>, clique em <b>Importar do Trello</b> e escolha o arquivo.</li>
+          <li>Confira a pré-visualização, ajuste o nome do quadro se quiser e clique em <b>Importar</b>.</li>
+        </ol>
+        <ul>
+          <li><b>Vêm:</b> listas (viram fases), cartões com título, descrição e prazo, cartões marcados como entregues (chegam concluídos), checklists e comentários.</li>
+          <li><b>Comentários</b> entram em seu nome, com o autor e a data originais no texto.</li>
+          <li><b>Membros</b> dos cartões ficam anotados na descrição. Todas as tarefas ficam com você; para entregar a alguém da equipe, use <b>Delegar</b>.</li>
+          <li><b>Ficam de fora:</b> listas e cartões arquivados, etiquetas e anexos.</li>
+          <li>Cada tarefa importada ganha um código novo, e o log registra que veio do Trello.</li>
         </ul>
       </Sec>
 

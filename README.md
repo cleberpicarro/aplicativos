@@ -11,6 +11,7 @@ A especificação completa está em [`docs/especificacao.md`](docs/especificacao
 - **Tarefas delegadas:** tela principal de quem tem subordinados. Mostra o que precisa da sua ação e um grupo por pessoa, com os contadores abertas · atrasadas · aguardando ciente · devolvidas · próprias.
 - **Transferir:** para um subordinado, um colega do mesmo nível ou o superior direto. Numa tarefa delegada, quem delegou continua acompanhando.
 - **Log:** registro imutável de tudo o que acontece com cada tarefa, garantido por trigger no banco. É visível para a administração, o CEO e a diretoria.
+- **Importar do Trello:** em Meus quadros, escolha o JSON exportado de um quadro do Trello. Ele vira um quadro novo seu, com listas, cartões, prazos, checklists e comentários. O arquivo é lido no navegador e só os dados necessários vão para o servidor. Ficam de fora os itens arquivados, as etiquetas e os anexos.
 - **Busca** por texto ou código. **Avisos** no app e por e-mail, com o código no assunto.
 - **Pessoas (administração):** cadastro com convite por e-mail, transferência de gestão (as delegações em aberto passam ao novo superior) e ativação ou desativação.
 - **Interface:** segue o visual aprovado na amostra. Tem controle de tamanho do texto (A− / A+), temas claro e escuro, funciona no celular e pode ser instalada como PWA.
@@ -48,7 +49,7 @@ O comando imprime o link para definir a senha. Depois disso, o restante das pess
 ## Testes
 
 ```bash
-npm test          # 28 testes da API contra um PostgreSQL real (banco nerus_test)
+npm test          # 30 testes da API (PostgreSQL real, banco nerus_test) + 5 do leitor do Trello
 npm run typecheck
 ```
 

@@ -301,6 +301,7 @@ function describe(e: Ev): { text: string; change?: string } {
   const a = e.after ?? {}, b = e.before ?? {};
   switch (e.type) {
     case 'created': return { text: 'criou a tarefa' };
+    case 'imported': return { text: `importou a tarefa do ${a.source}`, change: `Quadro “${a.board}” · lista “${a.list}”` };
     case 'title_changed': return { text: 'alterou o título', change: `“${b.title}” → “${a.title}”` };
     case 'description_changed': return { text: 'alterou a descrição', change: `“${cut(b.description || '')}” → “${cut(a.description || '')}”` };
     case 'due_changed': return { text: 'alterou o prazo', change: `${df(b.dueDate)} → ${df(a.dueDate)}` };

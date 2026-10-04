@@ -13,6 +13,7 @@ import * as tasks from './services/tasks.js';
 import * as deleg from './services/delegation.js';
 import * as admin from './services/admin.js';
 import * as misc from './services/misc.js';
+import { importTrello, trelloImportSchema } from './services/importer.js';
 import { cardDetail, cardIdByCode, loadCard } from './services/cards.js';
 import { canSeeLog } from './services/actors.js';
 
@@ -273,6 +274,12 @@ export async function buildApp({ pool, logger = false, serveWeb = false }: AppOp
   app.get('/api/delegations', async (req) => {
     const { archived } = z.object({ archived: z.enum(['0', '1']).optional() }).parse(req.query);
     return deleg.delegationsOverview(pool, need(req), archived === '1');
+  });
+
+  /* ---------------- importação do Trello ---------------- */
+  app.post('/api/import/trello', { bodyLimit: 20 * 1024 * 1024 }, async (req) => {
+    const data = trelloImportSchema.parse(req.body);
+    return inTx((db) => importTrello(db, need(req), data));
   });
 
   /* ---------------- busca e avisos ---------------- */

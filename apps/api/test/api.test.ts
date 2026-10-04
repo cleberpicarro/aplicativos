@@ -365,3 +365,42 @@ describe('fluxo ponta a ponta (critério 15)', () => {
     expect(parent.child.status).toBe('ACKED');
   });
 });
+
+describe('importação do Trello', () => {
+  it('cria um quadro novo com fases, tarefas, checklist, comentários e log', async () => {
+    const { readFileSync } = await import('node:fs');
+    const { parseTrello } = await import('../../web/src/lib/trello.js');
+    const raw = JSON.parse(readFileSync(new URL('../../web/src/lib/__fixtures__/trello-board.json', import.meta.url), 'utf8'));
+    const { payload } = parseTrello(raw);
+    const r = await call('gest', 'POST', '/api/import/trello', payload);
+    expect(r.status).toBe(200);
+    expect(r.body).toMatchObject({ lists: 3, cards: 4, checklistItems: 3, comments: 2 });
+
+    const board = (await call('gest', 'GET', `/api/boards/${r.body.boardId}`)).body;
+    expect(board.name).toBe('Marketing 2026');
+    expect(board.lists.map((l: any) => l.name)).toEqual(['A fazer', 'Em andamento', 'Concluído']);
+    const camp = board.cards.find((c: any) => c.title === 'Campanha de lançamento');
+    expect(camp.code).toMatch(/^NT-\d{6}$/);
+    expect(camp.checklist).toEqual({ done: 1, total: 3 });
+    expect(board.cards.find((c: any) => c.title === 'Fotos do evento').completedAt).not.toBeNull();
+
+    const detail = (await call('gest', 'GET', `/api/cards/${camp.id}`)).body;
+    expect(detail.card.description).toContain('Membros no Trello: Ana Souza, Bruno Lima');
+    expect(detail.comments.map((c: any) => c.body)).toEqual([
+      'Comentário de Ana Souza no Trello em 30/09/2026 06:15:\nVamos começar pelo público-alvo.',
+      'Comentário de Bruno Lima no Trello em 02/10/2026 10:30:\nOrçamento enviado para aprovação.',
+    ]);
+    const ev = (await call('admin', 'GET', `/api/cards/${camp.id}/events`)).body;
+    expect(ev[0]).toMatchObject({ type: 'imported', after: { source: 'Trello', board: 'Marketing 2026', list: 'A fazer' } });
+
+    // o quadro é só de quem importou
+    expect((await call('func', 'GET', `/api/boards/${r.body.boardId}`)).status).toBe(404);
+  });
+
+  it('valida o conteúdo e recusa quem não tem quadros', async () => {
+    expect((await call('gest', 'POST', '/api/import/trello', { boardName: 'X', lists: [] })).status).toBe(422);
+    const ok = { boardName: 'X', lists: [{ name: 'L', cards: [] }] };
+    expect((await call('admin', 'POST', '/api/import/trello', ok)).status).toBe(403);
+    expect((await call('gest', 'POST', '/api/import/trello', ok)).status).toBe(200);
+  });
+});

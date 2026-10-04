@@ -6,6 +6,7 @@ import { firstName } from '../lib/format';
 import { CardStatusIcon, Due, Menu, TipIcon, ErrorText, useMe, useToast } from '../components/ui';
 import { Icon } from '../components/Icons';
 import { ConfirmDialog, NameDialog, useAction } from '../components/dialogs';
+import { ImportTrelloDialog } from '../components/ImportTrello';
 
 const STORE_KEY = 'nerus.board';
 
@@ -17,7 +18,8 @@ export function BoardsPage() {
   const me = useMe().data!;
   const boards = useQuery({ queryKey: ['boards'], queryFn: () => get<{ id: string; name: string }[]>('/boards') });
   const [selected, setSelected] = useState<string | null>(rememberedBoard);
-  const [dialog, setDialog] = useState<null | 'newBoard' | 'renameBoard' | 'newList'>(null);
+  const [dialog, setDialog] = useState<null | 'newBoard' | 'renameBoard' | 'newList' | 'import'>(null);
+  const toast = useToast();
   const boardId = boards.data?.some((b) => b.id === selected) ? selected! : boards.data?.[0]?.id;
   const board = useQuery({ queryKey: ['board', boardId], queryFn: () => get<Board>(`/boards/${boardId}`), enabled: !!boardId });
 
@@ -37,6 +39,7 @@ export function BoardsPage() {
           <button key={b.id} role="tab" className="tab" aria-selected={b.id === boardId} onClick={() => select(b.id)}>{b.name}</button>
         ))}
         <button className="b ghost sm" onClick={() => setDialog('newBoard')}><Icon name="plus" />Quadro</button>
+        <button className="b ghost sm" onClick={() => setDialog('import')} title="Cria um quadro novo a partir de um quadro exportado do Trello"><Icon name="inbox" />Importar do Trello</button>
         {board.data && (
           <span style={{ marginLeft: 'auto' }}>
             <Menu label="Opções do quadro" items={[{ label: 'Renomear quadro', onClick: () => setDialog('renameBoard') }, { label: 'Nova fase', onClick: () => setDialog('newList') }]} />
@@ -53,6 +56,10 @@ export function BoardsPage() {
       {dialog === 'newBoard' && (
         <NameDialog title="Novo quadro" label="Nome do quadro" confirm="Criar" onClose={() => setDialog(null)}
           onSave={async (name) => { const b = await post<{ id: string }>('/boards', { name }); select(b.id); return b; }} />
+      )}
+      {dialog === 'import' && (
+        <ImportTrelloDialog onClose={() => setDialog(null)}
+          onImported={(id) => { select(id); setDialog(null); toast('Quadro importado do Trello.'); }} />
       )}
       {dialog === 'renameBoard' && board.data && (
         <NameDialog title="Renomear quadro" label="Nome do quadro" confirm="Salvar" initial={board.data.name} onClose={() => setDialog(null)}
