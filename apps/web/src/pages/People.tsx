@@ -22,8 +22,8 @@ export function PeoplePage() {
   const people = q.data ?? [];
   return (
     <div className="page">
-      <div className="head">
-        <div><h1>Pessoas</h1><p>Cadastro, superior direto e transferência de gestão.</p></div>
+      <div className="page-actions" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+        <span className="hint">Cadastro, superior direto e transferência de gestão. Veja o passo a passo em Ajuda → Manual do administrador.</span>
         <button className="b pri" onClick={() => setDlg({ kind: 'new' })}><Icon name="plus" />Nova pessoa</button>
       </div>
       <ErrorText error={error} />

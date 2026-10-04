@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { get, post, type Card, type Overview } from '../lib/api';
 import { go } from '../lib/router';
-import { firstName, plural } from '../lib/format';
+import { TIPS, firstName, plural } from '../lib/format';
 import { Avatar, CardStatusIcon, Due, TipIcon, ErrorText } from '../components/ui';
 import { Icon } from '../components/Icons';
 import { ConfirmDialog, RedelegateDialog, ReopenDialog, useAction } from '../components/dialogs';
@@ -22,16 +22,16 @@ export function DelegatedPage() {
     if (d.status === 'AWAITING_ACK') {
       return (
         <>
-          <button className="b pri" disabled={busy} onClick={() => run(() => post(`/delegations/${d.id}/ack`), 'Ciente dado. Tarefa arquivada.')}>Dar ciente</button>
-          <button className="b" onClick={() => setPending({ kind: 'reopen', card: c })}>Reabrir</button>
+          <button className="b pri" title={TIPS.ack} disabled={busy} onClick={() => run(() => post(`/delegations/${d.id}/ack`), 'Ciente dado. Tarefa arquivada.')}>Dar ciente</button>
+          <button className="b" title={TIPS.reopen} onClick={() => setPending({ kind: 'reopen', card: c })}>Reabrir</button>
         </>
       );
     }
     if (d.status === 'DECLINED') {
       return (
         <>
-          <button className="b pri" onClick={() => setPending({ kind: 'redelegate', card: c })}>Redelegar</button>
-          <button className="b" onClick={() => setPending({ kind: 'cancel', card: c })}>Cancelar</button>
+          <button className="b pri" title={TIPS.redelegate} onClick={() => setPending({ kind: 'redelegate', card: c })}>Redelegar</button>
+          <button className="b" title={TIPS.cancel} onClick={() => setPending({ kind: 'cancel', card: c })}>Cancelar</button>
         </>
       );
     }
@@ -44,7 +44,6 @@ export function DelegatedPage() {
   const data = q.data;
   return (
     <div className="page">
-      <div className="head"><div><h1>Tarefas delegadas</h1><p>O que você delegou, para quem e em que pé está.</p></div></div>
       <ErrorText error={error} />
       {q.isLoading && <p className="loading">Carregando…</p>}
       {data && (

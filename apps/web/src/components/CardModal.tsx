@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { del, get, patch, post, type CardDetail } from '../lib/api';
-import { dateTime, delegationKey, firstName, fullDate, relative, statusOf } from '../lib/format';
+import { TIPS, dateTime, delegationKey, firstName, fullDate, relative, statusOf } from '../lib/format';
 import { Avatar, Dialog, ErrorText, StatusPill, useMe, useToast } from './ui';
 import { Icon } from './Icons';
 import { AcceptDialog, ConfirmDialog, DeclineDialog, DelegateDialog, RedelegateDialog, ReopenDialog, TransferDialog, useAction } from './dialogs';
@@ -43,20 +43,20 @@ export function CardModal({ code, onClose }: { code: string; onClose: () => void
     <>
       {card.inInbox ? (
         <>
-          <button className="b pri" onClick={() => setSub('accept')}>Aceitar e organizar</button>
-          {d && !card.transferredFrom && <button className="b" onClick={() => setSub('decline')}>Devolver</button>}
+          <button className="b pri" title={TIPS.accept} onClick={() => setSub('accept')}>Aceitar e organizar</button>
+          {d && !card.transferredFrom && <button className="b" title={TIPS.decline} onClick={() => setSub('decline')}>Devolver</button>}
         </>
       ) : (
         <>
-          <button className={`b ${card.completedAt ? '' : 'pri'}`} onClick={toggleDone} disabled={busy}>
+          <button className={`b ${card.completedAt ? '' : 'pri'}`} title={card.completedAt ? TIPS.uncomplete : TIPS.complete} onClick={toggleDone} disabled={busy}>
             <Icon name="check" />{card.completedAt ? 'Desfazer conclusão' : 'Concluir'}
           </button>
           {reports && !childOpen && !card.completedAt && (
-            <button className="b" onClick={() => setSub('delegate')}><Icon name="out" />Delegar</button>
+            <button className="b" title={TIPS.delegate} onClick={() => setSub('delegate')}><Icon name="out" />Delegar</button>
           )}
-          {!card.completedAt && <button className="b" onClick={() => setSub('transfer')}><Icon name="move" />Transferir</button>}
+          {!card.completedAt && <button className="b" title={TIPS.transfer} onClick={() => setSub('transfer')}><Icon name="move" />Transferir</button>}
           {d && d.status === 'IN_PROGRESS' && !card.transferredFrom && (
-            <button className="b" onClick={() => setSub('decline')}><Icon name="undo" />Devolver</button>
+            <button className="b" title={TIPS.decline} onClick={() => setSub('decline')}><Icon name="undo" />Devolver</button>
           )}
         </>
       )}
@@ -67,13 +67,13 @@ export function CardModal({ code, onClose }: { code: string; onClose: () => void
     <>
       {d.status === 'AWAITING_ACK' && (
         <>
-          <button className="b pri" disabled={busy} onClick={() => run(() => post(`/delegations/${d.id}/ack`), 'Ciente dado. Tarefa arquivada.')}>Dar ciente</button>
-          <button className="b" onClick={() => setSub('reopen')}>Reabrir</button>
+          <button className="b pri" title={TIPS.ack} disabled={busy} onClick={() => run(() => post(`/delegations/${d.id}/ack`), 'Ciente dado. Tarefa arquivada.')}>Dar ciente</button>
+          <button className="b" title={TIPS.reopen} onClick={() => setSub('reopen')}>Reabrir</button>
         </>
       )}
-      {d.status === 'DECLINED' && <button className="b pri" onClick={() => setSub('redelegate')}>Redelegar</button>}
+      {d.status === 'DECLINED' && <button className="b pri" title={TIPS.redelegate} onClick={() => setSub('redelegate')}>Redelegar</button>}
       {['PENDING_ACCEPT', 'IN_PROGRESS', 'DECLINED'].includes(d.status) && (
-        <button className="b danger" onClick={() => setSub('cancel')}>Cancelar delegação</button>
+        <button className="b danger" title={TIPS.cancel} onClick={() => setSub('cancel')}>Cancelar delegação</button>
       )}
     </>
   );

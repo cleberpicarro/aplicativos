@@ -17,7 +17,7 @@ export function NotificationsPage() {
   }, [q.data]); // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <div className="page">
-      <div className="head"><div><h1>Avisos</h1><p>Tudo o que também chega por e-mail para {me.user.email}.</p></div></div>
+      <p className="hint" style={{ margin: '0 0 8px' }}>Cada aviso também é enviado por e-mail para {me.user.email}.</p>
       {q.isLoading && <p className="loading">Carregando…</p>}
       {q.data && q.data.length === 0 && <div className="empty"><b>Sem avisos.</b>Delegações, devoluções, conclusões e mudanças de prazo aparecem aqui.</div>}
       {q.data && q.data.length > 0 && (

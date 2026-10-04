@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { get, type Card } from '../lib/api';
 import { go } from '../lib/router';
 import { Avatar, CardStatusIcon, Due, useMe } from '../components/ui';
+import { TIPS } from '../lib/format';
 import { AcceptDialog, DeclineDialog } from '../components/dialogs';
 
 export function InboxPage() {
@@ -12,7 +13,6 @@ export function InboxPage() {
   const [declining, setDeclining] = useState<Card | null>(null);
   return (
     <div className="page">
-      <div className="head"><div><h1>Caixa de entrada</h1><p>Delegações e transferências aguardando você organizar.</p></div></div>
       {q.isLoading && <p className="loading">Carregando…</p>}
       {q.data && q.data.length === 0 && (
         <div className="empty"><b>Nada novo por aqui.</b>Tarefas delegadas ou transferidas para você aparecem nesta caixa até você colocá-las num quadro.</div>
@@ -34,8 +34,8 @@ export function InboxPage() {
                 <span className="code">{c.code}</span>
                 <Due date={c.dueDate} today={me.today} />
                 <div className="acts">
-                  <button className="b pri" onClick={() => setAccepting(c)}>Aceitar e organizar</button>
-                  {c.delegation && !c.transferredFrom && <button className="b" onClick={() => setDeclining(c)}>Devolver</button>}
+                  <button className="b pri" title={TIPS.accept} onClick={() => setAccepting(c)}>Aceitar e organizar</button>
+                  {c.delegation && !c.transferredFrom && <button className="b" title={TIPS.decline} onClick={() => setDeclining(c)}>Devolver</button>}
                 </div>
               </div>
             );

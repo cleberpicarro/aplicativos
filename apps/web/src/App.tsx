@@ -12,6 +12,7 @@ import { DelegatedPage } from './pages/Delegated';
 import { NotificationsPage } from './pages/Notifications';
 import { PeoplePage } from './pages/People';
 import { ForgotPage, LoginPage, SetPasswordPage } from './pages/Auth';
+import { HelpPage } from './pages/Help';
 
 const FS = [12, 13, 14, 15, 16, 18];
 const FS_KEY = 'nerus.fs';
@@ -50,15 +51,51 @@ const PAGES: Record<string, { title: string }> = {
   '/delegadas': { title: 'Tarefas delegadas' },
   '/avisos': { title: 'Avisos' },
   '/pessoas': { title: 'Pessoas' },
+  '/ajuda': { title: 'Ajuda' },
 };
+
+type Theme = 'auto' | 'light' | 'dark';
+const THEMES: { id: Theme; label: string; icon: IconName }[] = [
+  { id: 'auto', label: 'Tema automático (segue o Windows)', icon: 'monitor' },
+  { id: 'light', label: 'Tema claro', icon: 'sun' },
+  { id: 'dark', label: 'Tema escuro', icon: 'moon' },
+];
+
+function stored<T extends string>(key: string, allowed: readonly T[], fallback: T): T {
+  try {
+    const v = localStorage.getItem(key) as T | null;
+    return v && allowed.includes(v) ? v : fallback;
+  } catch {
+    return fallback;
+  }
+}
+function store(key: string, value: string) {
+  try { localStorage.setItem(key, value); } catch { /* sem armazenamento: só não lembra */ }
+}
+
+/** Claro, escuro ou automático (segue o sistema). A escolha fica no navegador. */
+function useTheme() {
+  const [theme, setTheme] = useState<Theme>(() => stored('nerus.theme', ['auto', 'light', 'dark'] as const, 'auto'));
+  useEffect(() => {
+    if (theme === 'auto') document.documentElement.removeAttribute('data-theme');
+    else document.documentElement.setAttribute('data-theme', theme);
+    store('nerus.theme', theme);
+  }, [theme]);
+  const i = THEMES.findIndex((t) => t.id === theme);
+  return { current: THEMES[i], next: () => setTheme(THEMES[(i + 1) % THEMES.length].id) };
+}
 
 function Shell() {
   const route = useRoute();
   const me = useMe().data!;
   const qc = useQueryClient();
   const font = useFontSize();
+  const theme = useTheme();
   const [legend, setLegend] = useState(false);
+  const [collapsed, setCollapsed] = useState(() => stored('nerus.side', ['open', 'closed'] as const, 'open') === 'closed');
   const lastPage = useRef('/quadros');
+
+  const toggleSide = () => setCollapsed((c) => { store('nerus.side', c ? 'open' : 'closed'); return !c; });
 
   const hasReports = me.directReports.length > 0;
   const home = !me.user.inHierarchy ? '/pessoas' : hasReports ? '/delegadas' : '/quadros';
@@ -91,13 +128,15 @@ function Shell() {
   };
 
   return (
-    <div className="app">
+    <div className={`app${collapsed ? ' collapsed' : ''}`}>
       <aside className="side">
         <div className="brand"><img src="/icon.svg" alt="" /><span>Nerus Tasks</span></div>
-        <div className="who"><Avatar name={me.user.name} large /><div style={{ minWidth: 0 }}><b>{me.user.name}</b><small>{me.user.roleTitle}</small></div></div>
+        <div className="who" title={collapsed ? `${me.user.name} · ${me.user.roleTitle}` : undefined}>
+          <Avatar name={me.user.name} large /><div style={{ minWidth: 0 }}><b>{me.user.name}</b><small>{me.user.roleTitle}</small></div>
+        </div>
         <nav className="nav" aria-label="Principal">
           {nav.filter((n) => n.show).map((n) => (
-            <a key={n.path} href={`#${n.path}`} aria-current={page === n.path ? 'page' : undefined}>
+            <a key={n.path} href={`#${n.path}`} aria-current={page === n.path ? 'page' : undefined} title={collapsed ? n.label : undefined}>
               <span className="ico"><Icon name={n.icon} /></span>
               <span>{n.label}</span>
               {!!n.n && <span className={`n${n.attn ? ' attn' : ''}`}>{n.n}</span>}
@@ -105,23 +144,36 @@ function Shell() {
           ))}
         </nav>
         <div className="foot">
-          <button onClick={() => setLegend(true)}><span className="ico"><Icon name="help" /></span>Legenda</button>
-          <button onClick={logout}><span className="ico"><Icon name="logout" /></span>Sair</button>
+          <button onClick={() => go('/ajuda')} title="Ajuda e manual" aria-current={page === '/ajuda' ? 'page' : undefined}>
+            <span className="ico"><Icon name="book" /></span><span className="lbl">Ajuda</span>
+          </button>
+          <button onClick={() => setLegend(true)} title="Legenda dos ícones"><span className="ico"><Icon name="help" /></span><span className="lbl">Legenda</span></button>
+          <button className="collapse" onClick={toggleSide} title={collapsed ? 'Expandir menu' : 'Recolher menu'} aria-expanded={!collapsed}>
+            <span className="ico"><Icon name={collapsed ? 'sideOpen' : 'sideClose'} /></span><span className="lbl">Recolher menu</span>
+          </button>
+          <button onClick={logout} title="Sair"><span className="ico"><Icon name="logout" /></span><span className="lbl">Sair</span></button>
         </div>
       </aside>
       <main>
-        <div className="tools" style={{ justifyContent: 'flex-end', marginBottom: 6 }}>
-          {me.user.inHierarchy && <SearchBox />}
-          <span className="seg" role="group" aria-label="Tamanho do texto">
-            <button onClick={font.down} disabled={!font.down} aria-label="Diminuir texto">A−</button>
-            <button onClick={font.up} disabled={!font.up} aria-label="Aumentar texto">A+</button>
-          </span>
+        <div className="topbar">
+          <h1>{PAGES[page]?.title}</h1>
+          <div className="tools">
+            {me.user.inHierarchy && <SearchBox />}
+            <span className="seg" role="group" aria-label="Tamanho do texto">
+              <button onClick={font.down} disabled={!font.down} aria-label="Diminuir texto" title="Diminuir texto">A−</button>
+              <button onClick={font.up} disabled={!font.up} aria-label="Aumentar texto" title="Aumentar texto">A+</button>
+            </span>
+            <button className="b icon" onClick={theme.next} title={`${theme.current.label}. Clique para trocar.`} aria-label={`${theme.current.label}. Clique para trocar.`}>
+              <Icon name={theme.current.icon} />
+            </button>
+          </div>
         </div>
         {page === '/quadros' && <BoardsPage />}
         {page === '/entrada' && <InboxPage />}
         {page === '/delegadas' && <DelegatedPage />}
         {page === '/avisos' && <NotificationsPage />}
         {page === '/pessoas' && <PeoplePage />}
+        {page === '/ajuda' && <HelpPage isAdmin={me.user.isAdmin} />}
       </main>
       {cardCode && <CardModal key={cardCode} code={cardCode} onClose={() => go(lastPage.current)} />}
       {legend && <LegendDialog onClose={() => setLegend(false)} />}

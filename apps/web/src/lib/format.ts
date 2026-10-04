@@ -78,3 +78,17 @@ export function delegationKey(s: DelegationStatus, reopened: boolean): StatusKey
 export function plural(n: number, one: string, many: string) {
   return n === 1 ? one : many;
 }
+
+/** Dicas exibidas ao passar o mouse nos botões de ação. */
+export const TIPS = {
+  complete: 'Marca a tarefa como feita. Se ela foi delegada a você, quem delegou é avisado para dar o ciente.',
+  uncomplete: 'Volta a tarefa para “em andamento”.',
+  delegate: 'Entrega esta tarefa a um subordinado direto. Ele recebe um cartão ligado a este e você acompanha até dar o ciente.',
+  transfer: 'Passa a tarefa para outra pessoa (subordinado, colega do mesmo nível ou seu superior). Você deixa de acompanhar.',
+  decline: 'Devolve a tarefa a quem delegou, com uma justificativa obrigatória.',
+  accept: 'Escolhe em qual quadro e fase a tarefa vai ficar.',
+  ack: 'Valida a conclusão. A tarefa é arquivada e a pessoa é avisada.',
+  reopen: 'Não aceita a conclusão: a tarefa volta para a pessoa, com o seu comentário.',
+  redelegate: 'Envia a tarefa devolvida para a mesma ou outra pessoa da sua equipe. O código é mantido.',
+  cancel: 'Encerra a delegação. A tarefa sai do quadro da pessoa e ela é avisada.',
+};

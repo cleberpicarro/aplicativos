@@ -27,14 +27,11 @@ export function BoardsPage() {
   };
 
   if (!me.user.inHierarchy) {
-    return <div className="page"><div className="head"><h1>Meus quadros</h1></div><div className="empty">Administradores fora da hierarquia não têm quadros.</div></div>;
+    return <div className="page"><div className="empty">Administradores fora da hierarquia não têm quadros.</div></div>;
   }
 
   return (
     <div className="page wide">
-      <div className="head">
-        <div><h1>Meus quadros</h1><p>Organize seu trabalho do jeito que preferir.</p></div>
-      </div>
       <div className="tabs" role="tablist" aria-label="Quadros">
         {boards.data?.map((b) => (
           <button key={b.id} role="tab" className="tab" aria-selected={b.id === boardId} onClick={() => select(b.id)}>{b.name}</button>
