@@ -2,7 +2,8 @@
 # No painel do Render: New > Blueprint > escolha este repositório.
 services:
   - type: web
-    name: nerus-tasks
+    # O endereço público vem deste nome: https://synctask.onrender.com (o Render acrescenta um sufixo se já estiver em uso).
+    name: synctask
     runtime: node
     plan: free
     buildCommand: npm ci --include=dev && npm run build

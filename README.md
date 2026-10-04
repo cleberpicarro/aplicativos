@@ -64,14 +64,14 @@ O banco de teste é definido por `TEST_DATABASE_URL` (padrão: `postgres://nerus
 O app vira **um único contêiner**: a API serve o front-end compilado e aplica as migrações ao iniciar.
 
 ```bash
-docker build -t nerus-tasks .
+docker build -t synctask .
 docker run -p 3000:3000 \
   -e DATABASE_URL=postgres://... \
   -e APP_URL=https://tarefas.suaempresa.com.br \
   -e SMTP_HOST=smtp.gmail.com -e SMTP_PORT=587 \
   -e SMTP_USER=tarefas@suaempresa.com.br -e SMTP_PASS=senha-de-app \
   -e MAIL_FROM="SyncTask <tarefas@suaempresa.com.br>" \
-  nerus-tasks
+  synctask
 ```
 
 ### Render (blueprint pronto)
