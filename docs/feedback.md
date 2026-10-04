@@ -59,3 +59,4 @@ Teste como diretor, CEO e administração.
 | # | Ponto | Tela | Status |
 |---|---|---|---|
 | 18 | **Clicar no logo SyncTask abre e fecha a barra lateral**, além do botão “Recolher menu” no rodapé (que continua). Vale com a barra aberta ou recolhida; a escolha continua lembrada no navegador. | Todas | Anotado |
+| 19 | **Identidade visual com a barra lateral recolhida.** Recolhida, a barra mostra só um ícone pequeno do logo (o infinito fica miúdo nesse tamanho) e nada lembra o SyncTask. Aplicar o logo sem gastar espaço. Opções: (A) **símbolo maior** no topo da barra recolhida, centralizado, ocupando a largura útil dela (clicável para abrir a barra, item 18); (B) **filete de 3 px** no degradê do logo (azul → verde-água) na borda da barra; (C) nome **SyncTask** pequeno ao lado do título da página, no topo. Recomendação: A + B (não ocupam espaço da área de trabalho). | Todas | Anotado — opção a confirmar |
