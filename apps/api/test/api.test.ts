@@ -19,6 +19,10 @@ describe('segurança básica', () => {
     const r = await ctx.app.inject({ method: 'POST', url: '/api/boards', headers: { cookie: ctx.users.gest.cookie }, payload: { name: 'X' } });
     expect(r.statusCode).toBe(403);
   });
+  it('aceita o nome antigo do cabeçalho (X-Nerus) para abas abertas antes da troca de nome', async () => {
+    const r = await ctx.app.inject({ method: 'POST', url: '/api/boards', headers: { cookie: ctx.users.gest.cookie, 'x-nerus': '1' }, payload: { name: 'X' } });
+    expect(r.statusCode).toBeLessThan(300);
+  });
   it('login com senha errada retorna 401 e sem sessão retorna 401', async () => {
     await expect(login(ctx.app, 'gest@teste.com', 'errada')).rejects.toThrow();
     const r = await ctx.app.inject({ method: 'GET', url: '/api/me' });
