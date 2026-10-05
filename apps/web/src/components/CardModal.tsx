@@ -111,6 +111,7 @@ export function CardModal({ code, onClose }: { code: string; onClose: () => void
                 {d && <span>· Delegada por {d.delegatorId === me.user.id ? 'você' : d.delegatorName}</span>}
                 {card.transferredFrom && <span>· Transferida por {card.transferredFrom.name}</span>}
                 {card.source === 'web' && <span>· Capturada da web</span>}
+                {card.source === 'email' && <span>· Capturada do e-mail</span>}
                 {card.source === 'trello' && <span>· Importada do Trello</span>}
                 {d?.parentCode && <span>· Desdobramento de <span className="code">{d.parentCode}</span></span>}
               </div>
@@ -301,7 +302,7 @@ function describe(e: Ev): { text: string; change?: string } {
     case 'due_changed': return { text: 'alterou o prazo', change: `${df(b.dueDate)} → ${df(a.dueDate)}` };
     case 'privacy_changed': return { text: a.isPrivate ? 'tornou a tarefa privada' : 'tornou a tarefa visível' };
     case 'moved': return a.board ? { text: `moveu para outro quadro`, change: `“${b.board} · ${b.list}” → “${a.board} · ${a.list}”` } : { text: `moveu de “${b.list}” para “${a.list}”` };
-    case 'captured': return { text: 'capturou da web', change: a.url ?? undefined };
+    case 'captured': return { text: a.email ? 'capturou do e-mail' : 'capturou da web', change: a.url ?? undefined };
     case 'accepted': return { text: `aceitou e colocou em “${a.board} · ${a.list}”` };
     case 'checklist_added': return { text: 'adicionou item ao checklist', change: `“${a.text}”` };
     case 'checklist_edited': return { text: 'editou item do checklist', change: `“${b.text}” → “${a.text}”` };

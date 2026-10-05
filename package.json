@@ -1,8 +1,8 @@
 {
-  "name": "synctask",
+  "name": "synctasks",
   "private": true,
   "version": "1.0.0",
-  "description": "Nerus Tasks: quadros pessoais e delegação hierárquica de tarefas",
+  "description": "SyncTasks: quadros pessoais e delegação hierárquica de tarefas",
   "workspaces": [
     "apps/api",
     "apps/web"

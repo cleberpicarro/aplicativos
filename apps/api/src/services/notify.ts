@@ -14,7 +14,7 @@ export async function notify(
   if (!user || !user.active) return;
   const subject = card ? `[${card.code}] ${text}` : text;
   const link = card ? `${config.appUrl}/#/tarefa/${card.code}` : config.appUrl;
-  const body = `Olá, ${user.name.split(' ')[0]}.\n\n${text}${card ? `\n\nTarefa ${card.code}: ${card.title}` : ''}\n\nAbrir no SyncTask: ${link}\n`;
+  const body = `Olá, ${user.name.split(' ')[0]}.\n\n${text}${card ? `\n\nTarefa ${card.code}: ${card.title}` : ''}\n\nAbrir no SyncTasks: ${link}\n`;
   await queueEmail(db, user.email, subject, body);
 }
 

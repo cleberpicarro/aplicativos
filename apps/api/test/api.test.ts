@@ -25,7 +25,7 @@ describe('segurança básica', () => {
     expect(r.statusCode).toBe(401);
   });
   it('login funciona com e-mail em maiúsculas', async () => {
-    expect(await login(ctx.app, 'GEST@teste.com', PASSWORD)).toContain('nerus_sid=');
+    expect(await login(ctx.app, 'GEST@teste.com', PASSWORD)).toContain('synctasks_sid=');
   });
 });
 
@@ -287,11 +287,11 @@ describe('administração (seção 4.2 e 7.9)', () => {
     expect(ok.status).toBe(200);
     const mail = await ctx.pool.query(`SELECT body FROM email_outbox WHERE to_email = 'novo@teste.com'`);
     const token = /token=([\w-]+)/.exec(mail.rows[0].body)![1];
-    expect((await ctx.app.inject({ method: 'POST', url: '/api/auth/password/set', headers: { 'x-nerus': '1' }, payload: { token, password: 'curta' } })).statusCode).toBe(422);
-    expect((await ctx.app.inject({ method: 'POST', url: '/api/auth/password/set', headers: { 'x-nerus': '1' }, payload: { token, password: 'uma-senha-boa' } })).statusCode).toBe(200);
-    expect(await login(ctx.app, 'novo@teste.com', 'uma-senha-boa')).toContain('nerus_sid=');
+    expect((await ctx.app.inject({ method: 'POST', url: '/api/auth/password/set', headers: { 'x-synctasks': '1' }, payload: { token, password: 'curta' } })).statusCode).toBe(422);
+    expect((await ctx.app.inject({ method: 'POST', url: '/api/auth/password/set', headers: { 'x-synctasks': '1' }, payload: { token, password: 'uma-senha-boa' } })).statusCode).toBe(200);
+    expect(await login(ctx.app, 'novo@teste.com', 'uma-senha-boa')).toContain('synctasks_sid=');
     // link de uso único
-    expect((await ctx.app.inject({ method: 'POST', url: '/api/auth/password/set', headers: { 'x-nerus': '1' }, payload: { token, password: 'outra-senha-boa' } })).statusCode).toBe(422);
+    expect((await ctx.app.inject({ method: 'POST', url: '/api/auth/password/set', headers: { 'x-synctasks': '1' }, payload: { token, password: 'outra-senha-boa' } })).statusCode).toBe(422);
   });
 
   it('transferir gestão move as delegações em aberto e mantém o histórico com o antigo', async () => {
@@ -477,6 +477,19 @@ describe('terceira rodada', () => {
     expect((await call('func', 'GET', `/api/cards/${r2.body.id}`)).body.card.title).toBe('www.exemplo.com.br');
     expect((await call('func', 'POST', '/api/capture', { title: 'x', url: 'javascript:alert(1)' })).status).toBe(422);
     expect((await call('admin', 'POST', '/api/capture', { title: 'x', url: 'https://a.com' })).status).toBe(403);
+  });
+
+  it('e-mail aberto no Gmail vira tarefa com o assunto e o link da mensagem (item 21)', async () => {
+    const url = 'https://mail.google.com/mail/u/0/#inbox/FMfcgzQXJWcbmnqDpFGHJKLzxcvbnm';
+    const r = await call('func', 'POST', '/api/capture', { title: 'Proposta comercial revisada - joao@nerus.com.br - Gmail', url });
+    expect(r.status).toBe(200);
+    const c = (await call('func', 'GET', `/api/cards/${r.body.id}`)).body.card;
+    expect(c).toMatchObject({ source: 'email', title: 'Proposta comercial revisada' });
+    expect(c.description).toBe(url);
+    expect((await call('admin', 'GET', `/api/cards/${r.body.id}/events`)).body.at(-1)).toMatchObject({ type: 'captured', after: { url, email: true } });
+    // Gmail sem e-mail aberto (só a caixa de entrada) continua sendo página da web
+    const r2 = await call('func', 'POST', '/api/capture', { title: 'Caixa de entrada (3) - joao@nerus.com.br - Gmail', url: 'https://mail.google.com/mail/u/0/#inbox' });
+    expect((await call('func', 'GET', `/api/cards/${r2.body.id}`)).body.card.source).toBe('web');
   });
 
   it('compartilhar do Android leva à tela de captura, tirando o link do texto', async () => {

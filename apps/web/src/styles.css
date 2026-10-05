@@ -1,4 +1,4 @@
-/* SyncTask: visual da amostra aprovada. Ferramenta de trabalho densa, base neutra,
+/* SyncTasks: visual da amostra aprovada. Ferramenta de trabalho densa, base neutra,
    cor só onde pede ação (vermelho = atrasado, âmbar = precisa da sua ação). */
 :root {
   --fs: 14;
@@ -484,3 +484,14 @@ table.t tr.off td { color: var(--faint); }
 .cap-help li { margin-bottom: 4px; }
 .cap-help h4 { margin: 14px 0 6px; font-size: 0.9rem; font-weight: 600; }
 .cap-help kbd { font: 400 0.8rem var(--mono); border: 1px solid var(--edge); border-radius: 4px; padding: 0 4px; }
+
+/* ---------- logo na barra lateral (itens 18 e 19) ---------- */
+button.brand { border: 0; background: none; color: inherit; font: inherit; font-weight: 600; cursor: pointer; border-radius: 6px; text-align: left; height: 2rem; }
+button.brand:hover { background: var(--hover); }
+.app.collapsed .side { border-right: 0; background: linear-gradient(180deg, #1E5BC6, #1A8FC4 55%, #1BB59A) right / 3px 100% no-repeat, var(--side); }
+.app.collapsed button.brand { height: 2.6rem; width: 100%; }
+.app.collapsed .brand img { width: 2.1rem; height: 2.1rem; border-radius: 0; }
+@media (max-width: 820px) {
+  .app.collapsed .side { background: var(--side); border-bottom: 1px solid var(--line); }
+  .app.collapsed .brand img { width: 1.3rem; height: 1.3rem; }
+}

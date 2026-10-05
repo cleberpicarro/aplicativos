@@ -17,12 +17,12 @@ import { CapturePage } from './pages/Capture';
 import { DashboardPage } from './pages/Dashboard';
 
 const FS = [12, 13, 14, 15, 16, 18];
-const FS_KEY = 'nerus.fs';
+const FS_KEY = 'synctasks.fs';
 
 function useFontSize() {
   const [fs, setFs] = useState(() => {
     try {
-      const v = Number(localStorage.getItem(FS_KEY));
+      const v = Number(localStorage.getItem(FS_KEY) ?? localStorage.getItem('nerus.fs'));
       return FS.includes(v) ? v : 14;
     } catch {
       return 14;
@@ -67,7 +67,7 @@ const THEMES: { id: Theme; label: string; icon: IconName }[] = [
 
 function stored<T extends string>(key: string, allowed: readonly T[], fallback: T): T {
   try {
-    const v = localStorage.getItem(key) as T | null;
+    const v = (localStorage.getItem(key) ?? localStorage.getItem(key.replace('synctasks.', 'nerus.'))) as T | null;
     return v && allowed.includes(v) ? v : fallback;
   } catch {
     return fallback;
@@ -79,11 +79,11 @@ function store(key: string, value: string) {
 
 /** Claro, escuro ou automático (segue o sistema). A escolha fica no navegador. */
 function useTheme() {
-  const [theme, setTheme] = useState<Theme>(() => stored('nerus.theme', ['auto', 'light', 'dark'] as const, 'auto'));
+  const [theme, setTheme] = useState<Theme>(() => stored('synctasks.theme', ['auto', 'light', 'dark'] as const, 'auto'));
   useEffect(() => {
     if (theme === 'auto') document.documentElement.removeAttribute('data-theme');
     else document.documentElement.setAttribute('data-theme', theme);
-    store('nerus.theme', theme);
+    store('synctasks.theme', theme);
   }, [theme]);
   const i = THEMES.findIndex((t) => t.id === theme);
   return { current: THEMES[i], next: () => setTheme(THEMES[(i + 1) % THEMES.length].id) };
@@ -96,10 +96,10 @@ function Shell() {
   const font = useFontSize();
   const theme = useTheme();
   const [legend, setLegend] = useState(false);
-  const [collapsed, setCollapsed] = useState(() => stored('nerus.side', ['open', 'closed'] as const, 'open') === 'closed');
+  const [collapsed, setCollapsed] = useState(() => stored('synctasks.side', ['open', 'closed'] as const, 'open') === 'closed');
   const lastPage = useRef('/quadros');
 
-  const toggleSide = () => setCollapsed((c) => { store('nerus.side', c ? 'open' : 'closed'); return !c; });
+  const toggleSide = () => setCollapsed((c) => { store('synctasks.side', c ? 'open' : 'closed'); return !c; });
 
   const hasReports = me.directReports.length > 0;
   const home = !me.user.inHierarchy ? '/pessoas' : hasReports ? '/painel' : '/quadros';
@@ -114,7 +114,7 @@ function Shell() {
     if (!cardCode && !PAGES[route.path]) go(home);
   }, [route.path]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
-    document.title = `${cardCode ?? PAGES[page]?.title ?? ''} · SyncTask`;
+    document.title = `${cardCode ?? PAGES[page]?.title ?? ''} · SyncTasks`;
   }, [page, cardCode]);
 
   const nav: { path: string; label: string; icon: IconName; n?: number; attn?: boolean; show: boolean }[] = [
@@ -136,7 +136,7 @@ function Shell() {
   return (
     <div className={`app${collapsed ? ' collapsed' : ''}`}>
       <aside className="side">
-        <div className="brand"><img src="/icon.svg" alt="" /><span>SyncTask</span></div>
+        <button className="brand" onClick={toggleSide} title={collapsed ? 'Expandir menu' : 'Recolher menu'} aria-expanded={!collapsed} aria-label={`SyncTasks: ${collapsed ? 'expandir' : 'recolher'} menu`}><img src="/icon.svg" alt="" /><span>SyncTasks</span></button>
         <div className="who" title={collapsed ? `${me.user.name} · ${me.user.roleTitle}` : undefined}>
           <Avatar name={me.user.name} large /><div style={{ minWidth: 0 }}><b>{me.user.name}</b><small>{me.user.roleTitle}</small></div>
         </div>

@@ -1,6 +1,6 @@
-# SyncTask: especificação funcional e técnica
+# SyncTasks: especificação funcional e técnica
 
-> O aplicativo se chamava **Nerus Tasks** até a terceira rodada de ajustes (ver `docs/feedback.md`, item 13).
+> O aplicativo se chamava **SyncTasks** até a terceira rodada de ajustes (ver `docs/feedback.md`, item 13).
 
 | | |
 |---|---|
@@ -382,7 +382,7 @@ Cada evento gera um **aviso no app** e um **e-mail**:
 | Tarefa transferida para você | destino | `[ST-000123] Carlos transferiu para você` |
 | Delegação cancelada | subordinado | `[ST-000123] Delegação cancelada` |
 | Gestão transferida | pessoa, novo e antigo superior | `Mudança de gestão: João agora responde a Paulo` |
-| Convite / definir senha | pessoa nova | `Seu acesso ao SyncTask` |
+| Convite / definir senha | pessoa nova | `Seu acesso ao SyncTasks` |
 
 ### 11.2 Regras
 
@@ -777,9 +777,10 @@ Usa só as tarefas que a pessoa delegou, com a mesma visibilidade de Tarefas del
 
 ### Capturar da web
 
-- **Favorito “+ SyncTask”** (bookmarklet): abre uma janela pequena do app com o título, o endereço e o texto selecionado da página atual. A pessoa confere o título e salva.
+- **Favorito “+ SyncTasks”** (bookmarklet): abre uma janela pequena do app com o título, o endereço e o texto selecionado da página atual. A pessoa confere o título e salva.
 - **Android:** o PWA instalado aparece no **Compartilhar** (`share_target`, `GET /compartilhar`, que redireciona para a mesma tela de captura).
 - A tarefa vai para a **caixa de entrada** de quem capturou (`cards.source = 'web'`), com o link e o trecho na descrição, e o log registra `captured`. Só aceita endereços `http://` ou `https://`.
+- **E-mail do Gmail:** se a página é uma mensagem aberta no Gmail (`mail.google.com/...#<pasta>/<id>`), o título vira o assunto (sem “- nome@… - Gmail”), o link abre a mensagem e a origem é `email` (“capturada do e-mail”).
 - Extensão do Chrome fica para depois, conforme o uso.
 
 ---

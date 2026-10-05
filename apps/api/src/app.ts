@@ -25,7 +25,7 @@ declare module 'fastify' {
   }
 }
 
-const SESSION_COOKIE = 'nerus_sid';
+const SESSION_COOKIE = 'synctasks_sid';
 const uuid = z.string().uuid();
 const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable();
 
@@ -40,9 +40,9 @@ export async function buildApp({ pool, logger = false, serveWeb = false }: AppOp
   await app.register(cookie);
   app.decorateRequest('actor', null);
 
-  /* Proteção CSRF: toda requisição que altera dados precisa do cabeçalho X-Nerus (navegadores não o enviam entre sites sem CORS). */
+  /* Proteção CSRF: toda requisição que altera dados precisa do cabeçalho X-SyncTasks (navegadores não o enviam entre sites sem CORS). */
   app.addHook('onRequest', async (req) => {
-    if (req.url.startsWith('/api/') && !['GET', 'HEAD', 'OPTIONS'].includes(req.method) && req.headers['x-nerus'] !== '1') {
+    if (req.url.startsWith('/api/') && !['GET', 'HEAD', 'OPTIONS'].includes(req.method) && req.headers['x-synctasks'] !== '1') {
       throw forbidden('Requisição recusada.');
     }
   });
@@ -294,7 +294,7 @@ export async function buildApp({ pool, logger = false, serveWeb = false }: AppOp
     const body = z.object({ title: z.string().max(1000), url: z.string().max(2000), text: z.string().max(5000).optional() }).parse(req.body);
     return inTx((db) => captureWeb(db, need(req), body));
   });
-  // Destino do "Compartilhar → SyncTask" no Android (share_target do manifesto): leva à tela de captura.
+  // Destino do "Compartilhar → SyncTasks" no Android (share_target do manifesto): leva à tela de captura.
   app.get('/compartilhar', async (req, reply) => {
     const q = z.object({ title: z.string().optional(), text: z.string().optional(), url: z.string().optional() }).parse(req.query);
     let url = q.url ?? '';

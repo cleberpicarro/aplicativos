@@ -8,10 +8,10 @@ import { Icon } from '../components/Icons';
 import { ConfirmDialog, NameDialog, useAction } from '../components/dialogs';
 import { ImportTrelloDialog } from '../components/ImportTrello';
 
-const STORE_KEY = 'nerus.board';
+const STORE_KEY = 'synctasks.board';
 
 function rememberedBoard(): string | null {
-  try { return localStorage.getItem(STORE_KEY); } catch { return null; }
+  try { return localStorage.getItem(STORE_KEY) ?? localStorage.getItem('nerus.board'); } catch { return null; }
 }
 
 /** Cores de fundo do quadro (item 12). Os tons de cada uma, nos dois temas, estão em styles.css (.bc-*). */

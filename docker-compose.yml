@@ -21,7 +21,7 @@ services:
       APP_URL: http://localhost:3000
       SMTP_HOST: mail
       SMTP_PORT: "1025"
-      MAIL_FROM: Nerus Tasks <tarefas@localhost>
+      MAIL_FROM: SyncTasks <tarefas@localhost>
     ports: ["3000:3000"]
 volumes:
   pgdata:

@@ -1,4 +1,4 @@
-# Nerus Tasks: um único contêiner (a API serve o front-end compilado).
+# SyncTasks: um único contêiner (a API serve o front-end compilado).
 FROM node:22-slim AS build
 WORKDIR /app
 COPY package.json package-lock.json ./

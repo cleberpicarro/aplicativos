@@ -8,7 +8,7 @@ export async function api<T = any>(method: string, url: string, body?: unknown):
   const res = await fetch(`/api${url}`, {
     method,
     credentials: 'same-origin',
-    headers: { ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}), 'X-Nerus': '1' },
+    headers: { ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}), 'X-SyncTasks': '1' },
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
   const text = await res.text();
@@ -52,7 +52,7 @@ export interface Card {
   };
   child: null | { delegationId: string; cardId: string; code: string; ownerName: string; status: DelegationStatus; reopened: boolean };
   checklist: { done: number; total: number };
-  source: 'web' | 'trello' | null;
+  source: 'web' | 'email' | 'trello' | null;
   createdAt: string;
 }
 

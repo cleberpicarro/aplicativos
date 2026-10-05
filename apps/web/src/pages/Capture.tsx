@@ -4,11 +4,25 @@ import { go } from '../lib/router';
 import { Dialog, ErrorText, useToast } from '../components/ui';
 
 /**
- * Item 14: janela aberta pelo botão "+ SyncTask" dos favoritos (ou pelo "Compartilhar" do Android).
+ * Item 14: janela aberta pelo botão "+ SyncTasks" dos favoritos (ou pelo "Compartilhar" do Android).
  * Chega com título, endereço e texto selecionado; a tarefa vai para a caixa de entrada.
  */
+/** Mesmo critério do servidor: e-mail aberto no Gmail. */
+function isGmailMessage(url: string) {
+  try {
+    const u = new URL(url);
+    return u.hostname === 'mail.google.com' && /^#[^/]+\/[A-Za-z0-9_-]{10,}/.test(u.hash);
+  } catch {
+    return false;
+  }
+}
+
 export function CapturePage({ params }: { params: URLSearchParams }) {
-  const [title, setTitle] = useState(params.get('title') ?? '');
+  const email = isGmailMessage(params.get('url') ?? '');
+  const [title, setTitle] = useState(() => {
+    const t = params.get('title') ?? '';
+    return email ? t.replace(/\s+-\s+\S+@\S+\s+-\s+Gmail\s*$/i, '').replace(/\s+-\s+Gmail\s*$/i, '').trim() : t;
+  });
   const [text, setText] = useState(params.get('text') ?? '');
   const fromPage = params.get('url') ?? '';
   const [url, setUrl] = useState(fromPage);
@@ -40,7 +54,7 @@ export function CapturePage({ params }: { params: URLSearchParams }) {
 
   return (
     <div className="capture">
-      <div className="brand"><img src="/icon.svg" alt="" />SyncTask</div>
+      <div className="brand"><img src="/icon.svg" alt="" />SyncTasks</div>
       {saved ? (
         <div className="capture-card">
           <h1>Salvo na caixa de entrada</h1>
@@ -53,14 +67,14 @@ export function CapturePage({ params }: { params: URLSearchParams }) {
         </div>
       ) : (
         <form className="capture-card" onSubmit={submit}>
-          <h1>Nova tarefa a partir da página</h1>
+          <h1>{email ? 'Nova tarefa a partir do e-mail' : 'Nova tarefa a partir da página'}</h1>
           <div className="field">
             <label htmlFor="cap-title">Título</label>
             <input id="cap-title" className="input" value={title} onChange={(e) => setTitle(e.target.value)} maxLength={300} autoFocus />
           </div>
           {fromPage ? (
             <div className="field">
-              <span className="label">Link</span>
+              <span className="label">{email ? 'Link do e-mail' : 'Link'}</span>
               <a className="cap-url" href={url} target="_blank" rel="noreferrer noopener">{url}</a>
             </div>
           ) : (
@@ -85,7 +99,7 @@ export function CapturePage({ params }: { params: URLSearchParams }) {
 /** Código do favorito: abre a janela de captura com o título, o endereço e o texto selecionado da página atual. */
 export function bookmarkletCode(origin: string) {
   // Se o navegador bloquear a janela, abre a captura na própria aba.
-  return `javascript:(()=>{const s=String(getSelection()).slice(0,2000);const u='${origin}/#/capturar?title='+encodeURIComponent(document.title)+'&url='+encodeURIComponent(location.href)+'&text='+encodeURIComponent(s);if(!window.open(u,'synctask','width=480,height=620'))location.href=u})()`;
+  return `javascript:(()=>{const s=String(getSelection()).slice(0,2000);const u='${origin}/#/capturar?title='+encodeURIComponent(document.title)+'&url='+encodeURIComponent(location.href)+'&text='+encodeURIComponent(s);if(!window.open(u,'synctasks','width=480,height=620'))location.href=u})()`;
 }
 
 /** Botão para arrastar até a barra de favoritos. Clicar nele explica como instalar. */
@@ -99,7 +113,7 @@ export function BookmarkletButton() {
         onClick={(e) => { e.preventDefault(); setHelp(true); }}
         title="Arraste para a barra de favoritos. Clique para ver como."
       >
-        + SyncTask
+        + SyncTasks
       </a>
       {help && <CaptureHelpDialog onClose={() => setHelp(false)} />}
     </>
@@ -118,24 +132,24 @@ function CaptureHelpDialog({ onClose }: { onClose: () => void }) {
     }
   };
   return (
-    <Dialog title="Instalar o botão + SyncTask" onClose={onClose}
+    <Dialog title="Instalar o botão + SyncTasks" onClose={onClose}
       footer={<button className="b pri" onClick={onClose}>Entendi</button>}>
       <div className="cap-help">
-        <p>O botão fica na barra de favoritos do Chrome (ou Edge). Clicar nele aqui dentro do SyncTask não faz nada: ele funciona nas <b>outras</b> páginas.</p>
+        <p>O botão fica na barra de favoritos do Chrome (ou Edge). Clicar nele aqui dentro do SyncTasks não faz nada: ele funciona nas <b>outras</b> páginas.</p>
         <h4>Jeito 1: arrastar</h4>
         <ol>
           <li>Mostre a barra de favoritos: <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>B</kbd>.</li>
-          <li>Feche esta janela e arraste o botão azul <b>+ SyncTask</b> até a barra.</li>
+          <li>Feche esta janela e arraste o botão azul <b>+ SyncTasks</b> até a barra.</li>
         </ol>
         <h4>Jeito 2: criar o favorito à mão</h4>
         <ol>
           <li><button className="b sm" onClick={copy}>Copiar código</button></li>
           <li>Clique com o botão direito na barra de favoritos → <b>Adicionar página…</b></li>
-          <li>Nome: <b>+ SyncTask</b>. Em <b>URL</b>, cole o código (<kbd>Ctrl</kbd>+<kbd>V</kbd>) e salve.</li>
+          <li>Nome: <b>+ SyncTasks</b>. Em <b>URL</b>, cole o código (<kbd>Ctrl</kbd>+<kbd>V</kbd>) e salve.</li>
         </ol>
         <h4>Para usar</h4>
-        <p>Em qualquer site, selecione um trecho (opcional) e clique em <b>+ SyncTask</b> na barra. Abre uma janela pequena: confira o título e clique em <b>Salvar na caixa de entrada</b>. Se você ainda não entrou no SyncTask nesse navegador, ele pede o login primeiro.</p>
-        <p className="hint">Se você mudou de endereço do SyncTask, apague o favorito antigo e instale de novo: ele guarda o endereço de onde foi instalado.</p>
+        <p>Em qualquer site, selecione um trecho (opcional) e clique em <b>+ SyncTasks</b> na barra. Abre uma janela pequena: confira o título e clique em <b>Salvar na caixa de entrada</b>. Se você ainda não entrou no SyncTasks nesse navegador, ele pede o login primeiro.</p>
+        <p className="hint">Se você mudou de endereço do SyncTasks, apague o favorito antigo e instale de novo: ele guarda o endereço de onde foi instalado.</p>
         <h4>Sem favorito</h4>
         <p><button className="b sm" onClick={() => go('/capturar')}>Colar um link</button> abre o formulário para criar a tarefa colando o endereço.</p>
       </div>

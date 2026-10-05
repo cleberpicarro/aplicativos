@@ -33,7 +33,7 @@ export const config = {
     port: Number(process.env.SMTP_PORT ?? 587),
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS,
-    from: process.env.MAIL_FROM ?? 'SyncTask <tarefas@localhost>',
+    from: process.env.MAIL_FROM ?? 'SyncTasks <tarefas@localhost>',
   },
   // Front-end compilado (servido pela API em produção)
   webDist: process.env.WEB_DIST ?? path.resolve(API_ROOT, '../web/dist'),

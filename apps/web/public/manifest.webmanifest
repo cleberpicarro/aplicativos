@@ -1,6 +1,6 @@
 {
-  "name": "SyncTask",
-  "short_name": "SyncTask",
+  "name": "SyncTasks",
+  "short_name": "SyncTasks",
   "description": "Quadros pessoais e acompanhamento de tarefas delegadas.",
   "lang": "pt-BR",
   "start_url": "/",

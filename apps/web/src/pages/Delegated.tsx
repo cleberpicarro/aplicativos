@@ -23,7 +23,7 @@ function isOpen(c: Card) {
   return c.delegation?.status === 'PENDING_ACCEPT' || c.delegation?.status === 'IN_PROGRESS';
 }
 
-const COLLAPSE_KEY = 'synctask.delegadas.recolhidos';
+const COLLAPSE_KEY = 'synctasks.delegadas.recolhidos';
 function loadCollapsed(): Record<string, boolean> {
   try { return JSON.parse(localStorage.getItem(COLLAPSE_KEY) ?? '{}'); } catch { return {}; }
 }

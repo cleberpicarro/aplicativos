@@ -22,8 +22,8 @@ export function InboxPage() {
       {q.data && q.data.length > 0 && (
         <div className="rows">
           {q.data.map((c) => {
-            const web = c.source === 'web' && !c.delegation && !c.transferredFrom;
-            const from = web ? 'Capturada da web' : c.transferredFrom?.name ?? c.delegation?.delegatorName ?? '';
+            const web = (c.source === 'web' || c.source === 'email') && !c.delegation && !c.transferredFrom;
+            const from = web ? (c.source === 'email' ? 'Capturada do e-mail' : 'Capturada da web') : c.transferredFrom?.name ?? c.delegation?.delegatorName ?? '';
             const how = web ? '' : c.transferredFrom ? 'Transferida por' : 'Delegada por';
             const note = c.description ? c.description.split('\n')[0] : '';
             return (

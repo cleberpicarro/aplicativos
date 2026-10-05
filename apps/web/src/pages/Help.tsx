@@ -38,7 +38,7 @@ export function HelpPage({ isAdmin }: { isAdmin: boolean }) {
   return (
     <div className="page help">
       <p style={{ marginTop: 0 }}>
-        O SyncTask junta duas coisas: <b>quadros pessoais</b>, onde cada um organiza o próprio trabalho como quiser, e{' '}
+        O SyncTasks junta duas coisas: <b>quadros pessoais</b>, onde cada um organiza o próprio trabalho como quiser, e{' '}
         <b>delegação</b>, para quem tem equipe saber o que entregou a cada pessoa e em que pé está.
       </p>
 
@@ -97,12 +97,14 @@ export function HelpPage({ isAdmin }: { isAdmin: boolean }) {
         <ol>
           <li>Mostre a barra de favoritos (Ctrl+Shift+B).</li>
           <li>Arraste este botão para ela: <BookmarkletButton /></li>
-          <li>Em qualquer página, selecione um trecho se quiser e clique em <b>+ SyncTask</b> na barra. Confira o título e clique em <b>Salvar na caixa de entrada</b>.</li>
+          <li>Em qualquer página, selecione um trecho se quiser e clique em <b>+ SyncTasks</b> na barra. Confira o título e clique em <b>Salvar na caixa de entrada</b>.</li>
         </ol>
+        <h3>E-mails do Gmail</h3>
+        <p>Com o e-mail aberto no Gmail, clique em <b>+ SyncTasks</b>. A tarefa ganha o <b>assunto</b> do e-mail como título e guarda o <b>link da mensagem</b>: clicando nele, o Gmail abre o mesmo e-mail (para quem tem acesso a essa caixa). Ela aparece na caixa de entrada como “capturada do e-mail”.</p>
         <h3>No celular (Android)</h3>
         <ol>
-          <li>Instale o SyncTask: no Chrome, menu <b>⋮</b> → <b>Adicionar à tela inicial</b> (ou <b>Instalar app</b>).</li>
-          <li>Em qualquer página ou app, toque em <b>Compartilhar</b> e escolha <b>SyncTask</b>.</li>
+          <li>Instale o SyncTasks: no Chrome, menu <b>⋮</b> → <b>Adicionar à tela inicial</b> (ou <b>Instalar app</b>).</li>
+          <li>Em qualquer página ou app, toque em <b>Compartilhar</b> e escolha <b>SyncTasks</b>.</li>
         </ol>
         <p>Depois, na caixa de entrada, escolha o quadro e a fase para organizar a tarefa.</p>
       </Sec>
@@ -197,7 +199,7 @@ export function HelpPage({ isAdmin }: { isAdmin: boolean }) {
           <dt><StatusIcon status="declined" /> Seta de volta</dt><dd>Devolvida com justificativa (âmbar: pede ação)</dd>
           <dt><StatusIcon status="reopened" /> Seta circular</dt><dd>Reaberta para ser refeita</dd>
           <dt><StatusIcon status="acked" /> Arquivo</dt><dd>Ciente dado, tarefa arquivada</dd>
-          <dt><TipIcon name="inbox" tip="Capturada da web" /> Caixa</dt><dd>Na caixa de entrada: tarefa capturada da web</dd>
+          <dt><TipIcon name="inbox" tip="Capturada da web" /> Caixa</dt><dd>Na caixa de entrada: tarefa capturada da web ou de um e-mail</dd>
           <dt><TipIcon name="into" tip="Delegada por" /> Seta entrando</dt><dd>Delegada a você por alguém acima</dd>
           <dt><TipIcon name="out" tip="Repassada para" /> Seta saindo</dt><dd>Você delegou para alguém da sua equipe</dd>
           <dt><TipIcon name="lock" tip="Privada" /> Cadeado</dt><dd>Tarefa privada</dd>

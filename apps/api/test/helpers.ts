@@ -55,10 +55,10 @@ export async function setup(): Promise<Ctx> {
 }
 
 export async function login(app: FastifyInstance, email: string, password: string): Promise<string> {
-  const r = await app.inject({ method: 'POST', url: '/api/auth/login', headers: { 'x-nerus': '1' }, payload: { email, password } });
+  const r = await app.inject({ method: 'POST', url: '/api/auth/login', headers: { 'x-synctasks': '1' }, payload: { email, password } });
   if (r.statusCode !== 200) throw new Error(`login falhou: ${r.body}`);
-  const c = r.cookies.find((x) => x.name === 'nerus_sid')!;
-  return `nerus_sid=${c.value}`;
+  const c = r.cookies.find((x) => x.name === 'synctasks_sid')!;
+  return `synctasks_sid=${c.value}`;
 }
 
 export function api(ctx: Ctx) {
@@ -66,7 +66,7 @@ export function api(ctx: Ctx) {
     const r = await ctx.app.inject({
       method,
       url,
-      headers: { cookie: ctx.users[who].cookie, 'x-nerus': '1' },
+      headers: { cookie: ctx.users[who].cookie, 'x-synctasks': '1' },
       payload: payload as any,
     });
     let body: any = null;
@@ -109,7 +109,9 @@ export async function acceptTask(ctx: Ctx, who: string, cardId: string) {
 }
 
 export function day(n: number) {
-  const d = new Date();
-  d.setDate(d.getDate() + n);
+  // Mesmo "hoje" do app: o dia em Brasília, e não em UTC (à noite, UTC já está no dia seguinte).
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date());
+  const d = new Date(`${today}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + n);
   return d.toISOString().slice(0, 10);
 }
