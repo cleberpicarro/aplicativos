@@ -40,9 +40,10 @@ export async function buildApp({ pool, logger = false, serveWeb = false }: AppOp
   await app.register(cookie);
   app.decorateRequest('actor', null);
 
-  /* Proteção CSRF: toda requisição que altera dados precisa do cabeçalho X-SyncTasks (navegadores não o enviam entre sites sem CORS). */
+  /* Proteção CSRF: toda requisição que altera dados precisa do cabeçalho X-SyncTasks (navegadores não o enviam entre sites sem CORS).
+     X-Nerus é o nome antigo: ainda aceito para que uma aba aberta antes da troca de nome continue funcionando. */
   app.addHook('onRequest', async (req) => {
-    if (req.url.startsWith('/api/') && !['GET', 'HEAD', 'OPTIONS'].includes(req.method) && req.headers['x-synctasks'] !== '1') {
+    if (req.url.startsWith('/api/') && !['GET', 'HEAD', 'OPTIONS'].includes(req.method) && req.headers['x-synctasks'] !== '1' && req.headers['x-nerus'] !== '1') {
       throw forbidden('Requisição recusada.');
     }
   });

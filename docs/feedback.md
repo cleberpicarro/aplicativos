@@ -69,3 +69,7 @@ Teste como diretor, CEO e administração.
 19. **Identidade com a barra recolhida:** símbolo maior no topo, ocupando a largura da barra, e um filete de 3 px no degradê do logo (azul → verde-água) na borda da barra.
 20. **SyncTasks em tudo:** telas, aba, app instalado, e-mails, botão “+ SyncTasks”, Ajuda, README, especificação, pacotes do código, cookie de sessão (`synctasks_sid`, por isso é preciso entrar de novo uma vez), cabeçalho de segurança (`X-SyncTasks`), cache do app e preferências do navegador (tema, texto, barra, quadro aberto e grupos recolhidos são aproveitados das chaves antigas). Ficaram como estavam: código `ST-`, e-mails `@nerus.com.br` da equipe de exemplo e o banco (`nerus-db`).
 21. **Tarefa a partir de e-mail do Gmail:** com o e-mail aberto, o botão **+ SyncTasks** cria a tarefa com o assunto como título (sem o “- nome@… - Gmail” da aba) e o link da mensagem na descrição; ela aparece como “capturada do e-mail” na caixa de entrada e no log. Encaminhar para um endereço e o complemento do Gmail ficam para depois.
+
+### Correção depois da quarta rodada
+
+- **“Requisição recusada.” ao entrar** (marina@nerus.com.br): a aba do navegador ainda mostrava a versão anterior do app (“SyncTask”, sem “s”), que manda o cabeçalho de segurança com o nome antigo (`X-Nerus`); o servidor novo só aceitava `X-SyncTasks` e recusava o login. Agora o servidor aceita os dois nomes, então uma aba antiga volta a funcionar. Se ainda acontecer, recarregar a página (Ctrl+Shift+R) resolve.
