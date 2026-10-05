@@ -69,3 +69,13 @@ Teste como diretor, CEO e administração.
 19. **Identidade com a barra recolhida:** símbolo maior no topo, ocupando a largura da barra, e um filete de 3 px no degradê do logo (azul → verde-água) na borda da barra.
 20. **SyncTasks em tudo:** telas, aba, app instalado, e-mails, botão “+ SyncTasks”, Ajuda, README, especificação, pacotes do código, cookie de sessão (`synctasks_sid`, por isso é preciso entrar de novo uma vez), cabeçalho de segurança (`X-SyncTasks`), cache do app e preferências do navegador (tema, texto, barra, quadro aberto e grupos recolhidos são aproveitados das chaves antigas). Ficaram como estavam: código `ST-`, e-mails `@nerus.com.br` da equipe de exemplo e o banco (`nerus-db`).
 21. **Tarefa a partir de e-mail do Gmail:** com o e-mail aberto, o botão **+ SyncTasks** cria a tarefa com o assunto como título (sem o “- nome@… - Gmail” da aba) e o link da mensagem na descrição; ela aparece como “capturada do e-mail” na caixa de entrada e no log. Encaminhar para um endereço e o complemento do Gmail ficam para depois.
+
+## Site comercial (implementado)
+
+| # | Ponto | Tela | Status |
+|---|---|---|---|
+| 22 | **Site comercial do SyncTasks** com 7 seções: topo (frase, imagem do app, “Experimente grátis”), solução (gestão de tarefas integrada em toda a organização), recursos, como funciona (3 passos), planos e preços, perguntas frequentes, contato e rodapé. **Decidido (padrão, sem preferência do usuário):** página estática na pasta `site/` deste repositório, num ramo separado, sem mexer no app nem na publicação atual. Preços e e-mail de contato ficam em `[colchetes]` até serem definidos. Publicar só depois da aprovação. | Site | Implementado |
+
+### Como ficou (site comercial)
+
+22. **Site comercial:** `site/index.html` + `site/styles.css`, com as cores e a fonte do app e capturas reais tiradas com a equipe de exemplo (quadros, tarefa aberta, Tarefas delegadas, Painel e celular). O recurso do Gmail aparece num desenho simples. Funciona no computador e no celular. Ainda não publicado.
