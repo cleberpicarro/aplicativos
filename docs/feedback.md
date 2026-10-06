@@ -74,8 +74,8 @@ Teste como diretor, CEO e administração.
 
 | # | Ponto | Tela | Status |
 |---|---|---|---|
-| 22 | **Site comercial do SyncTasks** com 7 seções: topo (frase, imagem do app, “Experimente grátis”), solução (gestão de tarefas integrada em toda a organização), recursos, como funciona (3 passos), planos e preços, perguntas frequentes, contato e rodapé. **Decidido (padrão, sem preferência do usuário):** página estática na pasta `site/` deste repositório, num ramo separado, sem mexer no app nem na publicação atual. Preços e e-mail de contato ficam em `[colchetes]` até serem definidos. Publicar só depois da aprovação. | Site | Implementado |
+| 22 | **Site comercial do SyncTasks** com 7 seções: topo (frase, imagem do app, “Experimente grátis”), solução (gestão de tarefas integrada em toda a organização), recursos, como funciona (3 passos), planos e preços, perguntas frequentes, contato e rodapé. **Decidido (padrão, sem preferência do usuário):** página estática na pasta `site/` deste repositório, num ramo separado, sem mexer no app nem na publicação atual. Plano Equipe a R$ 20,00 por usuário/mês (pedido do Cleber em 06/10); limite do plano Grátis e e-mail de contato ficam em `[colchetes]` até serem definidos. | Site | Implementado |
 
 ### Como ficou (site comercial)
 
-22. **Site comercial:** `site/index.html` + `site/styles.css`, com as cores e a fonte do app e capturas reais tiradas com a equipe de exemplo (quadros, tarefa aberta, Tarefas delegadas, Painel e celular). O recurso do Gmail aparece num desenho simples. Funciona no computador e no celular. Ainda não publicado.
+22. **Site comercial:** `site/index.html` + `site/styles.css`, com as cores e a fonte do app e capturas reais tiradas com a equipe de exemplo (quadros, tarefa aberta, Tarefas delegadas, Painel e celular). O recurso do Gmail aparece num desenho simples. Funciona no computador e no celular. Publicado pelo Render como site estático `synctasks-site` (https://synctasks-site.onrender.com); os botões “Começar” levam ao app até existir uma página de cadastro.
