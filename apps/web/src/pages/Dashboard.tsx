@@ -1,14 +1,16 @@
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { get, type Card } from '../lib/api';
 import { go } from '../lib/router';
 import { fullDate, plural, shortDate } from '../lib/format';
 import { Avatar, CardStatusIcon, Due } from '../components/ui';
+import { notLate, sortPeople, total as totalOf, type PersonLoad, type SortBy, type SortDir } from '../lib/dashboard';
 
 interface Stalled { card: Card; days: number }
 interface DashboardData {
   today: string;
   summary: { open: number; late: number; awaitingAck: number; declined: number };
-  people: { id: string; name: string; roleTitle: string; onTime: number; dueSoon: number; late: number; own: number }[];
+  people: PersonLoad[];
   agenda: { overdue: Card[]; days: { date: string; cards: Card[] }[] };
   stalled: { notAccepted: Stalled[]; noMovement: Stalled[]; awaitingAck: Stalled[] };
 }
@@ -19,9 +21,22 @@ const weekday = (d: string) => WEEKDAYS[new Date(`${d}T12:00:00`).getDay()];
 /** Abre "Tarefas delegadas" já filtrada. */
 const open = (filtro: string, pessoa?: string) => go(`/delegadas?filtro=${filtro}${pessoa ? `&pessoa=${pessoa}` : ''}`);
 
+const SORT_KEY = 'synctasks.painel.ordem';
+function loadSort(): { by: SortBy; dir: SortDir } {
+  try {
+    const v = JSON.parse(localStorage.getItem(SORT_KEY) ?? '{}');
+    return { by: v.by === 'late' ? 'late' : 'total', dir: v.dir === 'asc' ? 'asc' : 'desc' };
+  } catch { return { by: 'total', dir: 'desc' }; }
+}
+
 /** Item 17: visão geral das tarefas que a pessoa delegou. */
 export function DashboardPage() {
   const q = useQuery({ queryKey: ['dashboard'], queryFn: () => get<DashboardData>('/dashboard') });
+  const [sort, setSortState] = useState(loadSort);
+  const setSort = (v: { by: SortBy; dir: SortDir }) => {
+    setSortState(v);
+    try { localStorage.setItem(SORT_KEY, JSON.stringify(v)); } catch { /* sem armazenamento: só não lembra */ }
+  };
   if (q.isLoading) return <div className="page"><p className="loading">Carregando…</p></div>;
   const d = q.data;
   if (!d) return <div className="page"><p className="err">Não foi possível carregar o painel.</p></div>;
@@ -32,7 +47,8 @@ export function DashboardPage() {
     { key: 'ciente', n: d.summary.awaitingAck, label: 'Aguardando seu ciente', tone: 'attn' },
     { key: 'devolvidas', n: d.summary.declined, label: plural(d.summary.declined, 'Devolvida', 'Devolvidas'), tone: 'attn' },
   ];
-  const max = Math.max(1, ...d.people.map((p) => p.onTime + p.dueSoon + p.late));
+  const max = Math.max(1, ...d.people.map(totalOf));
+  const people = sortPeople(d.people, sort.by, sort.dir);
   const stalledTotal = d.stalled.notAccepted.length + d.stalled.noMovement.length + d.stalled.awaitingAck.length;
   const agendaCount = d.agenda.overdue.length + d.agenda.days.reduce((s, x) => s + x.cards.length, 0);
 
@@ -47,18 +63,33 @@ export function DashboardPage() {
       </div>
 
       <section className="blk" aria-labelledby="h-load">
-        <h2 id="h-load">Carga por pessoa</h2>
+        <div className="load-head">
+          <h2 id="h-load">Delegadas por pessoa</h2>
+          {d.people.length > 1 && (
+            <div className="load-sort">
+              <span>Ordenar por</span>
+              <span className="seg" role="group" aria-label="Ordenar por">
+                <button aria-pressed={sort.by === 'total'} onClick={() => setSort({ ...sort, by: 'total' })}>Total</button>
+                <button aria-pressed={sort.by === 'late'} onClick={() => setSort({ ...sort, by: 'late' })}>Atrasadas</button>
+              </span>
+              <button className="b sm" onClick={() => setSort({ ...sort, dir: sort.dir === 'desc' ? 'asc' : 'desc' })}
+                title="Inverter a ordem">
+                {sort.dir === 'desc' ? 'Maior → menor' : 'Menor → maior'}
+              </button>
+            </div>
+          )}
+        </div>
         <div className="legend" aria-hidden="true">
-          <span><i className="sw s0" />No prazo ou sem prazo</span>
-          <span><i className="sw s1" />Vence em até 7 dias</span>
+          <span><i className="sw s0" />No prazo ou sem data</span>
           <span><i className="sw s2" />Atrasadas</span>
         </div>
         {d.people.length === 0 ? (
           <div className="empty">Você não tem subordinados diretos.</div>
         ) : (
           <div className="load">
-            {d.people.map((p) => {
-              const total = p.onTime + p.dueSoon + p.late;
+            {people.map((p) => {
+              const total = totalOf(p);
+              const ok = notLate(p);
               const seg = (n: number, cls: string, filtro: string, label: string) =>
                 n > 0 && (
                   <button className={`seg-b ${cls}`} style={{ flexGrow: n }} data-tip={`${p.name}: ${n} ${label}`}
@@ -72,8 +103,7 @@ export function DashboardPage() {
                   <div className="bar-track">
                     {total > 0 && (
                       <div className="bar" style={{ width: `${(total / max) * 100}%` }}>
-                        {seg(p.onTime, 's0', 'noprazo', 'no prazo ou sem prazo')}
-                        {seg(p.dueSoon, 's1', 'semana', plural(p.dueSoon, 'vence em até 7 dias', 'vencem em até 7 dias'))}
+                        {seg(ok, 's0', 'emdia', 'no prazo ou sem data')}
                         {seg(p.late, 's2', 'atrasadas', plural(p.late, 'atrasada', 'atrasadas'))}
                       </div>
                     )}

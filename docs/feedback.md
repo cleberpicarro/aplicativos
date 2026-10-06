@@ -97,3 +97,13 @@ O número 22 ficou com o **site comercial** (registrado junto com o site, no ram
 24. **Fundo da área de trabalho:** menu **…** do quadro → **Fundo da área de trabalho**. Padrão (branco) e 7 cores, com versão escura de cada uma. Vale para todas as telas (a barra lateral continua como está) e fica guardado na conta.
 25. **Editar dados:** menu **…** da pessoa → **Editar dados**: nome, e-mail, cargo exibido e “também é administrador”. O nível aparece só para consulta. Ninguém consegue tirar o próprio acesso de administrador (para não ficar sem ninguém na administração por engano).
 26. **Ordem dos quadros:** arraste a aba do quadro; uma linha azul mostra onde vai entrar. No menu **…** do quadro também há **Mover quadro para a esquerda / direita**.
+
+## Painel: delegadas por pessoa (implementado)
+
+| # | Ponto | Tela | Status |
+|---|---|---|---|
+| 27 | **Gráfico de barras empilhadas no Painel**, sugestão do Cleber (06/10): por subordinado direto, em **azul** as tarefas delegadas no prazo ou sem data e em **vermelho** as atrasadas, com **botão para ordenar** do maior para o menor e o contrário. **Decidido (escolha do Cleber, opção 1):** **substitui** a “Carga por pessoa” de três cores (item 17). **Padrão, sem outra escolha:** ordena pelo total ou só pelas atrasadas; começa pelo total, do maior para o menor; a ordem escolhida fica lembrada no navegador. As outras 11 visões sugeridas estão em `planos/visoes-painel-gestao.md` nos arquivos do projeto, ainda sem decisão. | Painel | Implementado |
+
+### Como ficou
+
+27. **Delegadas por pessoa:** no Painel, uma barra por subordinado direto, azul (no prazo ou sem data) e vermelha (atrasadas), com o total e as atrasadas ao lado. Acima das barras, **Ordenar por Total / Atrasadas** e o botão **Maior → menor** (clique para virar **Menor → maior**); os botões só aparecem com duas pessoas ou mais. Clicar no azul abre Tarefas delegadas filtrada em “No prazo ou sem data”; no vermelho, em “Atrasadas”. A Ajuda foi atualizada.

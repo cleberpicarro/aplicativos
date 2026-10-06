@@ -14,6 +14,7 @@ export const FILTERS: Record<string, { label: string; test: (c: Card, today: str
   abertas: { label: 'Em aberto', test: (c) => isOpen(c) },
   atrasadas: { label: 'Atrasadas', test: (c, t) => isOpen(c) && !!c.dueDate && c.dueDate < t },
   semana: { label: 'Vencem em até 7 dias', test: (c, t) => isOpen(c) && !!c.dueDate && c.dueDate >= t && daysBetween(t, c.dueDate) <= 7 },
+  emdia: { label: 'No prazo ou sem data', test: (c, t) => isOpen(c) && (!c.dueDate || c.dueDate >= t) },
   noprazo: { label: 'No prazo', test: (c, t) => isOpen(c) && (!c.dueDate || daysBetween(t, c.dueDate) > 7) },
   ciente: { label: 'Aguardando seu ciente', test: (c) => c.delegation?.status === 'AWAITING_ACK' },
   devolvidas: { label: 'Devolvidas', test: (c) => c.delegation?.status === 'DECLINED' },

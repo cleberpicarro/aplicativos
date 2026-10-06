@@ -135,7 +135,7 @@ export function HelpPage({ isAdmin }: { isAdmin: boolean }) {
         <p>Visão geral de tudo o que você delegou. Cada número ou barra abre <b>Tarefas delegadas</b> já filtrada.</p>
         <ul>
           <li><b>Resumo:</b> em aberto, atrasadas, aguardando seu ciente e devolvidas.</li>
-          <li><b>Carga por pessoa:</b> uma barra por subordinado direto, dividida em <b>no prazo ou sem prazo</b> (cinza), <b>vence em até 7 dias</b> (âmbar) e <b>atrasadas</b> (vermelho). Ao lado, quantas tarefas próprias a pessoa tem, só para conhecimento. Use para responder “posso mandar mais tarefas para ela?”.</li>
+          <li><b>Delegadas por pessoa:</b> uma barra por subordinado direto, com as tarefas que você delegou <b>no prazo ou sem data</b> (azul) e as <b>atrasadas</b> (vermelho). Os botões acima das barras ordenam pelo <b>total</b> ou pelas <b>atrasadas</b>, do maior para o menor ou ao contrário. Ao lado, quantas tarefas próprias a pessoa tem, só para conhecimento. Use para responder “posso mandar mais tarefas para ela?”.</li>
           <li><b>Próximos 14 dias:</b> o que vence em cada dia, com as atrasadas no topo.</li>
           <li><b>Paradas:</b> tarefas sem aceite há mais de 2 dias, sem movimento há mais de 7 dias e aguardando o seu ciente há mais de 2 dias.</li>
         </ul>

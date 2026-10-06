@@ -425,9 +425,11 @@ table.t tr.off td { color: var(--faint); }
 .capture-tip { margin-top: 18px; padding: 10px 12px; border: 1px dashed var(--edge); border-radius: 8px; color: var(--muted); font-size: 0.86rem; line-height: 1.9; }
 
 /* ---------- Painel (item 17) ---------- */
-.dash { --s0: #aeb4ba; --s1: var(--attn); --s2: var(--late); }
-@media (prefers-color-scheme: dark) { :root:not([data-theme='light']) .dash { --s0: #5d636a; } }
-:root[data-theme='dark'] .dash { --s0: #5d636a; }
+.dash { --s0: var(--accent); --s1: var(--attn); --s2: var(--late); }
+.load-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 12px; margin-bottom: 6px; }
+.load-head h2 { margin: 0; }
+.load-sort { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 0 8px; color: var(--muted); font-size: 0.82rem; }
+.seg button[aria-pressed='true'] { background: var(--hover); color: var(--fg); font-weight: 500; }
 .tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 26px; }
 .tile-n { display: grid; gap: 2px; text-align: left; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); cursor: pointer; color: var(--muted); font-size: 0.86rem; }
 .tile-n:hover { border-color: var(--edge); background: var(--hover); }
