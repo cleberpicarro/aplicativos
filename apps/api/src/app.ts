@@ -18,6 +18,7 @@ import { captureWeb } from './services/capture.js';
 import { dashboard } from './services/dashboard.js';
 import { cardDetail, cardIdByCode, loadCard } from './services/cards.js';
 import { canSeeLog } from './services/actors.js';
+import { isoDate } from './lib/dates.js';
 
 declare module 'fastify' {
   interface FastifyRequest {
@@ -27,7 +28,7 @@ declare module 'fastify' {
 
 const SESSION_COOKIE = 'synctasks_sid';
 const uuid = z.string().uuid();
-const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable();
+const date = isoDate.nullable();
 
 export interface AppOptions {
   pool: Pool;

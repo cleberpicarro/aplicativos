@@ -4,6 +4,7 @@ import { badRequest, forbidden } from '../lib/errors.js';
 import type { Actor } from './actors.js';
 import { nextPosition } from './cards.js';
 import { logEvent } from './events.js';
+import { isoDate } from '../lib/dates.js';
 
 /** Formato enviado pelo navegador depois de ler o JSON exportado do Trello. */
 export const trelloImportSchema = z.object({
@@ -17,7 +18,7 @@ export const trelloImportSchema = z.object({
             z.object({
               title: z.string().trim().min(1).max(200),
               description: z.string().max(20000),
-              dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(),
+              dueDate: isoDate.nullable(),
               completed: z.boolean(),
               members: z.array(z.string().max(120)).max(50),
               checklist: z.array(z.object({ text: z.string().trim().min(1).max(300), done: z.boolean() })).max(300),

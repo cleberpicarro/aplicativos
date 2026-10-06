@@ -53,11 +53,16 @@ O comando imprime o link para definir a senha. Depois disso, o restante das pess
 ## Testes
 
 ```bash
-npm test          # 38 testes da API (PostgreSQL real, banco nerus_test) + 5 do leitor do Trello
 npm run typecheck
+npm test            # API (PostgreSQL real, banco nerus_test): regras, permissões em massa e uso caótico; mais os testes das telas
+npm run build && npm run test:telas   # roteiros de tela com Playwright (computador e celular), banco nerus_e2e
+npm run test:carga  # sob demanda: ~100 pessoas ao mesmo tempo numa cópia local (banco nerus_carga)
 ```
 
-O banco de teste é definido por `TEST_DATABASE_URL` (padrão: `postgres://nerus:nerus@localhost:5432/nerus_test`) e é **apagado** a cada execução.
+- O banco de teste é definido por `TEST_DATABASE_URL` (padrão: `postgres://nerus:nerus@localhost:5432/nerus_test`) e é **apagado** a cada execução. Os roteiros de tela usam `E2E_DATABASE_URL` (padrão `nerus_e2e`) e o teste de carga `CARGA_DATABASE_URL` (padrão `nerus_carga`); os dois também são apagados.
+- Uso caótico mais pesado: `CHAOS_STEPS=5000 CHAOS_SEEDS=1,2,3,4,5 npm test -w apps/api -- chaos`. Se falhar, a mensagem mostra a semente e as últimas ações para repetir o caso.
+- Teste de carga: `CARGA_PESSOAS`, `CARGA_SEGUNDOS` e `CARGA_LIMITE_MS` (padrão 100 pessoas, 60 segundos, 95% abaixo de 800 ms).
+- **Verificação automática:** `.github/workflows/testes.yml` roda tudo (menos a carga) a cada envio para o GitHub. O Render só publica quando ela passa (`autoDeployTrigger: checksPass` no `render.yaml`). Se a verificação falhar, as fotos das telas ficam no GitHub, em Actions, no item “roteiros-de-tela”.
 
 ## Produção
 

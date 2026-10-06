@@ -6,6 +6,8 @@ services:
     name: synctasks
     runtime: node
     plan: free
+    # Só publica quando a verificação automática do GitHub (.github/workflows/testes.yml) passar.
+    autoDeployTrigger: checksPass
     buildCommand: npm ci --include=dev && npm run build
     startCommand: npm start
     healthCheckPath: /api/health

@@ -16,9 +16,14 @@
     "typecheck": "npm run typecheck -w apps/api && npm run typecheck -w apps/web",
     "db:migrate": "npm run db:migrate -w apps/api",
     "db:seed:demo": "npm run db:seed:demo -w apps/api",
-    "admin:create": "npm run admin:create -w apps/api"
+    "admin:create": "npm run admin:create -w apps/api",
+    "test:telas": "playwright test",
+    "test:carga": "node scripts/teste-de-carga.mjs"
   },
   "engines": {
     "node": ">=20.12"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.56.1"
   }
 }

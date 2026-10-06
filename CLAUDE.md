@@ -11,7 +11,7 @@ App de tarefas da **Nerus** (~90–99 pessoas): quadros pessoais no estilo Trell
 - Fala em **português**, usa **Windows**, não é programador: explique em linguagem simples, com passo a passo clicável.
 - Fluxo combinado: quando ele diz **“anote”**, só registre o ponto em `docs/feedback.md` (próximo número, status “Anotado”, com proposta e recomendação) — **não implemente**. Implemente só quando ele disser **“build”** / “pode fazer o build”; depois marque “Implementado” e escreva a seção “Como ficou”.
 - Quando houver escolha, dê opções com uma recomendação; se ele não escolher, siga a recomendação e anote isso.
-- Depois do build: rodar typecheck, testes e conferir no navegador (Playwright), depois commit e push. O Render publica sozinho.
+- Depois do build: rodar typecheck, testes e roteiros de tela (`npm run test:telas`), depois commit e push. O GitHub roda a verificação e o Render só publica se ela passar.
 
 ## Regras de negócio que mais pesam
 
@@ -27,7 +27,8 @@ App de tarefas da **Nerus** (~90–99 pessoas): quadros pessoais no estilo Trell
 
 - Monorepo npm workspaces: `apps/api` (Fastify 5, PostgreSQL via `pg`, zod, nodemailer, TypeScript ESM) e `apps/web` (React 18, Vite, TanStack Query, CSS puro em `src/styles.css`, roteamento por hash).
 - Migrações SQL em `apps/api/migrations` (aplicadas ao iniciar; **nunca edite uma migração já publicada**, crie a próxima).
-- Comandos: `npm run typecheck`, `npm test` (API usa Postgres real, banco `nerus_test`; se cair com ECONNREFUSED, `service postgresql start`), `npm run build`.
+- Comandos: `npm run typecheck`, `npm test` (API usa Postgres real, banco `nerus_test`; se cair com ECONNREFUSED, `service postgresql start`), `npm run build`, `npm run test:telas` (roteiros Playwright em `e2e/`, depois do build), `npm run test:carga` (sob demanda).
+- Testes intensivos (item 28): `permissions.test.ts` falha se surgir rota nova sem teste de permissão; `chaos.test.ts` sorteia ações e confere regras invariáveis. Ao mudar uma tela, ajuste o roteiro dela em `e2e/tests/`.
 - Segurança: cookie `synctasks_sid` (httpOnly), cabeçalho obrigatório `X-SyncTasks: 1` em requisições que alteram dados.
 - “Hoje” é sempre o dia em **America/Sao_Paulo**.
 
