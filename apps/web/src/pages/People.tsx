@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { get, post } from '../lib/api';
+import { get, patch, post } from '../lib/api';
 import { Avatar, Dialog, ErrorText, Menu, useMe, useToast } from '../components/ui';
 import { Icon } from '../components/Icons';
 import { ConfirmDialog, useAction } from '../components/dialogs';
@@ -15,7 +15,7 @@ const LEVELS = ['CEO', 'Diretor', 'Gestor', 'Funcionário'];
 export function PeoplePage() {
   const me = useMe().data!;
   const q = useQuery({ queryKey: ['people'], queryFn: () => get<Person[]>('/admin/users') });
-  const [dlg, setDlg] = useState<null | { kind: 'new' } | { kind: 'move' | 'toggle'; person: Person }>(null);
+  const [dlg, setDlg] = useState<null | { kind: 'new' } | { kind: 'edit' | 'move' | 'toggle'; person: Person }>(null);
   const { run, error } = useAction();
   const toast = useToast();
   if (!me.user.isAdmin) return <div className="page"><div className="empty">Somente a administração acessa esta tela.</div></div>;
@@ -23,7 +23,7 @@ export function PeoplePage() {
   return (
     <div className="page">
       <div className="page-actions" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
-        <span className="hint">Cadastro, superior direto e transferência de gestão. Veja o passo a passo em Ajuda → Manual do administrador.</span>
+        <span className="hint">Cadastro, edição dos dados, superior direto e transferência de gestão. Veja o passo a passo em Ajuda → Manual do administrador.</span>
         <button className="b pri" onClick={() => setDlg({ kind: 'new' })}><Icon name="plus" />Nova pessoa</button>
       </div>
       <ErrorText error={error} />
@@ -46,6 +46,7 @@ export function PeoplePage() {
                 <td>{!p.active ? 'Inativa' : p.has_password ? 'Ativa' : <span className="muted">Convite enviado</span>}</td>
                 <td style={{ textAlign: 'right' }}>
                   <Menu label={`Ações para ${p.name}`} items={[
+                    { label: 'Editar dados', onClick: () => setDlg({ kind: 'edit', person: p }) },
                     { label: 'Transferir gestão', onClick: () => setDlg({ kind: 'move', person: p }), disabled: !p.active || p.level === null || p.level === 0 },
                     { label: 'Reenviar convite', onClick: () => run(() => post(`/admin/users/${p.id}/invite`), `Convite reenviado para ${p.email}.`), disabled: !p.active },
                     { label: p.active ? 'Desativar' : 'Reativar', onClick: () => setDlg({ kind: 'toggle', person: p }), danger: p.active, disabled: p.id === me.user.id },
@@ -59,6 +60,7 @@ export function PeoplePage() {
       <p className="hint" style={{ marginTop: 10 }}>Ao transferir a gestão, as delegações em aberto passam ao novo superior e o histórico fica com o antigo.</p>
 
       {dlg?.kind === 'new' && <NewPersonDialog people={people} onClose={() => setDlg(null)} />}
+      {dlg?.kind === 'edit' && <EditPersonDialog person={dlg.person} self={dlg.person.id === me.user.id} onClose={() => setDlg(null)} />}
       {dlg?.kind === 'move' && <MoveDialog person={dlg.person} people={people} onClose={() => setDlg(null)} />}
       {dlg?.kind === 'toggle' && (
         <ConfirmDialog
@@ -126,6 +128,61 @@ function NewPersonDialog({ people, onClose }: { people: Person[]; onClose: () =>
         )}
         {lv !== null && <label className="check"><input type="checkbox" checked={isAdmin} onChange={(e) => setIsAdmin(e.target.checked)} />Também é administrador</label>}
         <p className="hint">A pessoa recebe um e-mail com o link para definir a senha.</p>
+        <ErrorText error={error} />
+      </form>
+    </Dialog>
+  );
+}
+
+/** Item 25: nome, e-mail, cargo e administrador. O superior muda por “Transferir gestão”, porque mexe nas delegações. */
+function EditPersonDialog({ person, self, onClose }: { person: Person; self: boolean; onClose: () => void }) {
+  const { run, busy, error } = useAction();
+  const [name, setName] = useState(person.name);
+  const [email, setEmail] = useState(person.email);
+  const [roleTitle, setRoleTitle] = useState(person.role_title);
+  const [isAdmin, setIsAdmin] = useState(person.is_admin);
+  const onlyAdmin = person.level === null;
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    const changes: Record<string, unknown> = {};
+    if (name.trim() !== person.name) changes.name = name.trim();
+    if (email.trim().toLowerCase() !== person.email.toLowerCase()) changes.email = email.trim();
+    if (roleTitle.trim() !== person.role_title) changes.roleTitle = roleTitle.trim();
+    if (isAdmin !== person.is_admin) changes.isAdmin = isAdmin;
+    if (!Object.keys(changes).length) { onClose(); return; }
+    const r = await run(() => patch(`/admin/users/${person.id}`, changes), 'Dados salvos.');
+    if (r) onClose();
+  };
+  return (
+    <Dialog title="Editar dados" onClose={onClose} footer={<>
+      <button className="b" onClick={onClose}>Cancelar</button>
+      <button className="b pri" type="submit" form="ep" disabled={busy}>Salvar</button>
+    </>}>
+      <form id="ep" onSubmit={submit} className="dialog-b" style={{ padding: 0 }}>
+        <div className="field"><label htmlFor="ep-n">Nome</label><input id="ep-n" className="input" value={name} onChange={(e) => setName(e.target.value)} required maxLength={120} /></div>
+        <div className="field">
+          <label htmlFor="ep-e">E-mail</label>
+          <input id="ep-e" type="email" className="input" value={email} onChange={(e) => setEmail(e.target.value)} required maxLength={200} />
+          <span className="hint">É o e-mail usado para entrar no app e receber os avisos.</span>
+        </div>
+        <div className="row2">
+          <div className="field">
+            <span className="label">Nível</span>
+            <span>{onlyAdmin ? 'Só administração' : LEVELS[person.level!]}</span>
+          </div>
+          <div className="field">
+            <label htmlFor="ep-r">Cargo exibido</label>
+            <input id="ep-r" className="input" value={roleTitle} onChange={(e) => setRoleTitle(e.target.value)} required maxLength={80} />
+          </div>
+        </div>
+        {!onlyAdmin && (
+          <label className="check">
+            <input type="checkbox" checked={isAdmin} disabled={self && person.is_admin} onChange={(e) => setIsAdmin(e.target.checked)} />
+            Também é administrador
+          </label>
+        )}
+        {self && person.is_admin && <p className="hint">Você não pode tirar o seu próprio acesso de administrador.</p>}
+        {!onlyAdmin && <p className="hint">Para trocar o superior direto, use “Transferir gestão” no menu da pessoa.</p>}
         <ErrorText error={error} />
       </form>
     </Dialog>

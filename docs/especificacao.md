@@ -210,6 +210,7 @@ Só o administrador:
 - **RN-03** Uma fase **só pode ser arquivada se estiver vazia**. Se houver tarefas, o app bloqueia e pede para movê-las antes.
 - **RN-04** A fase em que a tarefa está não define se ela está concluída. A conclusão é um ato explícito (RN-12).
 - **RN-05** Todo usuário novo recebe automaticamente um quadro "Meu trabalho".
+- **RN-05a** O detentor pode **arquivar uma tarefa própria concluída** e desarquivá-la depois. Não pode arquivar tarefa recebida por delegação (quem arquiva é o delegador, ao dar o ciente, RN-25) nem tarefa com delegação para baixo em aberto.
 
 ### 7.2 Tarefas
 
@@ -411,7 +412,9 @@ No topo de cada tela: título, campo de **busca** (texto ou código) e controle 
 
 ### 12.2 Meus quadros
 
-- Abas com os quadros da pessoa à esquerda; à direita, discretos, **+ Quadro**, **Importar do Trello** e o menu **…** do quadro (renomear, **cor do quadro**, nova fase).
+- Abas com os quadros da pessoa à esquerda; à direita, discretos, **+ Quadro**, **Importar do Trello** e o menu **…** do quadro (renomear, **cor do quadro**, nova fase, mover o quadro para a esquerda/direita, **fundo da área de trabalho**).
+- **Ordem dos quadros:** arrastando a aba (uma linha mostra onde vai entrar) ou pelo menu do quadro. Fica gravada no servidor.
+- **Fundo da área de trabalho:** padrão (branco) ou 7 cores mais firmes (cinza-azulado, azul, verde-água, verde, areia, lilás, rosa), com versões para o tema escuro. Vale para todas as telas e fica gravado na conta da pessoa. Fases e cartões continuam claros; a cor do quadro, se houver, fica por cima, só na área do quadro.
 - **Cor do quadro:** paleta de 8 cores suaves (azul, verde, amarelo, laranja, vermelho, roxo, rosa, cinza) com versões para os temas claro e escuro. Fica gravada no quadro, não no navegador.
 - Colunas de fases, com rolagem horizontal própria. Cada coluna tem nome, contador e menu (renomear, mover, **ordenar por** nome, data de criação ou prazo, arquivar). Ordenar reorganiza a fase uma vez; o arrastar continua valendo depois.
 - Arrastar funciona entre fases e **dentro da mesma fase**: uma linha mostra onde a tarefa vai cair (acima ou abaixo do cartão, conforme a metade em que o ponteiro está).
@@ -419,6 +422,7 @@ No topo de cada tela: título, campo de **busca** (texto ou código) e controle 
 - **+ Fase** ao final.
 - **Cartão no quadro:** botão de concluir (círculo), título (até 2 linhas), código, prazo, progresso do checklist e ícones (delegada por, repassada para, privada, aguardando ciente, reaberta).
 - Arrastar e soltar entre fases. No celular, usar "Mover para" dentro do cartão.
+- **Arquivar tarefa concluída:** ícone de arquivo no cartão concluído (só em tarefa própria), **Arquivar** dentro da tarefa e **Arquivar as concluídas** no menu da fase, sempre com **Desfazer** no aviso. A arquivada continua na busca e pode ser **desarquivada** (volta à mesma fase, ou à primeira fase do quadro se a fase foi arquivada). Arquivar e desarquivar entram no log.
 - **Estado vazio:** "Você ainda não tem quadros…", com o botão de criar.
 
 ### 12.3 Caixa de entrada
@@ -461,7 +465,7 @@ Visual de referência: a amostra aprovada.
 ### 12.7 Pessoas (administrador)
 
 - Tabela: pessoa, e-mail, cargo, superior direto, número de subordinados, situação (ativa ou inativa).
-- Ações: **Novo usuário**, **Transferir gestão**, **Desativar ou ativar**.
+- Ações: **Novo usuário**, **Editar dados** (nome, e-mail, cargo exibido e administrador; ninguém tira o próprio acesso de administrador), **Transferir gestão**, **Reenviar convite**, **Desativar ou ativar**.
 - Ao transferir a gestão, o sistema informa quantas delegações em aberto serão movidas.
 
 ### 12.8 Login

@@ -160,7 +160,7 @@ function Shell() {
           <button onClick={logout} title="Sair"><span className="ico"><Icon name="logout" /></span><span className="lbl">Sair</span></button>
         </div>
       </aside>
-      <main>
+      <main className={me.prefs.workspaceBg ? `ws ws-${me.prefs.workspaceBg}` : undefined}>
         <div className="topbar">
           <h1>{PAGES[page]?.title}</h1>
           <div className="tools">

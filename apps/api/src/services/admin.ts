@@ -84,7 +84,7 @@ export async function createUser(db: Db, input: NewUser) {
   return { user, token };
 }
 
-export async function updateUser(db: Db, id: string, patch: { name?: string; email?: string; roleTitle?: string; isAdmin?: boolean }) {
+export async function updateUser(db: Db, actor: Actor, id: string, patch: { name?: string; email?: string; roleTitle?: string; isAdmin?: boolean }) {
   const u = await one(db, 'SELECT * FROM users WHERE id = $1', [id]);
   if (!u) throw notFound('Pessoa não encontrada.');
   if (patch.email !== undefined) {
@@ -97,6 +97,7 @@ export async function updateUser(db: Db, id: string, patch: { name?: string; ema
   if (patch.roleTitle !== undefined && patch.roleTitle.trim()) await db.query('UPDATE users SET role_title = $2, updated_at = now() WHERE id = $1', [id, patch.roleTitle.trim()]);
   if (patch.isAdmin !== undefined) {
     if (!patch.isAdmin && u.level === null) throw conflict('Esta pessoa só existe como administradora.');
+    if (!patch.isAdmin && id === actor.id) throw conflict('Você não pode tirar o seu próprio acesso de administrador.');
     await db.query('UPDATE users SET is_admin = $2, updated_at = now() WHERE id = $1', [id, patch.isAdmin]);
   }
 }

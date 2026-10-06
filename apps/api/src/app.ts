@@ -113,6 +113,11 @@ export async function buildApp({ pool, logger = false, serveWeb = false }: AppOp
     return { ok: true };
   });
   app.get('/api/me', async (req) => misc.me(pool, need(req)));
+  app.patch('/api/me/prefs', async (req) => {
+    const { workspaceBg } = z.object({ workspaceBg: z.string().max(20).nullable() }).parse(req.body);
+    await misc.setWorkspaceBg(pool, need(req), workspaceBg);
+    return { ok: true };
+  });
 
   /* ---------------- quadros e fases ---------------- */
   app.get('/api/boards', async (req) => boards.listBoards(pool, need(req)));
@@ -128,10 +133,13 @@ export async function buildApp({ pool, logger = false, serveWeb = false }: AppOp
   });
   app.patch('/api/boards/:id', async (req) => {
     const { id } = z.object({ id: uuid }).parse(req.params);
-    const body = z.object({ name: z.string().max(80).optional(), color: z.string().max(20).nullable().optional() }).parse(req.body);
+    const body = z
+      .object({ name: z.string().max(80).optional(), color: z.string().max(20).nullable().optional(), position: z.number().finite().optional() })
+      .parse(req.body);
     await inTx(async (db) => {
       if (body.name !== undefined) await boards.renameBoard(db, need(req), id, body.name);
       if (body.color !== undefined) await boards.setBoardColor(db, need(req), id, body.color);
+      if (body.position !== undefined) await boards.moveBoard(db, need(req), id, body.position);
     });
     return { ok: true };
   });
@@ -151,6 +159,10 @@ export async function buildApp({ pool, logger = false, serveWeb = false }: AppOp
     const { by } = z.object({ by: z.enum(['title', 'created', 'due']) }).parse(req.body);
     await inTx((db) => boards.sortList(db, need(req), id, by));
     return { ok: true };
+  });
+  app.post('/api/lists/:id/archive-done', async (req) => {
+    const { id } = z.object({ id: uuid }).parse(req.params);
+    return inTx((db) => tasks.archiveDoneInList(db, need(req), id));
   });
   app.post('/api/lists/:id/archive', async (req) => {
     const { id } = z.object({ id: uuid }).parse(req.params);
@@ -197,6 +209,16 @@ export async function buildApp({ pool, logger = false, serveWeb = false }: AppOp
   app.post('/api/cards/:id/uncomplete', async (req) => {
     const { id } = z.object({ id: uuid }).parse(req.params);
     await inTx((db) => tasks.uncompleteCard(db, need(req), id));
+    return { ok: true };
+  });
+  app.post('/api/cards/:id/archive', async (req) => {
+    const { id } = z.object({ id: uuid }).parse(req.params);
+    await inTx((db) => tasks.archiveCard(db, need(req), id));
+    return { ok: true };
+  });
+  app.post('/api/cards/:id/unarchive', async (req) => {
+    const { id } = z.object({ id: uuid }).parse(req.params);
+    await inTx((db) => tasks.unarchiveCard(db, need(req), id));
     return { ok: true };
   });
   app.post('/api/cards/:id/checklist', async (req) => {
@@ -349,12 +371,12 @@ export async function buildApp({ pool, logger = false, serveWeb = false }: AppOp
     return user;
   });
   app.patch('/api/admin/users/:id', async (req) => {
-    needAdmin(req);
+    const a = needAdmin(req);
     const { id } = z.object({ id: uuid }).parse(req.params);
     const body = z
       .object({ name: z.string().max(120).optional(), email: z.string().max(200).optional(), roleTitle: z.string().max(80).optional(), isAdmin: z.boolean().optional() })
       .parse(req.body);
-    await inTx((db) => admin.updateUser(db, id, body));
+    await inTx((db) => admin.updateUser(db, a, id, body));
     return { ok: true };
   });
   app.post('/api/admin/users/:id/transfer-management', async (req) => {
