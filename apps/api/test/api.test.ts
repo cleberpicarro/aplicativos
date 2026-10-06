@@ -538,3 +538,77 @@ describe('terceira rodada', () => {
     expect((await call('func', 'GET', '/api/dashboard')).body.summary).toEqual({ open: 0, late: 0, awaitingAck: 0, declined: 0 });
   });
 });
+
+describe('quinta rodada', () => {
+  it('arquivar tarefa concluída, desfazer e arquivar as concluídas da fase (item 23)', async () => {
+    const t = await newTask(ctx, 'gest', 'Relatório');
+    // só concluída
+    expect((await call('gest', 'POST', `/api/cards/${t.id}/archive`)).status).toBe(409);
+    await call('gest', 'POST', `/api/cards/${t.id}/complete`);
+    expect((await call('func', 'POST', `/api/cards/${t.id}/archive`)).status).toBe(404);
+    expect((await call('gest', 'POST', `/api/cards/${t.id}/archive`)).status).toBe(200);
+    const boardOf = async () => (await call('gest', 'GET', `/api/boards/${(await call('gest', 'GET', '/api/boards')).body[0].id}`)).body;
+    expect((await boardOf()).cards.some((c: any) => c.id === t.id)).toBe(false);
+    // continua na busca e com o log
+    expect((await call('gest', 'GET', '/api/search?q=Relatório')).body.results[0]).toMatchObject({ id: t.id, archivedAt: expect.any(String) });
+    expect((await call('admin', 'GET', `/api/cards/${t.id}/events`)).body.at(-1).type).toBe('archived');
+    // desarquivar volta para a mesma fase
+    expect((await call('gest', 'POST', `/api/cards/${t.id}/unarchive`)).status).toBe(200);
+    const back = (await boardOf()).cards.find((c: any) => c.id === t.id);
+    expect(back).toMatchObject({ listId: t.listId, archivedAt: null });
+    expect((await call('admin', 'GET', `/api/cards/${t.id}/events`)).body.at(-1).type).toBe('unarchived');
+
+    // tarefa recebida por delegação: quem arquiva é o delegador (ciente)
+    const src = await newTask(ctx, 'gest', 'Delegada');
+    const dl = await delegateTask(ctx, 'gest', src.id, 'func');
+    await acceptTask(ctx, 'func', dl.cardId);
+    await call('func', 'POST', `/api/cards/${dl.cardId}/complete`);
+    expect((await call('func', 'POST', `/api/cards/${dl.cardId}/archive`)).status).toBe(409);
+    // a de origem, com delegação aguardando ciente, também não
+    await call('gest', 'POST', `/api/cards/${src.id}/complete`);
+    expect((await call('gest', 'POST', `/api/cards/${src.id}/archive`)).status).toBe(409);
+
+    // arquivar as concluídas da fase: só as que podem
+    const other = await newTask(ctx, 'gest', 'Aberta');
+    const r = await call('gest', 'POST', `/api/lists/${t.listId}/archive-done`);
+    expect(r.status).toBe(200);
+    expect(r.body.ids).toEqual([t.id]);
+    const left = (await boardOf()).cards.map((c: any) => c.id);
+    expect(left).toEqual(expect.arrayContaining([src.id, other.id]));
+    expect(left).not.toContain(t.id);
+    expect((await call('func', 'POST', `/api/lists/${t.listId}/archive-done`)).status).toBe(404);
+  });
+
+  it('cor de fundo da área de trabalho fica na conta (item 24)', async () => {
+    expect((await call('func', 'GET', '/api/me')).body.prefs).toEqual({ workspaceBg: null });
+    expect((await call('func', 'PATCH', '/api/me/prefs', { workspaceBg: 'azul' })).status).toBe(200);
+    expect((await call('func', 'GET', '/api/me')).body.prefs.workspaceBg).toBe('azul');
+    expect((await call('func2', 'GET', '/api/me')).body.prefs.workspaceBg).toBe(null);
+    expect((await call('func', 'PATCH', '/api/me/prefs', { workspaceBg: 'neon' })).status).toBe(422);
+    expect((await call('func', 'PATCH', '/api/me/prefs', { workspaceBg: null })).status).toBe(200);
+    expect((await call('func', 'GET', '/api/me')).body.prefs.workspaceBg).toBe(null);
+  });
+
+  it('editar dados de uma pessoa (item 25)', async () => {
+    const id = ctx.users.func.id;
+    const r = await call('admin', 'PATCH', `/api/admin/users/${id}`, { name: 'Fulano Novo', email: 'Novo@Teste.com', roleTitle: 'Analista', isAdmin: true });
+    expect(r.status).toBe(200);
+    const p = (await call('admin', 'GET', '/api/admin/users')).body.find((x: any) => x.id === id);
+    expect(p).toMatchObject({ name: 'Fulano Novo', email: 'novo@teste.com', role_title: 'Analista', is_admin: true });
+    expect((await call('admin', 'PATCH', `/api/admin/users/${id}`, { email: 'gest@teste.com' })).status).toBe(409);
+    expect((await call('func2', 'PATCH', `/api/admin/users/${id}`, { name: 'X' })).status).toBe(403);
+    // ninguém tira o próprio acesso de administrador
+    expect((await call('admin', 'PATCH', `/api/admin/users/${ctx.users.admin.id}`, { isAdmin: false })).status).toBe(409);
+  });
+
+  it('mudar a ordem dos quadros (item 26)', async () => {
+    await call('func', 'POST', '/api/boards', { name: 'Segundo' });
+    await call('func', 'POST', '/api/boards', { name: 'Terceiro' });
+    const names = async () => (await call('func', 'GET', '/api/boards')).body.map((b: any) => b.name);
+    expect(await names()).toEqual(['Meu trabalho', 'Segundo', 'Terceiro']);
+    const boards = (await call('func', 'GET', '/api/boards')).body;
+    expect((await call('func', 'PATCH', `/api/boards/${boards[2].id}`, { position: boards[0].position - 1 })).status).toBe(200);
+    expect(await names()).toEqual(['Terceiro', 'Meu trabalho', 'Segundo']);
+    expect((await call('func2', 'PATCH', `/api/boards/${boards[2].id}`, { position: 0 })).status).toBe(404);
+  });
+});

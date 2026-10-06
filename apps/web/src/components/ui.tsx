@@ -10,22 +10,31 @@ export function useMe() {
 }
 
 /* ---------- avisos flutuantes ---------- */
-const ToastCtx = createContext<(msg: string, kind?: 'ok' | 'error') => void>(() => {});
+/** Ação opcional no aviso, como o “Desfazer” do arquivar (item 23). */
+export type ToastAction = { label: string; onClick: () => void };
+const ToastCtx = createContext<(msg: string, kind?: 'ok' | 'error', action?: ToastAction) => void>(() => {});
 export const useToast = () => useContext(ToastCtx);
 
 export function ToastProvider({ children }: { children: ReactNode }) {
-  const [t, setT] = useState<{ msg: string; kind: string } | null>(null);
+  const [t, setT] = useState<{ msg: string; kind: string; action?: ToastAction } | null>(null);
   const timer = useRef<number>();
-  const show = useCallback((msg: string, kind: 'ok' | 'error' = 'ok') => {
-    setT({ msg, kind });
+  const show = useCallback((msg: string, kind: 'ok' | 'error' = 'ok', action?: ToastAction) => {
+    setT({ msg, kind, action });
     window.clearTimeout(timer.current);
-    timer.current = window.setTimeout(() => setT(null), kind === 'error' ? 5000 : 3200);
+    timer.current = window.setTimeout(() => setT(null), kind === 'error' ? 5000 : action ? 7000 : 3200);
   }, []);
   return (
     <ToastCtx.Provider value={show}>
       {children}
       <div role="status" aria-live="polite">
-        {t && <div className={`toast ${t.kind === 'error' ? 'error' : ''}`}>{t.msg}</div>}
+        {t && (
+          <div className={`toast ${t.kind === 'error' ? 'error' : ''}`}>
+            {t.msg}
+            {t.action && (
+              <button className="toast-act" onClick={() => { const a = t.action!; setT(null); a.onClick(); }}>{t.action.label}</button>
+            )}
+          </div>
+        )}
       </div>
     </ToastCtx.Provider>
   );
@@ -50,7 +59,7 @@ export function TipIcon({ name, tip, tone = '' }: { name: IconName; tip: string;
 
 const STATUS_ICON: Record<StatusKey, IconName> = {
   own: 'clock', inbox: 'inbox', active: 'clock', reopened: 'refresh', awaiting: 'hourglass',
-  declined: 'undo', acked: 'archive', canceled: 'xc', done: 'check',
+  declined: 'undo', acked: 'archive', canceled: 'xc', done: 'check', archived: 'archive',
 };
 
 export function StatusIcon({ status }: { status: StatusKey }) {

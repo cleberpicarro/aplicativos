@@ -60,6 +60,7 @@ export interface Me {
   user: { id: string; name: string; email: string; level: number | null; roleTitle: string; managerId: string | null; isAdmin: boolean; inHierarchy: boolean };
   directReports: { id: string; name: string; roleTitle: string }[];
   counts: { inbox: number; needAction: number; unread: number };
+  prefs: { workspaceBg: string | null };
   today: string;
 }
 

@@ -58,6 +58,16 @@ export function CardModal({ code, onClose }: { code: string; onClose: () => void
           {d && d.status === 'IN_PROGRESS' && !card.transferredFrom && (
             <button className="b" title={TIPS.decline} onClick={() => setSub('decline')}><Icon name="undo" />Devolver</button>
           )}
+          {card.completedAt && !d && !childOpen && (
+            <button className="b" title="Tira a tarefa do quadro. Ela continua na busca e pode ser desarquivada." disabled={busy}
+              onClick={async () => {
+                if ((await run(() => post(`/cards/${card.id}/archive`))) === undefined) return;
+                onClose();
+                toast('Tarefa arquivada.', 'ok', { label: 'Desfazer', onClick: () => run(() => post(`/cards/${card.id}/unarchive`), 'Tarefa de volta ao quadro.') });
+              }}>
+              <Icon name="archive" />Arquivar
+            </button>
+          )}
         </>
       )}
     </>
@@ -154,6 +164,11 @@ export function CardModal({ code, onClose }: { code: string; onClose: () => void
               {(ownerActions || delegatorActions) && <div style={{ display: 'grid', gap: 6 }}>{ownerActions}{delegatorActions}</div>}
               {role === 'auditor' && <p className="hint">Você está vendo esta tarefa pelo acesso de auditoria.</p>}
               {archived && <p className="hint">{card.delegation?.status === 'CANCELED' ? 'Delegação cancelada.' : 'Tarefa arquivada.'}</p>}
+              {archived && owner && !d && (
+                <button className="b" disabled={busy} onClick={() => run(() => post(`/cards/${card.id}/unarchive`), 'Tarefa desarquivada: de volta ao quadro.')}>
+                  <Icon name="undo" />Desarquivar
+                </button>
+              )}
               <ErrorText error={error} />
             </aside>
           </div>
@@ -315,6 +330,8 @@ function describe(e: Ev): { text: string; change?: string } {
     case 'declined': return { text: 'devolveu a tarefa', change: `“${a.reason}”` };
     case 'completed': return { text: 'concluiu a tarefa' };
     case 'completion_undone': return { text: 'desfez a conclusão' };
+    case 'archived': return { text: 'arquivou a tarefa' };
+    case 'unarchived': return { text: 'desarquivou a tarefa' };
     case 'acked': return { text: 'deu ciente: tarefa arquivada' };
     case 'reopened': return { text: 'reabriu a tarefa', change: `“${a.reason}”` };
     case 'canceled': return { text: 'cancelou a delegação' };

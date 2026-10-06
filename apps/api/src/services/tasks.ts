@@ -121,6 +121,66 @@ export async function uncompleteCard(db: Db, actor: Actor, cardId: string) {
   await logEvent(db, cardId, actor.id, 'completion_undone');
 }
 
+/* ---------- arquivar tarefa concluída (item 23) ---------- */
+
+const CHILD_OPEN = `SELECT 1 FROM delegations WHERE parent_card_id = $1 AND status IN ('PENDING_ACCEPT','IN_PROGRESS','AWAITING_ACK','DECLINED')`;
+
+/** Só tarefa própria: a recebida por delegação é arquivada por quem delegou, ao dar o ciente. */
+function assertArchivable(row: any, role: string) {
+  if (role !== 'owner') throw forbidden();
+  if (row.d_id) throw conflict('Quem arquiva esta tarefa é quem a delegou, ao dar o ciente.');
+}
+
+export async function archiveCard(db: Db, actor: Actor, cardId: string) {
+  const { row, role } = await loadCard(db, actor, cardId, { lock: true });
+  assertArchivable(row, role);
+  if (row.archived_at) throw conflict('A tarefa já está arquivada.');
+  if (!row.completed_at) throw conflict('Conclua a tarefa antes de arquivá-la.');
+  if (await one(db, CHILD_OPEN, [cardId])) throw conflict('Esta tarefa tem uma delegação em aberto. Dê o ciente ou cancele a delegação antes de arquivar.');
+  await db.query('UPDATE cards SET archived_at = now(), updated_at = now() WHERE id = $1', [cardId]);
+  await logEvent(db, cardId, actor.id, 'archived');
+}
+
+export async function unarchiveCard(db: Db, actor: Actor, cardId: string) {
+  const { row, role } = await loadCard(db, actor, cardId, { lock: true });
+  assertArchivable(row, role);
+  if (!row.archived_at) throw conflict('A tarefa não está arquivada.');
+  // Volta para a mesma fase; se ela foi arquivada, para a primeira fase do mesmo quadro (ou do primeiro quadro).
+  const target = await one<{ id: string }>(
+    db,
+    `SELECT l.id FROM lists l JOIN boards b ON b.id = l.board_id
+      WHERE b.owner_id = $2 AND l.archived_at IS NULL AND b.archived_at IS NULL
+      ORDER BY coalesce(l.id = $1, false) DESC, coalesce(l.board_id = (SELECT board_id FROM lists WHERE id = $1), false) DESC, b.position, l.position LIMIT 1`,
+    [row.list_id, actor.id],
+  );
+  if (!target) throw conflict('Crie um quadro antes de desarquivar a tarefa.');
+  // Na mesma fase, volta ao lugar onde estava (o "Desfazer" fica exato); em outra, entra no fim.
+  const position = target.id === row.list_id
+    ? row.position
+    : await nextPosition(db, 'SELECT max(position) AS max FROM cards WHERE list_id = $1 AND archived_at IS NULL', [target.id]);
+  await db.query('UPDATE cards SET archived_at = NULL, list_id = $2, position = $3, updated_at = now() WHERE id = $1', [cardId, target.id, position]);
+  await logEvent(db, cardId, actor.id, 'unarchived');
+}
+
+/** Menu da fase: arquiva de uma vez as tarefas concluídas que a pessoa pode arquivar. */
+export async function archiveDoneInList(db: Db, actor: Actor, listId: string) {
+  await ownList(db, actor, listId);
+  const rows = await many<{ id: string }>(
+    db,
+    `SELECT c.id FROM cards c
+      WHERE c.list_id = $1 AND c.owner_id = $2 AND c.archived_at IS NULL AND c.completed_at IS NOT NULL
+        AND NOT EXISTS (SELECT 1 FROM delegations d WHERE d.card_id = c.id)
+        AND NOT EXISTS (SELECT 1 FROM delegations x WHERE x.parent_card_id = c.id AND x.status IN ('PENDING_ACCEPT','IN_PROGRESS','AWAITING_ACK','DECLINED'))
+      FOR UPDATE`,
+    [listId, actor.id],
+  );
+  for (const r of rows) {
+    await db.query('UPDATE cards SET archived_at = now(), updated_at = now() WHERE id = $1', [r.id]);
+    await logEvent(db, r.id, actor.id, 'archived');
+  }
+  return { archived: rows.length, ids: rows.map((r) => r.id) };
+}
+
 /* ---------- checklist (só quem tem a tarefa edita) ---------- */
 
 async function ownerOpenCard(db: Db, actor: Actor, cardId: string) {

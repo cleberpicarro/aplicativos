@@ -43,7 +43,7 @@ export function firstName(name: string): string {
   return name.split(' ')[0];
 }
 
-export type StatusKey = 'own' | 'inbox' | 'active' | 'reopened' | 'awaiting' | 'declined' | 'acked' | 'canceled' | 'done';
+export type StatusKey = 'own' | 'inbox' | 'active' | 'reopened' | 'awaiting' | 'declined' | 'acked' | 'canceled' | 'done' | 'archived';
 
 export const STATUS: Record<StatusKey, { label: string; tip: string; tone: '' | 'attn' }> = {
   own: { label: 'Em andamento', tip: 'Em andamento', tone: '' },
@@ -55,10 +55,12 @@ export const STATUS: Record<StatusKey, { label: string; tip: string; tone: '' | 
   acked: { label: 'Arquivada', tip: 'Arquivada: ciente dado', tone: '' },
   canceled: { label: 'Cancelada', tip: 'Delegação cancelada', tone: '' },
   done: { label: 'Concluída', tip: 'Concluída', tone: '' },
+  archived: { label: 'Arquivada', tip: 'Concluída e arquivada', tone: '' },
 };
 
 export function statusOf(c: Card): StatusKey {
   if (c.delegation) return delegationKey(c.delegation.status, c.delegation.reopened);
+  if (c.archivedAt) return 'archived';
   if (c.completedAt) return 'done';
   if (c.inInbox) return 'inbox';
   return 'own';

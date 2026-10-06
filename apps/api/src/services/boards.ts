@@ -58,6 +58,12 @@ export async function renameBoard(db: Db, actor: Actor, boardId: string, name: s
   await db.query('UPDATE boards SET name = $2 WHERE id = $1', [boardId, name.trim()]);
 }
 
+/** Item 26: muda a ordem dos quadros (arrastar a aba ou mover pelo menu). */
+export async function moveBoard(db: Db, actor: Actor, boardId: string, position: number) {
+  await ownBoard(db, actor, boardId);
+  await db.query('UPDATE boards SET position = $2 WHERE id = $1', [boardId, position]);
+}
+
 export async function setBoardColor(db: Db, actor: Actor, boardId: string, color: string | null) {
   await ownBoard(db, actor, boardId);
   if (color !== null && !(BOARD_COLORS as readonly string[]).includes(color)) throw badRequest('Cor inválida.');

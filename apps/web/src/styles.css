@@ -495,3 +495,35 @@ button.brand:hover { background: var(--hover); }
   .app.collapsed .side { background: var(--side); border-bottom: 1px solid var(--line); }
   .app.collapsed .brand img { width: 1.3rem; height: 1.3rem; }
 }
+
+/* ---------- Quinta rodada ---------- */
+/* Item 24: fundo da área de trabalho (escolha de cada pessoa). Fases e cartões continuam claros, e isso dá o contraste. */
+main.ws { background: var(--ws); }
+.ws-cinza-azulado { --ws: #dde3ea; } .ws-azul { --ws: #cfdcf0; } .ws-verde-agua { --ws: #cde8e4; } .ws-verde { --ws: #d5ead8; }
+.ws-areia { --ws: #ebe2cf; } .ws-lilas { --ws: #e0dbf1; } .ws-rosa { --ws: #f0dae3; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .ws-cinza-azulado { --ws: #222a33; } :root:not([data-theme='light']) .ws-azul { --ws: #172540; }
+  :root:not([data-theme='light']) .ws-verde-agua { --ws: #132d2d; } :root:not([data-theme='light']) .ws-verde { --ws: #172c1d; }
+  :root:not([data-theme='light']) .ws-areia { --ws: #2c271c; } :root:not([data-theme='light']) .ws-lilas { --ws: #252038; }
+  :root:not([data-theme='light']) .ws-rosa { --ws: #301e28; }
+}
+:root[data-theme='dark'] .ws-cinza-azulado { --ws: #222a33; } :root[data-theme='dark'] .ws-azul { --ws: #172540; }
+:root[data-theme='dark'] .ws-verde-agua { --ws: #132d2d; } :root[data-theme='dark'] .ws-verde { --ws: #172c1d; }
+:root[data-theme='dark'] .ws-areia { --ws: #2c271c; } :root[data-theme='dark'] .ws-lilas { --ws: #252038; }
+:root[data-theme='dark'] .ws-rosa { --ws: #301e28; }
+main.ws .tabs { border-bottom-color: color-mix(in srgb, var(--fg) 14%, transparent); }
+main.ws .hint, main.ws .tabs button.tab, main.ws .b.quiet { color: color-mix(in srgb, var(--fg) 68%, var(--ws)); }
+main.ws .tabs button.tab[aria-selected='true'] { color: var(--fg); }
+
+/* Item 26: arrastar as abas para mudar a ordem dos quadros. */
+.tabs button.tab[draggable='true'] { cursor: grab; }
+.tabs button.tab.dragging { opacity: 0.4; }
+.tabs button.tab.drop-before { box-shadow: inset 2px 0 0 var(--accent); }
+.tabs button.tab.drop-after { box-shadow: inset -2px 0 0 var(--accent); }
+
+/* Item 23: ícone de arquivar no cartão concluído (sempre visível; mais forte ao passar o mouse). */
+.kc .arch { position: relative; margin-left: auto; border: 0; background: none; padding: 2px; border-radius: 4px; cursor: pointer; color: var(--faint); display: inline-flex; }
+.kc .arch:hover, .kc .arch:focus-visible { color: var(--accent); background: var(--hover); }
+.kc .arch svg { width: 1rem; height: 1rem; }
+.toast { display: flex; align-items: center; gap: 14px; }
+.toast-act { border: 0; background: none; color: inherit; font-weight: 600; text-decoration: underline; cursor: pointer; padding: 0; white-space: nowrap; }

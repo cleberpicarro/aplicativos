@@ -2,6 +2,15 @@ import { one, many, type Db } from '../lib/db.js';
 import type { Actor } from './actors.js';
 import { directReports } from './actors.js';
 import { cardIdByCode, loadCard, parseCode, selectCards } from './cards.js';
+import { badRequest } from '../lib/errors.js';
+
+/** Item 24: cores de fundo da área de trabalho. Os tons de cada uma, nos dois temas, ficam no front-end (.ws-*). */
+export const WORKSPACE_COLORS = ['cinza-azulado', 'azul', 'verde-agua', 'verde', 'areia', 'lilas', 'rosa'] as const;
+
+export async function setWorkspaceBg(db: Db, actor: Actor, color: string | null) {
+  if (color !== null && !(WORKSPACE_COLORS as readonly string[]).includes(color)) throw badRequest('Cor inválida.');
+  await db.query('UPDATE users SET workspace_bg = $2, updated_at = now() WHERE id = $1', [actor.id, color]);
+}
 
 export async function me(db: Db, actor: Actor) {
   const reports = actor.level === null ? [] : await directReports(db, actor.id);
@@ -13,6 +22,7 @@ export async function me(db: Db, actor: Actor) {
        (SELECT count(*)::int FROM delegations d JOIN cards c ON c.id = d.card_id
          WHERE d.delegator_id = $1 AND c.archived_at IS NULL AND d.status IN ('AWAITING_ACK','DECLINED')) AS need_action,
        (SELECT count(*)::int FROM notifications WHERE user_id = $1 AND read_at IS NULL) AS unread,
+       (SELECT workspace_bg FROM users WHERE id = $1) AS workspace_bg,
        (now() AT TIME ZONE 'America/Sao_Paulo')::date AS today`,
     [actor.id],
   );
@@ -20,6 +30,7 @@ export async function me(db: Db, actor: Actor) {
     user: { ...actor, inHierarchy: actor.level !== null },
     directReports: reports.map((r) => ({ id: r.id, name: r.name, roleTitle: r.role_title })),
     counts: { inbox: counts.inbox, needAction: counts.need_action, unread: counts.unread },
+    prefs: { workspaceBg: counts.workspace_bg as string | null },
     today: counts.today,
   };
 }

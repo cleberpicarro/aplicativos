@@ -65,13 +65,15 @@ export function HelpPage({ isAdmin }: { isAdmin: boolean }) {
         <p>Cada pessoa tem seus quadros e organiza como quiser. Ninguém mais vê os seus quadros.</p>
         <ul>
           <li><b>Novo quadro:</b> clique em <b>+ Quadro</b>, à direita das abas. Ele começa com as fases A fazer, Fazendo e Feito.</li>
-          <li><b>Menu do quadro:</b> no botão <b>…</b> à direita das abas dá para renomear o quadro, escolher a <b>cor de fundo</b> e criar uma nova fase.</li>
+          <li><b>Menu do quadro:</b> no botão <b>…</b> à direita das abas dá para renomear o quadro, escolher a <b>cor do quadro</b>, criar uma nova fase, mover o quadro para a esquerda ou a direita e escolher o <b>fundo da área de trabalho</b> (vale para todas as telas e fica guardado na sua conta).</li>
+          <li><b>Ordem dos quadros:</b> arraste a aba de um quadro para a esquerda ou a direita. Uma linha azul mostra onde ela vai entrar.</li>
           <li><b>Fases:</b> no menu <b>…</b> de cada fase dá para renomear, mover para a esquerda ou direita, <b>ordenar por</b> nome, data de criação ou prazo, e arquivar. Ordenar reorganiza a fase uma vez; depois você continua arrastando à vontade. Só é possível arquivar uma fase vazia.</li>
           <li><b>Nova tarefa:</b> clique em <b>+ Adicionar tarefa</b> no fim de uma fase, digite o título e tecle Enter.</li>
           <li><b>Mover e priorizar:</b> arraste a tarefa para outra fase ou para cima e para baixo na mesma fase. Uma linha azul mostra onde ela vai cair.</li>
           <li><b>Mover para outro quadro:</b> abra a tarefa e use <b>Mover para</b>: escolha o quadro e a fase. Ali também há <b>Para o topo</b> e <b>Para o fim</b>, úteis no celular.</li>
           <li><b>Abrir:</b> clique no título. Ali você edita título, descrição e prazo, monta o <b>checklist</b> e comenta.</li>
           <li><b>Concluir:</b> clique no círculo à esquerda do título, ou em <b>Concluir</b> dentro da tarefa. A fase não define se a tarefa está concluída: concluir é sempre um clique explícito.</li>
+          <li><b>Arquivar:</b> na tarefa concluída aparece um pequeno ícone de arquivo, no canto do cartão. Um clique tira a tarefa do quadro, e o aviso embaixo traz <b>Desfazer</b> por alguns segundos. Também há <b>Arquivar</b> dentro da tarefa e <b>Arquivar as concluídas</b> no menu <b>…</b> da fase. A tarefa arquivada continua na <b>busca</b>; abra-a e use <b>Desarquivar</b> para trazê-la de volta. Tarefa recebida por delegação é arquivada por quem delegou, ao dar o ciente.</li>
         </ul>
       </Sec>
 
@@ -230,6 +232,8 @@ export function HelpPage({ isAdmin }: { isAdmin: boolean }) {
           <li>Clique em <b>Cadastrar</b>. A pessoa recebe um e-mail com o link para definir a senha (válido por 72 horas).</li>
         </ol>
         <p>Cadastre de cima para baixo: primeiro o CEO, depois os diretores, os gestores e os funcionários. Se o link expirar, use <b>Reenviar convite</b> no menu <b>…</b> da pessoa.</p>
+        <h3>Editar dados</h3>
+        <p>No menu <b>…</b> da pessoa, escolha <b>Editar dados</b> para corrigir nome, e-mail, cargo exibido ou marcar se também é administrador. O e-mail novo passa a ser o usado para entrar no app. O superior direto muda por <b>Transferir gestão</b>.</p>
         <h3>Transferir gestão (mudança de gestor)</h3>
         <ol>
           <li>No menu <b>…</b> da pessoa, escolha <b>Transferir gestão</b>.</li>
