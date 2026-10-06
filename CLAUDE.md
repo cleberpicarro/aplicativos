@@ -34,6 +34,7 @@ App de tarefas da **Nerus** (~90–99 pessoas): quadros pessoais no estilo Trell
 ## Publicação
 
 - Render, Blueprint em `render.yaml`: serviço **synctasks** → https://synctasks.onrender.com. Publica a partir da branch `claude/tender-volta-yd7999`.
+- Site comercial: pasta `site/` (HTML e CSS estáticos), serviço estático **synctasks-site** no mesmo `render.yaml` → https://synctasks-site.onrender.com. Plano Equipe: R$ 20,00 por usuário/mês; limite do plano Grátis e contato ainda em `[colchetes]`; os botões “Começar” levam ao app por enquanto.
 - Banco no Render: `nerus-db` (nome mantido de propósito). **O banco gratuito expira no início de novembro de 2026** — lembrar o dono de migrar para plano pago ou exportar antes.
 - `SEED_DEMO=true` cria a equipe de exemplo (senha `nerus2026`: marina, joao, carlos, helena, renata `@nerus.com.br`). Para uso real: `SEED_DEMO=false` e criar o administrador.
 - E-mail: SMTP do Google Workspace ainda não configurado (sem `SMTP_HOST` os e-mails só vão para o log).

@@ -23,6 +23,17 @@ services:
       - key: SEED_DEMO
         value: "true"
 
+  # Site comercial (pasta site/): página estática gratuita, sem build.
+  # Endereço: https://synctasks-site.onrender.com
+  - type: web
+    name: synctasks-site
+    runtime: static
+    buildCommand: echo "site estático, sem build"
+    staticPublishPath: ./site
+    buildFilter:
+      paths:
+        - site/**
+
 databases:
   - name: nerus-db
     plan: free
