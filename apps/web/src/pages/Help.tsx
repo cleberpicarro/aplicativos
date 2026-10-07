@@ -69,6 +69,7 @@ export function HelpPage({ isAdmin }: { isAdmin: boolean }) {
           <li><b>Ordem dos quadros:</b> arraste a aba de um quadro para a esquerda ou a direita. Uma linha azul mostra onde ela vai entrar.</li>
           <li><b>Fases:</b> no menu <b>…</b> de cada fase dá para renomear, mover para a esquerda ou direita, <b>ordenar por</b> nome, data de criação ou prazo, e arquivar. Ordenar reorganiza a fase uma vez; depois você continua arrastando à vontade. Só é possível arquivar uma fase vazia.</li>
           <li><b>Nova tarefa:</b> clique em <b>+ Adicionar tarefa</b> no fim de uma fase, digite o título e tecle Enter.</li>
+          <li><b>Várias de uma vez:</b> cole ou escreva uma lista, uma tarefa por linha (<b>Shift+Enter</b> pula linha). Ao teclar Enter, o app pergunta se cria <b>uma tarefa por linha</b> ou <b>uma tarefa só</b>, com a primeira linha como título e o resto na descrição. Linhas em branco e marcadores como “-”, “•” e “1.” são ignorados; até 50 por vez, com <b>Desfazer</b> no aviso.</li>
           <li><b>Mover e priorizar:</b> arraste a tarefa para outra fase ou para cima e para baixo na mesma fase. Uma linha azul mostra onde ela vai cair.</li>
           <li><b>Mover para outro quadro:</b> abra a tarefa e use <b>Mover para</b>: escolha o quadro e a fase. Ali também há <b>Para o topo</b> e <b>Para o fim</b>, úteis no celular.</li>
           <li><b>Abrir:</b> clique no título. Ali você edita título, descrição e prazo, monta o <b>checklist</b> e comenta.</li>

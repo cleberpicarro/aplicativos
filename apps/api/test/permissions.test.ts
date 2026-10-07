@@ -115,6 +115,9 @@ async function attemptsAgainstGest(who: string): Promise<Attempt[]> {
     { method: 'POST', url: `/api/lists/${s.list}/archive-done`, route: 'POST /api/lists/:id/archive-done' },
     { method: 'POST', url: `/api/lists/${s.list2}/archive`, route: 'POST /api/lists/:id/archive' },
     { method: 'POST', url: '/api/cards', body: { listId: s.list, title: 'enfiada no quadro alheio' }, route: 'POST /api/cards' },
+    { method: 'POST', url: '/api/cards/batch', body: { listId: s.list, titles: ['enfiada 1', 'enfiada 2'] }, route: 'POST /api/cards/batch' },
+    { method: 'POST', url: '/api/cards/undo-create', body: { ids: [s.own] }, route: 'POST /api/cards/undo-create' },
+    { method: 'POST', url: '/api/cards/undo-create', body: { ids: [s.priv, s.done, s.parent] }, route: 'POST /api/cards/undo-create' },
     { method: 'POST', url: `/api/cards/${s.own}/comments`, body: { body: 'intrometido' }, route: 'POST /api/cards/:id/comments' },
     { method: 'POST', url: `/api/cards/${s.priv}/comments`, body: { body: 'intrometido' }, route: 'POST /api/cards/:id/comments' },
     ...card(s.own), ...card(s.priv), ...card(s.done), ...card(s.parent), ...card(s.inboxCard),
@@ -268,7 +271,7 @@ describe('permissões em massa (frente 2)', () => {
     const covered = new Set([
       // cobertas pela matriz acima
       'GET /api/boards/:id', 'PATCH /api/boards/:id', 'POST /api/boards/:id/lists', 'PATCH /api/lists/:id', 'POST /api/lists/:id/sort',
-      'POST /api/lists/:id/archive-done', 'POST /api/lists/:id/archive', 'POST /api/cards', 'GET /api/cards/:id', 'GET /api/cards/by-code/:code',
+      'POST /api/lists/:id/archive-done', 'POST /api/lists/:id/archive', 'POST /api/cards', 'POST /api/cards/batch', 'POST /api/cards/undo-create', 'GET /api/cards/:id', 'GET /api/cards/by-code/:code',
       'PATCH /api/cards/:id', 'POST /api/cards/:id/move', 'POST /api/cards/:id/complete', 'POST /api/cards/:id/uncomplete',
       'POST /api/cards/:id/archive', 'POST /api/cards/:id/unarchive', 'POST /api/cards/:id/checklist', 'PATCH /api/cards/:id/checklist/:itemId',
       'DELETE /api/cards/:id/checklist/:itemId', 'POST /api/cards/:id/comments', 'GET /api/cards/:id/events', 'POST /api/cards/:id/delegate',

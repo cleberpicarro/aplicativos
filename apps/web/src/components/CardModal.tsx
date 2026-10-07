@@ -330,7 +330,7 @@ function describe(e: Ev): { text: string; change?: string } {
     case 'declined': return { text: 'devolveu a tarefa', change: `“${a.reason}”` };
     case 'completed': return { text: 'concluiu a tarefa' };
     case 'completion_undone': return { text: 'desfez a conclusão' };
-    case 'archived': return { text: 'arquivou a tarefa' };
+    case 'archived': return { text: a.undo ? 'desfez a criação (tarefa arquivada)' : 'arquivou a tarefa' };
     case 'unarchived': return { text: 'desarquivou a tarefa' };
     case 'acked': return { text: 'deu ciente: tarefa arquivada' };
     case 'reopened': return { text: 'reabriu a tarefa', change: `“${a.reason}”` };
