@@ -173,8 +173,16 @@ export async function buildApp({ pool, logger = false, serveWeb = false }: AppOp
 
   /* ---------------- tarefas ---------------- */
   app.post('/api/cards', async (req) => {
-    const { listId, title } = z.object({ listId: uuid, title: z.string().max(200) }).parse(req.body);
-    return inTx((db) => tasks.createCard(db, need(req), listId, title));
+    const { listId, title, description } = z.object({ listId: uuid, title: z.string().max(200), description: z.string().max(20000).optional() }).parse(req.body);
+    return inTx((db) => tasks.createCard(db, need(req), listId, title, description));
+  });
+  app.post('/api/cards/batch', async (req) => {
+    const { listId, titles } = z.object({ listId: uuid, titles: z.array(z.string().max(200)).min(1).max(tasks.MAX_BATCH) }).parse(req.body);
+    return inTx((db) => tasks.createCards(db, need(req), listId, titles));
+  });
+  app.post('/api/cards/undo-create', async (req) => {
+    const { ids } = z.object({ ids: z.array(uuid).min(1).max(tasks.MAX_BATCH) }).parse(req.body);
+    return inTx((db) => tasks.undoCreate(db, need(req), ids));
   });
   app.get('/api/cards/by-code/:code', async (req) => {
     const { code } = z.object({ code: z.string().max(30) }).parse(req.params);

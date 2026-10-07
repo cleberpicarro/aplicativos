@@ -14,18 +14,59 @@ function fmtDate(d: string | null) {
   return `${day}/${m}/${y}`;
 }
 
-export async function createCard(db: Db, actor: Actor, listId: string, title: string) {
+export async function createCard(db: Db, actor: Actor, listId: string, title: string, description = '') {
   const clean = title.trim();
   if (!clean) throw badRequest('Informe o título da tarefa.');
   await ownList(db, actor, listId);
+  return insertCard(db, actor, listId, clean, description.trim());
+}
+
+async function insertCard(db: Db, actor: Actor, listId: string, title: string, description: string) {
   const position = await nextPosition(db, 'SELECT max(position) AS max FROM cards WHERE list_id = $1', [listId]);
   const c = await one(
     db,
-    `INSERT INTO cards (owner_id, list_id, position, title, created_by) VALUES ($1, $2, $3, $4, $1) RETURNING id, code, title`,
-    [actor.id, listId, position, clean],
+    `INSERT INTO cards (owner_id, list_id, position, title, description, created_by) VALUES ($1, $2, $3, $4, $5, $1) RETURNING id, code, title`,
+    [actor.id, listId, position, title, description],
   );
-  await logEvent(db, c.id, actor.id, 'created', undefined, { title: clean });
+  await logEvent(db, c.id, actor.id, 'created', undefined, description ? { title, description } : { title });
   return c;
+}
+
+/** Item 30: uma tarefa por linha, na ordem do texto, no fim da fase. Tudo ou nada. */
+export const MAX_BATCH = 50;
+export async function createCards(db: Db, actor: Actor, listId: string, titles: string[]) {
+  const clean = titles.map((t) => t.trim()).filter(Boolean);
+  if (!clean.length) throw badRequest('Informe o título da tarefa.');
+  if (clean.length > MAX_BATCH) throw badRequest(`Crie no máximo ${MAX_BATCH} tarefas de uma vez.`);
+  await ownList(db, actor, listId);
+  const cards = [];
+  for (const t of clean) cards.push(await insertCard(db, actor, listId, t, ''));
+  return { cards };
+}
+
+/**
+ * Item 30: “Desfazer” logo depois de criar várias tarefas. O código nunca é reutilizado e o log não se apaga,
+ * então a tarefa não some: é arquivada. Só vale para tarefa própria, criada pela pessoa há pouco
+ * e que não foi mexida por mais ninguém (sem delegação nem transferência); as outras ficam como estão.
+ */
+export async function undoCreate(db: Db, actor: Actor, ids: string[]) {
+  const unique = [...new Set(ids)];
+  const own = await one<{ n: number }>(db, 'SELECT count(*)::int AS n FROM cards WHERE id = ANY($1::uuid[]) AND owner_id = $2 AND created_by = $2', [unique, actor.id]);
+  if (own!.n !== unique.length) throw forbidden('Só quem criou as tarefas pode desfazer a criação.');
+  const rows = await many<{ id: string }>(
+    db,
+    `SELECT c.id FROM cards c
+      WHERE c.id = ANY($1::uuid[]) AND c.owner_id = $2 AND c.created_by = $2 AND c.archived_at IS NULL
+        AND c.transferred_from_id IS NULL AND c.created_at > now() - interval '15 minutes'
+        AND NOT EXISTS (SELECT 1 FROM delegations d WHERE d.card_id = c.id OR d.parent_card_id = c.id)
+      FOR UPDATE`,
+    [unique, actor.id],
+  );
+  for (const r of rows) {
+    await db.query('UPDATE cards SET archived_at = now(), updated_at = now() WHERE id = $1', [r.id]);
+    await logEvent(db, r.id, actor.id, 'archived', undefined, { undo: true });
+  }
+  return { archived: rows.length };
 }
 
 export interface CardPatch {

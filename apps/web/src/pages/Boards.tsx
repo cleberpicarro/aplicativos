@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useState, type DragEvent, type FormEvent } from 'react';
+import { Fragment, useEffect, useRef, useState, type DragEvent, type FormEvent } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { get, patch, post, type Board, type Card } from '../lib/api';
 import { go } from '../lib/router';
@@ -8,6 +8,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Icon } from '../components/Icons';
 import { ConfirmDialog, NameDialog, useAction } from '../components/dialogs';
 import { ImportTrelloDialog } from '../components/ImportTrello';
+import { asSingle, MAX_BATCH, MAX_TITLE, splitLines } from '../lib/lines';
 
 const STORE_KEY = 'synctasks.board';
 
@@ -385,24 +386,81 @@ function archivable(c: Card) {
 
 function AddCard({ listId }: { listId: string }) {
   const [open, setOpen] = useState(false);
-  const [title, setTitle] = useState('');
-  const { run, error } = useAction();
-  useEffect(() => { if (!open) setTitle(''); }, [open]);
-  const submit = async (e: FormEvent) => {
-    e.preventDefault();
-    if (!title.trim()) { setOpen(false); return; }
-    if (await run(() => post('/cards', { listId, title }))) setTitle('');
+  const [text, setText] = useState('');
+  const [asking, setAsking] = useState<string[] | null>(null);
+  const { run, busy, error, setError } = useAction();
+  const toast = useToast();
+  useEffect(() => { if (!open) { setText(''); setAsking(null); } }, [open]);
+
+  const done = () => { setText(''); setAsking(null); };
+  const tooLong = (titles: string[]) => {
+    const long = titles.find((t) => t.length > MAX_TITLE);
+    if (long) setError(new Error(`Cada título pode ter até ${MAX_TITLE} caracteres. Encurte: “${long.slice(0, 40)}…”`));
+    return !!long;
   };
+  const createOne = async () => {
+    const { title, description } = asSingle(text);
+    if (tooLong([title])) { setAsking(null); return; }
+    if (await run(() => post('/cards', { listId, title, description }))) done();
+  };
+  const createMany = async (titles: string[]) => {
+    if (tooLong(titles)) { setAsking(null); return; }
+    const r = await run(() => post<{ cards: { id: string }[] }>('/cards/batch', { listId, titles }));
+    if (!r) return;
+    done();
+    const ids = r.cards.map((c) => c.id);
+    toast(`${ids.length} tarefas criadas.`, 'ok', {
+      label: 'Desfazer',
+      onClick: () => run(() => post('/cards/undo-create', { ids }), 'Criação desfeita.'),
+    });
+  };
+  const submit = (e?: FormEvent) => {
+    e?.preventDefault();
+    const lines = splitLines(text);
+    if (!lines.length) { setOpen(false); return; }
+    if (lines.length === 1) { if (!tooLong(lines)) void run(() => post('/cards', { listId, title: lines[0] })).then((r) => r && done()); return; }
+    setAsking(lines);
+  };
+
   if (!open) return <button className="add-card" onClick={() => setOpen(true)}><Icon name="plus" />Adicionar tarefa</button>;
   return (
     <form className="add-form" onSubmit={submit}>
-      <input className="input" autoFocus value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Título da tarefa" aria-label="Título da nova tarefa"
-        maxLength={200} onKeyDown={(e) => { if (e.key === 'Escape') setOpen(false); }} />
+      <textarea className="input add-text" autoFocus rows={1} value={text} placeholder="Título da tarefa" aria-label="Título da nova tarefa"
+        onChange={(e) => { setText(e.target.value); e.target.style.height = 'auto'; e.target.style.height = `${e.target.scrollHeight + 2}px`; }}
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') setOpen(false);
+          else if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); submit(); }
+        }} />
       <div style={{ display: 'flex', gap: 6 }}>
-        <button className="b pri sm" type="submit">Adicionar</button>
+        <button className="b pri sm" type="submit" disabled={busy}>Adicionar</button>
         <button className="b ghost sm" type="button" onClick={() => setOpen(false)}>Cancelar</button>
       </div>
       <ErrorText error={error} />
+      {asking && <ManyLinesDialog titles={asking} busy={busy} onOne={createOne} onMany={() => createMany(asking)} onClose={() => setAsking(null)} />}
     </form>
+  );
+}
+
+/** Item 30: o texto tem várias linhas. Pergunta se vira uma tarefa só ou uma por linha. */
+function ManyLinesDialog({ titles, busy, onOne, onMany, onClose }: { titles: string[]; busy: boolean; onOne: () => void; onMany: () => void; onClose: () => void }) {
+  const n = titles.length;
+  const over = n > MAX_BATCH;
+  const many = useRef<HTMLButtonElement>(null);
+  const one = useRef<HTMLButtonElement>(null);
+  // Enter confirma a opção principal (o Dialog foca o primeiro botão; este efeito roda depois do dele).
+  useEffect(() => { (over ? one : many).current?.focus(); }, [over]);
+  return (
+    <Dialog title={`O texto tem ${n} linhas`} onClose={onClose}
+      footer={<>
+        <button type="button" className="b" onClick={onClose}>Cancelar</button>
+        <button ref={one} type="button" className="b" onClick={onOne} disabled={busy}>Criar 1 tarefa</button>
+        <button ref={many} type="button" className="b pri" onClick={onMany} disabled={busy || over}>Criar {n} tarefas</button>
+      </>}>
+      <p style={{ marginTop: 0 }}>Quer criar <b>uma tarefa por linha</b> ou <b>uma tarefa só</b>, com a primeira linha como título e o resto na descrição?</p>
+      {over && <p className="err">Dá para criar até {MAX_BATCH} tarefas de uma vez. Divida o texto ou crie uma tarefa só.</p>}
+      <ol className="lines-preview" aria-label="Tarefas que serão criadas">
+        {titles.map((t, i) => <li key={i}>{t}</li>)}
+      </ol>
+    </Dialog>
   );
 }

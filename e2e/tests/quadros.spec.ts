@@ -93,6 +93,43 @@ test.describe('meus quadros', () => {
     await expect(temp).toHaveCount(0);
   });
 
+  test('texto com várias linhas: uma tarefa por linha (com desfazer) ou uma tarefa só (item 30)', async ({ page }) => {
+    await entrar(page, 'beatriz');
+    const quadro = unico('Lista');
+    await page.getByRole('button', { name: 'Quadro', exact: true }).click();
+    await dialogo(page, 'Novo quadro').getByLabel('Nome do quadro').fill(quadro);
+    await dialogo(page, 'Novo quadro').getByRole('button', { name: 'Criar' }).click();
+    await expect(page.getByRole('tab', { name: quadro })).toHaveAttribute('aria-selected', 'true');
+
+    const col = page.getByRole('region', { name: 'A fazer', exact: true });
+    const cards = col.locator('article.kc .t');
+    await col.getByRole('button', { name: 'Adicionar tarefa' }).click();
+    const campo = col.getByLabel('Título da nova tarefa');
+    await campo.fill('- Ligar para o cliente\n\n2. Enviar proposta\n• Revisar contrato');
+    await campo.press('Enter');
+    const pergunta = dialogo(page, 'O texto tem 3 linhas');
+    await expect(pergunta.locator('.lines-preview li')).toHaveText(['Ligar para o cliente', 'Enviar proposta', 'Revisar contrato']);
+    await pergunta.getByRole('button', { name: 'Criar 3 tarefas' }).click();
+    await expect(cards).toHaveText(['Ligar para o cliente', 'Enviar proposta', 'Revisar contrato']);
+    await expect(campo).toHaveValue('');
+    await page.locator('.toast', { hasText: '3 tarefas criadas.' }).getByRole('button', { name: 'Desfazer' }).click();
+    await aviso(page, 'Criação desfeita.');
+    await expect(cards).toHaveCount(0);
+
+    // Shift+Enter pula linha; “Criar 1 tarefa” usa a primeira linha como título e o resto como descrição
+    await campo.click();
+    await page.keyboard.type('Reunião de equipe');
+    await page.keyboard.press('Shift+Enter');
+    await page.keyboard.type('pauta: metas');
+    await expect(campo).toHaveValue('Reunião de equipe\npauta: metas');
+    await page.keyboard.press('Enter');
+    await dialogo(page, 'O texto tem 2 linhas').getByRole('button', { name: 'Criar 1 tarefa' }).click();
+    await expect(cards).toHaveText(['Reunião de equipe']);
+    const codigo = (await col.locator('article.kc .code').innerText()).trim();
+    const dlg = await abrirTarefa(page, codigo);
+    await expect(dlg.getByLabel('Descrição')).toHaveValue('pauta: metas');
+  });
+
   test('tarefa privada não aparece para a gestora', async ({ page, browser }) => {
     await entrar(page, 'beatriz');
     const titulo = unico('Assunto pessoal');

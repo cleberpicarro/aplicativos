@@ -287,3 +287,40 @@ describe('conta e sessão', () => {
     expect((await call('admin', 'PATCH', `/api/admin/users/${ctx.users.admin.id}`, { isAdmin: false })).status).toBe(409);
   });
 });
+
+describe('várias tarefas de uma vez (item 30)', () => {
+  it('cria uma tarefa por linha, na ordem, cada uma com código próprio e log; limite de 50', async () => {
+    const listId = await firstListOf(ctx, 'func');
+    const r = await call('func', 'POST', '/api/cards/batch', { listId, titles: [' Ligar ', '', 'Enviar proposta', 'Revisar'] });
+    expect(r.status).toBe(200);
+    expect(r.body.cards.map((c: { title: string }) => c.title)).toEqual(['Ligar', 'Enviar proposta', 'Revisar']);
+    expect(new Set(r.body.cards.map((c: { code: string }) => c.code)).size).toBe(3);
+    const rows = await ctx.pool.query('SELECT title FROM cards WHERE list_id = $1 AND archived_at IS NULL ORDER BY position', [listId]);
+    expect(names(rows.rows.map((x) => ({ name: x.title }))).slice(-3)).toEqual(['Ligar', 'Enviar proposta', 'Revisar']);
+    const ev = await ctx.pool.query("SELECT count(*)::int AS n FROM card_events WHERE type = 'created' AND card_id = ANY($1::uuid[])", [r.body.cards.map((c: { id: string }) => c.id)]);
+    expect(ev.rows[0].n).toBe(3);
+
+    expect((await call('func', 'POST', '/api/cards/batch', { listId, titles: Array.from({ length: 51 }, (_, i) => `T${i}`) })).status).toBe(422);
+    expect((await call('func', 'POST', '/api/cards/batch', { listId, titles: ['ok', 'x'.repeat(201)] })).status).toBe(422);
+    expect((await call('func', 'POST', '/api/cards/batch', { listId, titles: ['  ', ''] })).status).toBe(422);
+    // tudo ou nada: o título longo recusou o lote inteiro
+    expect((await ctx.pool.query("SELECT 1 FROM cards WHERE title = 'ok'")).rowCount).toBe(0);
+  });
+
+  it('uma tarefa só com descrição; desfazer arquiva só as próprias recém-criadas e sem delegação', async () => {
+    const listId = await firstListOf(ctx, 'gest');
+    const one = await call('gest', 'POST', '/api/cards', { listId, title: 'Reunião', description: '- pauta 1\n- pauta 2' });
+    expect((await call('gest', 'GET', `/api/cards/${one.body.id}`)).body.card.description).toBe('- pauta 1\n- pauta 2');
+
+    const ids = (await call('gest', 'POST', '/api/cards/batch', { listId, titles: ['A', 'B', 'C'] })).body.cards.map((c: { id: string }) => c.id);
+    await delegateTask(ctx, 'gest', ids[2], 'func');
+    expect((await call('func', 'POST', '/api/cards/undo-create', { ids })).status).toBe(403);
+    const u = await call('gest', 'POST', '/api/cards/undo-create', { ids });
+    expect(u.status).toBe(200);
+    expect(u.body.archived).toBe(2);
+    const st = await ctx.pool.query('SELECT title, archived_at IS NOT NULL AS arch FROM cards WHERE id = ANY($1::uuid[]) ORDER BY title', [ids]);
+    expect(st.rows).toEqual([{ title: 'A', arch: true }, { title: 'B', arch: true }, { title: 'C', arch: false }]);
+    const log = await ctx.pool.query("SELECT after FROM card_events WHERE card_id = $1 AND type = 'archived'", [ids[0]]);
+    expect(log.rows[0].after).toEqual({ undo: true });
+  });
+});
