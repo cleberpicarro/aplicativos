@@ -11,6 +11,13 @@ interface Person {
 }
 
 const LEVELS = ['CEO', 'Diretor', 'Gestor', 'Funcionário'];
+/** Níveis que podem ser superior direto: o nível logo acima; o gestor também pode responder ao CEO. */
+const managerLevels = (level: number) => (level === 2 ? [1, 0] : [level - 1]);
+const managerLabel = (level: number) => managerLevels(level).map((l) => LEVELS[l]).join(' ou ');
+/** Possíveis superiores, primeiro os do nível logo acima. */
+const managerOptions = (people: Person[], level: number) =>
+  people.filter((p) => p.active && p.level !== null && managerLevels(level).includes(p.level)).sort((a, b) => b.level! - a.level!);
+const managerName = (p: Person) => (p.level === 0 ? `${p.name} (CEO)` : p.name);
 
 export function PeoplePage() {
   const me = useMe().data!;
@@ -86,7 +93,7 @@ function NewPersonDialog({ people, onClose }: { people: Person[]; onClose: () =>
   const [managerId, setManagerId] = useState('');
   const [isAdmin, setIsAdmin] = useState(false);
   const lv = level === 'admin' ? null : Number(level);
-  const managers = lv !== null && lv > 0 ? people.filter((p) => p.active && p.level === lv - 1) : [];
+  const managers = lv !== null && lv > 0 ? managerOptions(people, lv) : [];
   const mId = managers.some((m) => m.id === managerId) ? managerId : managers[0]?.id ?? '';
   const submit = async (e: FormEvent) => {
     e.preventDefault();
@@ -119,10 +126,10 @@ function NewPersonDialog({ people, onClose }: { people: Person[]; onClose: () =>
         </div>
         {lv !== null && lv > 0 && (
           <div className="field">
-            <label htmlFor="np-m">Superior direto ({LEVELS[lv - 1]})</label>
+            <label htmlFor="np-m">Superior direto ({managerLabel(lv)})</label>
             <select id="np-m" className="select input" value={mId} onChange={(e) => setManagerId(e.target.value)} required>
-              {managers.length === 0 && <option value="">Cadastre antes um {LEVELS[lv - 1]}</option>}
-              {managers.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+              {managers.length === 0 && <option value="">Cadastre antes um {managerLabel(lv)}</option>}
+              {managers.map((m) => <option key={m.id} value={m.id}>{managerName(m)}</option>)}
             </select>
           </div>
         )}
@@ -192,7 +199,7 @@ function EditPersonDialog({ person, self, onClose }: { person: Person; self: boo
 function MoveDialog({ person, people, onClose }: { person: Person; people: Person[]; onClose: () => void }) {
   const { run, busy, error } = useAction();
   const toast = useToast();
-  const options = people.filter((p) => p.active && p.level === (person.level ?? 0) - 1 && p.id !== person.manager_id);
+  const options = managerOptions(people, person.level ?? 1).filter((p) => p.id !== person.manager_id);
   const [to, setTo] = useState(options[0]?.id ?? '');
   const submit = async (e: FormEvent) => {
     e.preventDefault();
@@ -209,11 +216,11 @@ function MoveDialog({ person, people, onClose }: { person: Person; people: Perso
     </>}>
       <form id="mv" onSubmit={submit} className="dialog-b" style={{ padding: 0 }}>
         <p style={{ margin: 0 }}><b style={{ fontWeight: 500 }}>{person.name}</b> hoje responde a {person.manager_name}.</p>
-        {options.length === 0 ? <p className="err">Não há outro {LEVELS[(person.level ?? 1) - 1]} ativo para assumir.</p> : (
+        {options.length === 0 ? <p className="err">Não há outro {managerLabel(person.level ?? 1)} ativo para assumir.</p> : (
           <div className="field">
             <label htmlFor="mv-to">Novo superior direto</label>
             <select id="mv-to" className="select input" value={to} onChange={(e) => setTo(e.target.value)}>
-              {options.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
+              {options.map((o) => <option key={o.id} value={o.id}>{managerName(o)}</option>)}
             </select>
           </div>
         )}

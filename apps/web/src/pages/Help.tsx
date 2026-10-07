@@ -228,10 +228,11 @@ export function HelpPage({ isAdmin }: { isAdmin: boolean }) {
         <ol>
           <li>Em <b>Pessoas</b>, clique em <b>Nova pessoa</b>.</li>
           <li>Preencha nome, e-mail e nível (CEO, Diretor, Gestor ou Funcionário). O cargo exibido é opcional.</li>
-          <li>Escolha o <b>superior direto</b>. Ele precisa estar no nível imediatamente acima: o superior de um funcionário é um gestor, o de um gestor é um diretor, o de um diretor é o CEO.</li>
+          <li>Escolha o <b>superior direto</b>. Ele precisa estar no nível imediatamente acima: o superior de um funcionário é um gestor, o de um gestor é um diretor, o de um diretor é o CEO. A exceção é o gestor, que também pode responder direto ao CEO (por exemplo, quando o CEO também comanda uma área).</li>
           <li>Marque <b>Também é administrador</b> se a pessoa for cuidar do cadastro.</li>
           <li>Clique em <b>Cadastrar</b>. A pessoa recebe um e-mail com o link para definir a senha (válido por 72 horas).</li>
         </ol>
+        <p>Uma pessoa pode ser CEO e administrador ao mesmo tempo: cadastre-a como CEO e marque <b>Também é administrador</b>. Se o CEO também comanda uma área, ligue os gestores dessa área direto a ele.</p>
         <p>Cadastre de cima para baixo: primeiro o CEO, depois os diretores, os gestores e os funcionários. Se o link expirar, use <b>Reenviar convite</b> no menu <b>…</b> da pessoa.</p>
         <h3>Editar dados</h3>
         <p>No menu <b>…</b> da pessoa, escolha <b>Editar dados</b> para corrigir nome, e-mail, cargo exibido ou marcar se também é administrador. O e-mail novo passa a ser o usado para entrar no app. O superior direto muda por <b>Transferir gestão</b>.</p>

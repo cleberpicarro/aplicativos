@@ -9,6 +9,10 @@ test.describe('administração de pessoas', () => {
     const d = dialogo(page, 'Nova pessoa');
     await d.getByLabel('Nome').fill(nome);
     await d.getByLabel('E-mail').fill(email);
+    // gestor pode responder a um diretor ou direto ao CEO (item 29)
+    await d.getByLabel('Nível').selectOption({ label: 'Gestor' });
+    await expect(d.getByText('Superior direto (Diretor ou CEO)')).toBeVisible();
+    await expect(d.getByLabel(/Superior direto/).locator('option', { hasText: '(CEO)' })).toHaveCount(1);
     await d.getByLabel('Nível').selectOption({ label: 'Funcionário' });
     const sup = d.getByLabel(/Superior direto/);
     await sup.selectOption({ label: (await sup.locator('option').allInnerTexts()).find((o) => o.includes('Marina'))! });

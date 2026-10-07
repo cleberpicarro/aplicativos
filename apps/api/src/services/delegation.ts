@@ -139,16 +139,16 @@ export async function redelegate(db: Db, actor: Actor, delegationId: string, inp
   await notify(db, input.toUserId, 'delegated', `${first(actor.name)} delegou: ${card.title}`, cardRef(card));
 }
 
-/** Destinos de transferência: subordinados diretos, colegas com o mesmo superior e o superior direto. */
+/** Destinos de transferência: subordinados diretos, colegas do mesmo nível com o mesmo superior e o superior direto. */
 export async function transferTargets(db: Db, actor: Actor, delegatorId: string | null) {
   const rows = await many(
     db,
     `SELECT id, name, role_title, 'subordinate' AS relation FROM users WHERE manager_id = $1 AND active
      UNION ALL
-     SELECT id, name, role_title, 'peer' FROM users WHERE $2::uuid IS NOT NULL AND manager_id = $2 AND id <> $1 AND active
+     SELECT id, name, role_title, 'peer' FROM users WHERE $2::uuid IS NOT NULL AND manager_id = $2 AND level IS NOT DISTINCT FROM $3 AND id <> $1 AND active
      UNION ALL
      SELECT id, name, role_title, 'manager' FROM users WHERE id = $2 AND active`,
-    [actor.id, actor.managerId],
+    [actor.id, actor.managerId, actor.level],
   );
   return rows.filter((r) => r.id !== delegatorId);
 }
