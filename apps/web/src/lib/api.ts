@@ -62,6 +62,7 @@ export interface Me {
   counts: { inbox: number; needAction: number; unread: number };
   prefs: { workspaceBg: string | null };
   today: string;
+  trelloKey: string | null;
 }
 
 export interface CardDetail {

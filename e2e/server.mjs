@@ -21,5 +21,7 @@ process.env.DATABASE_URL = url;
 process.env.SEED_DEMO = 'true';
 process.env.PORT = process.env.E2E_PORT ?? '3100';
 process.env.HOST = '127.0.0.1';
+// Item 31: liga o "Exportar para o Trello" (o Trello em si é simulado no roteiro).
+process.env.TRELLO_API_KEY = 'chave-de-teste';
 process.env.APP_URL = `http://127.0.0.1:${process.env.PORT}`;
 await import('../apps/api/dist/src/server.js');

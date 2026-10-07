@@ -1,3 +1,4 @@
+import { config } from '../config.js';
 import { one, many, type Db } from '../lib/db.js';
 import type { Actor } from './actors.js';
 import { directReports } from './actors.js';
@@ -32,6 +33,7 @@ export async function me(db: Db, actor: Actor) {
     counts: { inbox: counts.inbox, needAction: counts.need_action, unread: counts.unread },
     prefs: { workspaceBg: counts.workspace_bg as string | null },
     today: counts.today,
+    trelloKey: config.trelloKey,
   };
 }
 

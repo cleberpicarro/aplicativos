@@ -5,7 +5,7 @@ import { BookmarkletButton } from './Capture';
 const SECTIONS: [string, string][] = [
   ['inicio', 'Primeiros passos'],
   ['quadros', 'Meus quadros'],
-  ['trello', 'Importar do Trello'],
+  ['trello', 'Importar e exportar (Trello)'],
   ['capturar', 'Capturar da web'],
   ['entrada', 'Caixa de entrada'],
   ['delegar', 'Delegar'],
@@ -77,11 +77,11 @@ export function HelpPage({ isAdmin }: { isAdmin: boolean }) {
         </ul>
       </Sec>
 
-      <Sec id="trello" title="Importar do Trello">
+      <Sec id="trello" title="Importar e exportar (Trello)">
         <p>Dá para trazer um quadro do Trello para os seus quadros. Cada quadro do Trello vira um quadro novo seu.</p>
         <ol>
           <li>No Trello, abra o quadro, clique no menu <b>…</b> e escolha <b>Imprimir, exportar e compartilhar</b> → <b>Exportar como JSON</b>. Salve o arquivo.</li>
-          <li>Aqui, em <b>Meus quadros</b>, clique em <b>Importar do Trello</b> e escolha o arquivo.</li>
+          <li>Aqui, em <b>Meus quadros</b>, abra o menu <b>…</b> do quadro (à direita das abas), clique em <b>Importar do Trello</b> e escolha o arquivo.</li>
           <li>Confira a pré-visualização, ajuste o nome do quadro se quiser e clique em <b>Importar</b>.</li>
         </ol>
         <ul>
@@ -90,6 +90,19 @@ export function HelpPage({ isAdmin }: { isAdmin: boolean }) {
           <li><b>Membros</b> dos cartões ficam anotados na descrição. Todas as tarefas ficam com você; para entregar a alguém da equipe, use <b>Delegar</b>.</li>
           <li><b>Ficam de fora:</b> listas e cartões arquivados, etiquetas e anexos.</li>
           <li>Cada tarefa importada ganha um código novo, e o log registra que veio do Trello.</li>
+        </ul>
+        <h3>Exportar para o Trello</h3>
+        <p>Faz o caminho inverso: cria no Trello um quadro novo com as fases e as tarefas do quadro aberto. Nada muda aqui no SyncTasks.</p>
+        <ol>
+          <li>Abra o quadro, clique no menu <b>…</b> e escolha <b>Exportar para o Trello</b>.</li>
+          <li>Clique em <b>Conectar ao Trello</b>. Na janela do Trello, entre com a sua conta e clique em <b>Permitir</b>. Se a janela não voltar sozinha, use <b>Cole o código</b>.</li>
+          <li>Clique em <b>Exportar</b> e espere a contagem terminar. No fim, <b>Abrir o quadro no Trello</b>.</li>
+        </ol>
+        <ul>
+          <li><b>Vão:</b> fases (viram listas, na mesma ordem) e tarefas com título, descrição, prazo, marca de concluída, checklist e comentários (com o autor e a data no texto).</li>
+          <li>No topo da descrição de cada cartão ficam o <b>código ST-</b>, a situação e, se houver, para quem foi delegada ou quem delegou.</li>
+          <li><b>Ficam de fora:</b> tarefas arquivadas e, a não ser que você marque, as privadas. O log não vai.</li>
+          <li>A permissão do Trello vale por 1 dia e fica só no seu navegador; o SyncTasks não guarda senha nem código do Trello.</li>
         </ul>
       </Sec>
 
@@ -245,6 +258,15 @@ export function HelpPage({ isAdmin }: { isAdmin: boolean }) {
         <p>Não é possível desativar quem ainda tem subordinados ou tarefas delegadas em aberto. Antes, transfira a gestão dos subordinados e resolva ou transfira as tarefas. O app lista o que falta.</p>
         <h3>Senhas</h3>
         <p>Quem esquecer a senha usa <b>Esqueci minha senha</b> na tela de login e recebe um link por e-mail, válido por 2 horas. A administração não vê nem define senhas.</p>
+        <h3>Ligar a exportação para o Trello</h3>
+        <p>Feito uma única vez, por quem cuida do servidor. Enquanto não for feito, “Exportar para o Trello” avisa que ainda não está ligado.</p>
+        <ol>
+          <li>Com a conta do Trello, abra <b>trello.com/power-ups/admin</b> e clique em <b>Novo</b>. Preencha o nome (SyncTasks), a área de trabalho e o e-mail, e crie.</li>
+          <li>Na aba <b>Chave de API</b> (API key), clique em <b>Gerar uma nova chave de API</b>.</li>
+          <li>Em <b>Origens permitidas</b> (Allowed origins), adicione o endereço do SyncTasks, por exemplo <b>https://synctasks.onrender.com</b>.</li>
+          <li>Copie a chave. No Render, abra o serviço <b>synctasks</b> → <b>Environment</b>, preencha <b>TRELLO_API_KEY</b> com a chave e salve. O Render reinicia sozinho.</li>
+        </ol>
+        <p>A chave não é senha: ela só identifica o SyncTasks. Cada pessoa dá a própria permissão no Trello na hora de exportar.</p>
       </Sec>
 
       <Sec id="faq" title="Perguntas frequentes">

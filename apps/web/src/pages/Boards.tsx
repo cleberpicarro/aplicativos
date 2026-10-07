@@ -8,6 +8,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Icon } from '../components/Icons';
 import { ConfirmDialog, NameDialog, useAction } from '../components/dialogs';
 import { ImportTrelloDialog } from '../components/ImportTrello';
+import { ExportTrelloDialog } from '../components/ExportTrello';
 
 const STORE_KEY = 'synctasks.board';
 
@@ -33,7 +34,7 @@ export function BoardsPage() {
   const me = useMe().data!;
   const boards = useQuery({ queryKey: ['boards'], queryFn: () => get<BoardTab[]>('/boards') });
   const [selected, setSelected] = useState<string | null>(rememberedBoard);
-  const [dialog, setDialog] = useState<null | 'newBoard' | 'renameBoard' | 'newList' | 'import' | 'color' | 'workspace'>(null);
+  const [dialog, setDialog] = useState<null | 'newBoard' | 'renameBoard' | 'newList' | 'import' | 'export' | 'color' | 'workspace'>(null);
   const toast = useToast();
   const { run, error } = useAction();
   const qc = useQueryClient();
@@ -106,15 +107,19 @@ export function BoardsPage() {
         ))}
         <span className="tabs-side">
           <button className="b ghost sm quiet" onClick={() => setDialog('newBoard')}><Icon name="plus" />Quadro</button>
-          <button className="b ghost sm quiet" onClick={() => setDialog('import')} title="Cria um quadro novo a partir de um quadro exportado do Trello">Importar do Trello</button>
-          {board.data && (
+          {boards.data && (
             <Menu label="Opções do quadro" items={[
-              { label: 'Renomear quadro', onClick: () => setDialog('renameBoard') },
-              { label: 'Cor do quadro', onClick: () => setDialog('color') },
-              { label: 'Nova fase', onClick: () => setDialog('newList') },
-              { label: 'Mover quadro para a esquerda', onClick: () => moveBoard(-1), disabled: boardIndex <= 0 },
-              { label: 'Mover quadro para a direita', onClick: () => moveBoard(1), disabled: boardIndex === (boards.data?.length ?? 0) - 1 },
-              { label: 'Fundo da área de trabalho', onClick: () => setDialog('workspace') },
+              ...(board.data ? [
+                { label: 'Renomear quadro', onClick: () => setDialog('renameBoard') },
+                { label: 'Cor do quadro', onClick: () => setDialog('color') },
+                { label: 'Nova fase', onClick: () => setDialog('newList') },
+                { label: 'Mover quadro para a esquerda', onClick: () => moveBoard(-1), disabled: boardIndex <= 0 },
+                { label: 'Mover quadro para a direita', onClick: () => moveBoard(1), disabled: boardIndex === (boards.data?.length ?? 0) - 1 },
+                { label: 'Fundo da área de trabalho', onClick: () => setDialog('workspace') },
+              ] : []),
+              // Item 31: importar e exportar ficam juntos no fim do menu.
+              { label: 'Importar do Trello', onClick: () => setDialog('import'), separator: !!board.data },
+              ...(board.data ? [{ label: 'Exportar para o Trello', onClick: () => setDialog('export') }] : []),
             ]} />
           )}
         </span>
@@ -135,6 +140,7 @@ export function BoardsPage() {
         <ImportTrelloDialog onClose={() => setDialog(null)}
           onImported={(id) => { select(id); setDialog(null); toast('Quadro importado do Trello.'); }} />
       )}
+      {dialog === 'export' && board.data && <ExportTrelloDialog board={board.data} onClose={() => setDialog(null)} />}
       {dialog === 'renameBoard' && board.data && (
         <NameDialog title="Renomear quadro" label="Nome do quadro" confirm="Salvar" initial={board.data.name} onClose={() => setDialog(null)}
           onSave={(name) => patch(`/boards/${board.data!.id}`, { name })} />

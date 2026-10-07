@@ -35,6 +35,8 @@ export const config = {
     pass: process.env.SMTP_PASS,
     from: process.env.MAIL_FROM ?? 'SyncTasks <tarefas@localhost>',
   },
+  // Item 31: chave do SyncTasks no Trello para "Exportar para o Trello" (é pública; o código de acesso de cada pessoa fica só no navegador).
+  trelloKey: process.env.TRELLO_API_KEY?.trim() || null,
   // Front-end compilado (servido pela API em produção)
   webDist: process.env.WEB_DIST ?? path.resolve(API_ROOT, '../web/dist'),
 };

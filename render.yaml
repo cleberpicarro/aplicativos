@@ -24,6 +24,9 @@ services:
       # Para uso real, mude para "false" e crie o primeiro administrador.
       - key: SEED_DEMO
         value: "true"
+      # Item 31: chave do SyncTasks no Trello para "Exportar para o Trello" (preencher no painel do Render; passo a passo na Ajuda).
+      - key: TRELLO_API_KEY
+        sync: false
 
   # Site comercial (pasta site/): página estática gratuita, sem build.
   # Endereço: https://synctasks-site.onrender.com

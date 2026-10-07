@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
+import { createContext, Fragment, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { get, type Card, type Me } from '../lib/api';
 import { STATUS, daysBetween, fullDate, initials, shortDate, statusOf, type StatusKey } from '../lib/format';
@@ -116,7 +116,7 @@ export function Dialog({ title, onClose, children, footer, wide, label }: { titl
 }
 
 /* ---------- menu simples ---------- */
-export function Menu({ label, items }: { label: string; items: { label: string; onClick: () => void; disabled?: boolean; danger?: boolean }[] }) {
+export function Menu({ label, items }: { label: string; items: { label: string; onClick: () => void; disabled?: boolean; danger?: boolean; separator?: boolean }[] }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -135,9 +135,12 @@ export function Menu({ label, items }: { label: string; items: { label: string; 
       {open && (
         <div className="menu-pop" role="menu">
           {items.map((it) => (
-            <button key={it.label} role="menuitem" className={it.danger ? 'danger' : ''} disabled={it.disabled} onClick={() => { setOpen(false); it.onClick(); }}>
-              {it.label}
-            </button>
+            <Fragment key={it.label}>
+              {it.separator && <hr className="menu-sep" />}
+              <button role="menuitem" className={it.danger ? 'danger' : ''} disabled={it.disabled} onClick={() => { setOpen(false); it.onClick(); }}>
+                {it.label}
+              </button>
+            </Fragment>
           ))}
         </div>
       )}
