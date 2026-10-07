@@ -163,7 +163,7 @@ export async function setActive(db: Db, admin: Actor, userId: string, active: bo
     if (pend.reports) items.push(`${pend.reports} subordinado(s)`);
     if (pend.delegated) items.push(`${pend.delegated} delegação(ões) feitas em aberto`);
     if (pend.received) items.push(`${pend.received} tarefa(s) recebida(s) em aberto`);
-    if (items.length) throw conflict(`Antes de desativar, transfira: ${items.join(', ')}.`);
+    if (items.length) throw conflict(`Antes de desativar, transfira: ${items.join(', ')}.${pend.reports ? ' Para os subordinados, troque o superior direto em Editar dados.' : ''}`);
     await db.query('DELETE FROM sessions WHERE user_id = $1', [userId]);
   }
   await db.query('UPDATE users SET active = $2, updated_at = now() WHERE id = $1', [userId, active]);

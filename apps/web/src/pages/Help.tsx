@@ -247,17 +247,17 @@ export function HelpPage({ isAdmin }: { isAdmin: boolean }) {
         </ol>
         <p>Uma pessoa pode ser CEO e administrador ao mesmo tempo: cadastre-a como CEO e marque <b>Também é administrador</b>. Se o CEO também comanda uma área, ligue os gestores dessa área direto a ele.</p>
         <p>Cadastre de cima para baixo: primeiro o CEO, depois os diretores, os gestores e os funcionários. Se o link expirar, use <b>Reenviar convite</b> no menu <b>…</b> da pessoa.</p>
-        <h3>Editar dados</h3>
-        <p>No menu <b>…</b> da pessoa, escolha <b>Editar dados</b> para corrigir nome, e-mail, cargo exibido ou marcar se também é administrador. O e-mail novo passa a ser o usado para entrar no app. O superior direto muda por <b>Transferir gestão</b>.</p>
-        <h3>Transferir gestão (mudança de gestor)</h3>
-        <ol>
-          <li>No menu <b>…</b> da pessoa, escolha <b>Transferir gestão</b>.</li>
-          <li>Escolha o novo superior direto e confirme.</li>
-        </ol>
-        <p>As tarefas que o superior antigo tinha delegado e ainda estão em aberto passam para o novo, que continua o acompanhamento. O histórico e as tarefas já arquivadas ficam com o antigo. Os três são avisados.</p>
+        <h3>Editar dados (inclusive o superior direto)</h3>
+        <p>No menu <b>…</b> da pessoa, escolha <b>Editar dados</b> para corrigir nome, e-mail, cargo exibido, marcar se também é administrador ou trocar o <b>superior direto</b>. O e-mail novo passa a ser o usado para entrar no app.</p>
+        <p>Para mudar a quem a pessoa responde (por exemplo, o funcionário que passa para outro gestor, ou o gestor que passa para outro diretor), escolha o novo nome em <b>Superior direto</b> e clique em <b>Salvar</b>. Antes de salvar, a janela avisa o que acontece:</p>
+        <ul>
+          <li>As tarefas que o superior antigo tinha delegado a esta pessoa e ainda estão em aberto passam para o novo, que continua o acompanhamento.</li>
+          <li>O histórico e as tarefas já arquivadas ficam com o antigo. Os três são avisados.</li>
+        </ul>
+        <p>O CEO não tem superior direto. O nível (CEO, diretor, gestor, funcionário) é escolhido no cadastro.</p>
         <h3>Desativar ou reativar</h3>
         <p>No menu <b>…</b>, escolha <b>Desativar</b>. A pessoa deixa de entrar no app, e os registros dela no log são mantidos.</p>
-        <p>Não é possível desativar quem ainda tem subordinados ou tarefas delegadas em aberto. Antes, transfira a gestão dos subordinados e resolva ou transfira as tarefas. O app lista o que falta.</p>
+        <p>Não é possível desativar quem ainda tem subordinados ou tarefas delegadas em aberto. Antes, troque o superior direto dos subordinados em <b>Editar dados</b> e resolva ou transfira as tarefas. O app lista o que falta.</p>
         <h3>Senhas</h3>
         <p>Quem esquecer a senha usa <b>Esqueci minha senha</b> na tela de login e recebe um link por e-mail, válido por 2 horas. A administração não vê nem define senhas.</p>
         <h3>Ligar a exportação para o Trello</h3>

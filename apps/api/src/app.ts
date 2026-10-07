@@ -383,10 +383,15 @@ export async function buildApp({ pool, logger = false, serveWeb = false }: AppOp
     const a = needAdmin(req);
     const { id } = z.object({ id: uuid }).parse(req.params);
     const body = z
-      .object({ name: z.string().max(120).optional(), email: z.string().max(200).optional(), roleTitle: z.string().max(80).optional(), isAdmin: z.boolean().optional() })
+      .object({ name: z.string().max(120).optional(), email: z.string().max(200).optional(), roleTitle: z.string().max(80).optional(), isAdmin: z.boolean().optional(), managerId: uuid.optional() })
       .parse(req.body);
-    await inTx((db) => admin.updateUser(db, a, id, body));
-    return { ok: true };
+    // Item 33: trocar o superior direto em "Editar dados" faz a transferência de gestão, na mesma transação.
+    const { managerId, ...data } = body;
+    return inTx(async (db) => {
+      await admin.updateUser(db, a, id, data);
+      const moved = managerId ? (await admin.transferManagement(db, a, id, managerId)).moved : null;
+      return { ok: true, moved };
+    });
   });
   app.post('/api/admin/users/:id/transfer-management', async (req) => {
     const a = needAdmin(req);

@@ -100,7 +100,7 @@ Anexos e integração com o Google Drive, trabalho entre times, vários respons�
 | **Ciente** | Validação do delegador sobre uma tarefa concluída. Arquiva a tarefa. |
 | **Reabrir** | O delegador não aceita a conclusão e devolve a tarefa com comentário. |
 | **Transferir** | Passar a tarefa a outra pessoa. Quem transfere deixa de acompanhar. |
-| **Transferir gestão** | O administrador muda o superior direto de uma pessoa. |
+| **Transferir gestão** | O administrador muda o superior direto de uma pessoa, pelo campo **Superior direto** em **Editar dados**. |
 | **Log** | Registro imutável de tudo o que aconteceu com a tarefa. |
 
 ---
@@ -196,7 +196,7 @@ Só o administrador:
 ### 6.4 Administrador
 
 1. Cadastra uma pessoa com nome, e-mail, cargo e superior direto. A pessoa recebe o link para definir a senha.
-2. Quando alguém muda de gestor, executa **Transferir gestão**. As delegações em aberto passam ao novo gestor e o histórico fica com o antigo.
+2. Quando alguém muda de gestor, troca o **Superior direto** em **Editar dados**. As delegações em aberto passam ao novo gestor e o histórico fica com o antigo.
 3. Ativa ou desativa pessoas.
 
 ---
@@ -267,7 +267,7 @@ Só o administrador:
 
 ### 7.9 Transferência de gestão
 
-- **RN-38** O administrador escolhe a pessoa e o novo superior, que deve estar no nível imediatamente acima (para gestor: um diretor ou o CEO).
+- **RN-38** O administrador abre **Editar dados** da pessoa e escolhe o novo superior no campo **Superior direto** (item 33; antes era a ação separada “Transferir gestão”). O novo superior deve estar no nível imediatamente acima (para gestor: um diretor ou o CEO).
 - **RN-39** **Todas as delegações em aberto** que o superior antigo fez a essa pessoa passam a ter o novo superior como delegador. Isso inclui as aguardando aceite, em andamento, concluídas aguardando ciente e devolvidas.
 - **RN-40** O histórico e as tarefas já arquivadas continuam com o superior antigo.
 - **RN-41** Os três envolvidos são avisados: a pessoa, o novo superior e o antigo. A mudança fica registrada em `ManagerChange` e no log de cada tarefa afetada.
@@ -466,8 +466,8 @@ Visual de referência: a amostra aprovada.
 ### 12.7 Pessoas (administrador)
 
 - Tabela: pessoa, e-mail, cargo, superior direto, número de subordinados, situação (ativa ou inativa).
-- Ações: **Novo usuário**, **Editar dados** (nome, e-mail, cargo exibido e administrador; ninguém tira o próprio acesso de administrador), **Transferir gestão**, **Reenviar convite**, **Desativar ou ativar**.
-- Ao transferir a gestão, o sistema informa quantas delegações em aberto serão movidas.
+- Ações: **Novo usuário**, **Editar dados** (nome, e-mail, cargo exibido, administrador e superior direto; ninguém tira o próprio acesso de administrador), **Reenviar convite**, **Desativar ou ativar**.
+- Ao trocar o superior direto, a janela avisa antes de salvar que as delegações em aberto passam ao novo superior e, depois, informa quantas foram movidas. Nome, cargo e superior são salvos juntos: ou tudo, ou nada.
 
 ### 12.8 Login
 

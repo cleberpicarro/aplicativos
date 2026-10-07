@@ -1,7 +1,7 @@
 import { test, expect, entrar, dialogo, unico } from './apoio';
 
 test.describe('administração de pessoas', () => {
-  test('cadastrar, editar dados e desativar uma pessoa', async ({ page }) => {
+  test('cadastrar, editar dados (com o superior direto) e desativar uma pessoa', async ({ page }) => {
     await entrar(page, 'renata');
     const nome = unico('Pessoa Nova');
     const email = `${nome.split(' ').pop()}@nerus.com.br`;
@@ -25,8 +25,18 @@ test.describe('administração de pessoas', () => {
     await page.getByRole('menuitem', { name: 'Editar dados' }).click();
     const e = dialogo(page, 'Editar dados');
     await e.getByLabel('Cargo exibido').fill('Analista');
+    // item 33: o superior direto também muda aqui, com aviso antes de salvar
+    const sup2 = e.getByLabel('Superior direto (Gestor)');
+    await expect(sup2.locator('option:checked')).toHaveText('Marina Teixeira');
+    await sup2.selectOption({ label: 'Paulo Ribeiro' });
+    await expect(e.getByText(/delegações em aberto de Marina Teixeira para esta pessoa passam ao novo superior/)).toBeVisible();
     await e.getByRole('button', { name: 'Salvar' }).click();
+    await expect(page.getByText(/agora responde a Paulo Ribeiro/)).toBeVisible();
     await expect(linha).toContainText('Analista');
+    await expect(linha).toContainText('Paulo Ribeiro');
+    await linha.getByRole('button', { name: `Ações para ${nome}` }).click();
+    await expect(page.getByRole('menuitem', { name: 'Transferir gestão' })).toHaveCount(0);
+    await page.keyboard.press('Escape');
 
     await linha.getByRole('button', { name: `Ações para ${nome}` }).click();
     await page.getByRole('menuitem', { name: 'Desativar' }).click();

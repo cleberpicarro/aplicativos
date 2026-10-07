@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { get, patch, post } from '../lib/api';
 import { Avatar, Dialog, ErrorText, Menu, useMe, useToast } from '../components/ui';
 import { Icon } from '../components/Icons';
+import { firstName } from '../lib/format';
 import { ConfirmDialog, useAction } from '../components/dialogs';
 
 interface Person {
@@ -22,7 +23,7 @@ const managerName = (p: Person) => (p.level === 0 ? `${p.name} (CEO)` : p.name);
 export function PeoplePage() {
   const me = useMe().data!;
   const q = useQuery({ queryKey: ['people'], queryFn: () => get<Person[]>('/admin/users') });
-  const [dlg, setDlg] = useState<null | { kind: 'new' } | { kind: 'edit' | 'move' | 'toggle'; person: Person }>(null);
+  const [dlg, setDlg] = useState<null | { kind: 'new' } | { kind: 'edit' | 'toggle'; person: Person }>(null);
   const { run, error } = useAction();
   const toast = useToast();
   if (!me.user.isAdmin) return <div className="page"><div className="empty">Somente a administração acessa esta tela.</div></div>;
@@ -30,7 +31,7 @@ export function PeoplePage() {
   return (
     <div className="page">
       <div className="page-actions" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
-        <span className="hint">Cadastro, edição dos dados, superior direto e transferência de gestão. Veja o passo a passo em Ajuda → Manual do administrador.</span>
+        <span className="hint">Cadastro, edição dos dados e do superior direto. Veja o passo a passo em Ajuda → Manual do administrador.</span>
         <button className="b pri" onClick={() => setDlg({ kind: 'new' })}><Icon name="plus" />Nova pessoa</button>
       </div>
       <ErrorText error={error} />
@@ -54,7 +55,6 @@ export function PeoplePage() {
                 <td style={{ textAlign: 'right' }}>
                   <Menu label={`Ações para ${p.name}`} items={[
                     { label: 'Editar dados', onClick: () => setDlg({ kind: 'edit', person: p }) },
-                    { label: 'Transferir gestão', onClick: () => setDlg({ kind: 'move', person: p }), disabled: !p.active || p.level === null || p.level === 0 },
                     { label: 'Reenviar convite', onClick: () => run(() => post(`/admin/users/${p.id}/invite`), `Convite reenviado para ${p.email}.`), disabled: !p.active },
                     { label: p.active ? 'Desativar' : 'Reativar', onClick: () => setDlg({ kind: 'toggle', person: p }), danger: p.active, disabled: p.id === me.user.id },
                   ]} />
@@ -64,11 +64,10 @@ export function PeoplePage() {
           </tbody>
         </table>
       </div>
-      <p className="hint" style={{ marginTop: 10 }}>Ao transferir a gestão, as delegações em aberto passam ao novo superior e o histórico fica com o antigo.</p>
+      <p className="hint" style={{ marginTop: 10 }}>Ao trocar o superior direto em Editar dados, as delegações em aberto passam ao novo superior e o histórico fica com o antigo.</p>
 
       {dlg?.kind === 'new' && <NewPersonDialog people={people} onClose={() => setDlg(null)} />}
-      {dlg?.kind === 'edit' && <EditPersonDialog person={dlg.person} self={dlg.person.id === me.user.id} onClose={() => setDlg(null)} />}
-      {dlg?.kind === 'move' && <MoveDialog person={dlg.person} people={people} onClose={() => setDlg(null)} />}
+      {dlg?.kind === 'edit' && <EditPersonDialog person={dlg.person} people={people} self={dlg.person.id === me.user.id} onClose={() => setDlg(null)} />}
       {dlg?.kind === 'toggle' && (
         <ConfirmDialog
           title={dlg.person.active ? 'Desativar pessoa' : 'Reativar pessoa'}
@@ -141,14 +140,20 @@ function NewPersonDialog({ people, onClose }: { people: Person[]; onClose: () =>
   );
 }
 
-/** Item 25: nome, e-mail, cargo e administrador. O superior muda por “Transferir gestão”, porque mexe nas delegações. */
-function EditPersonDialog({ person, self, onClose }: { person: Person; self: boolean; onClose: () => void }) {
+/** Item 25: nome, e-mail, cargo e administrador. Item 33: o superior direto também muda aqui (faz a transferência de gestão). */
+function EditPersonDialog({ person, people, self, onClose }: { person: Person; people: Person[]; self: boolean; onClose: () => void }) {
   const { run, busy, error } = useAction();
+  const toast = useToast();
   const [name, setName] = useState(person.name);
   const [email, setEmail] = useState(person.email);
   const [roleTitle, setRoleTitle] = useState(person.role_title);
   const [isAdmin, setIsAdmin] = useState(person.is_admin);
+  const [managerId, setManagerId] = useState(person.manager_id ?? '');
   const onlyAdmin = person.level === null;
+  const hasManager = !onlyAdmin && person.level! > 0;
+  const managers = hasManager ? managerOptions(people, person.level!) : [];
+  const oldManager = person.manager_name ?? 'o superior atual';
+  const managerChanged = hasManager && !!managerId && managerId !== person.manager_id;
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     const changes: Record<string, unknown> = {};
@@ -156,9 +161,13 @@ function EditPersonDialog({ person, self, onClose }: { person: Person; self: boo
     if (email.trim().toLowerCase() !== person.email.toLowerCase()) changes.email = email.trim();
     if (roleTitle.trim() !== person.role_title) changes.roleTitle = roleTitle.trim();
     if (isAdmin !== person.is_admin) changes.isAdmin = isAdmin;
+    if (managerChanged) changes.managerId = managerId;
     if (!Object.keys(changes).length) { onClose(); return; }
-    const r = await run(() => patch(`/admin/users/${person.id}`, changes), 'Dados salvos.');
-    if (r) onClose();
+    const r = await run(() => patch<{ moved: number | null }>(`/admin/users/${person.id}`, changes));
+    if (!r) return;
+    toast(r.moved === null ? 'Dados salvos.'
+      : `Dados salvos. ${firstName(person.name)} agora responde a ${people.find((p) => p.id === managerId)?.name}; ${r.moved} ${r.moved === 1 ? 'delegação em aberto passou' : 'delegações em aberto passaram'} para o novo superior.`);
+    onClose();
   };
   return (
     <Dialog title="Editar dados" onClose={onClose} footer={<>
@@ -182,6 +191,22 @@ function EditPersonDialog({ person, self, onClose }: { person: Person; self: boo
             <input id="ep-r" className="input" value={roleTitle} onChange={(e) => setRoleTitle(e.target.value)} required maxLength={80} />
           </div>
         </div>
+        {hasManager && (
+          <div className="field">
+            <label htmlFor="ep-m">Superior direto ({managerLabel(person.level!)})</label>
+            <select id="ep-m" className="select input" value={managerId} onChange={(e) => setManagerId(e.target.value)} disabled={!person.active}>
+              {person.manager_id && !managers.some((m) => m.id === person.manager_id) && <option value={person.manager_id}>{person.manager_name}</option>}
+              {person.manager_id && !managers.some((m) => m.id === person.manager_id) && <option value={person.manager_id}>{person.manager_name}</option>}
+              {managers.map((m) => <option key={m.id} value={m.id}>{managerName(m)}</option>)}
+            </select>
+            {!person.active && <span className="hint">Reative a pessoa para trocar o superior.</span>}
+            {managerChanged && (
+              <p className="hint" style={{ margin: '6px 0 0' }}>
+                Ao salvar, as delegações em aberto de {oldManager} para esta pessoa passam ao novo superior. O histórico e as tarefas arquivadas ficam com {oldManager}.
+              </p>
+            )}
+          </div>
+        )}
         {!onlyAdmin && (
           <label className="check">
             <input type="checkbox" checked={isAdmin} disabled={self && person.is_admin} onChange={(e) => setIsAdmin(e.target.checked)} />
@@ -189,42 +214,6 @@ function EditPersonDialog({ person, self, onClose }: { person: Person; self: boo
           </label>
         )}
         {self && person.is_admin && <p className="hint">Você não pode tirar o seu próprio acesso de administrador.</p>}
-        {!onlyAdmin && <p className="hint">Para trocar o superior direto, use “Transferir gestão” no menu da pessoa.</p>}
-        <ErrorText error={error} />
-      </form>
-    </Dialog>
-  );
-}
-
-function MoveDialog({ person, people, onClose }: { person: Person; people: Person[]; onClose: () => void }) {
-  const { run, busy, error } = useAction();
-  const toast = useToast();
-  const options = managerOptions(people, person.level ?? 1).filter((p) => p.id !== person.manager_id);
-  const [to, setTo] = useState(options[0]?.id ?? '');
-  const submit = async (e: FormEvent) => {
-    e.preventDefault();
-    const r = await run(() => post<{ moved: number }>(`/admin/users/${person.id}/transfer-management`, { managerId: to }));
-    if (r) {
-      toast(`Gestão transferida. ${r.moved} ${r.moved === 1 ? 'delegação em aberto passou' : 'delegações em aberto passaram'} para o novo superior.`);
-      onClose();
-    }
-  };
-  return (
-    <Dialog title="Transferir gestão" onClose={onClose} footer={<>
-      <button className="b" onClick={onClose}>Cancelar</button>
-      <button className="b pri" type="submit" form="mv" disabled={busy || !to}>Transferir</button>
-    </>}>
-      <form id="mv" onSubmit={submit} className="dialog-b" style={{ padding: 0 }}>
-        <p style={{ margin: 0 }}><b style={{ fontWeight: 500 }}>{person.name}</b> hoje responde a {person.manager_name}.</p>
-        {options.length === 0 ? <p className="err">Não há outro {managerLabel(person.level ?? 1)} ativo para assumir.</p> : (
-          <div className="field">
-            <label htmlFor="mv-to">Novo superior direto</label>
-            <select id="mv-to" className="select input" value={to} onChange={(e) => setTo(e.target.value)}>
-              {options.map((o) => <option key={o.id} value={o.id}>{managerName(o)}</option>)}
-            </select>
-          </div>
-        )}
-        <p className="hint">As delegações em aberto de {person.manager_name} para esta pessoa passam ao novo superior. O histórico e as tarefas arquivadas ficam com {person.manager_name}.</p>
         <ErrorText error={error} />
       </form>
     </Dialog>

@@ -313,6 +313,26 @@ describe('administração (seção 4.2 e 7.9)', () => {
     expect((await call('admin', 'POST', `/api/admin/users/${ctx.users.gest3.id}/transfer-management`, { managerId: ctx.users.dir2.id })).status).toBe(200);
   });
 
+  it('editar dados troca o superior direto junto com os outros dados, numa transação só (item 33)', async () => {
+    const t = await newTask(ctx, 'gest', 'Em aberto');
+    await delegateTask(ctx, 'gest', t.id, 'func');
+    // superior inválido: nada é salvo, nem o cargo
+    expect((await call('admin', 'PATCH', `/api/admin/users/${ctx.users.func.id}`, { roleTitle: 'Analista', managerId: ctx.users.dir.id })).status).toBe(422);
+    let p = (await call('admin', 'GET', '/api/admin/users')).body.find((u: any) => u.id === ctx.users.func.id);
+    expect(p.role_title).not.toBe('Analista');
+    expect(p.manager_id).toBe(ctx.users.gest.id);
+    // superior válido: salva o cargo e move a delegação em aberto
+    const r = await call('admin', 'PATCH', `/api/admin/users/${ctx.users.func.id}`, { roleTitle: 'Analista', managerId: ctx.users.gest2.id });
+    expect(r.status).toBe(200);
+    expect(r.body.moved).toBe(1);
+    p = (await call('admin', 'GET', '/api/admin/users')).body.find((u: any) => u.id === ctx.users.func.id);
+    expect(p.role_title).toBe('Analista');
+    expect(p.manager_id).toBe(ctx.users.gest2.id);
+    // sem superior no pedido, nada muda na hierarquia
+    expect((await call('admin', 'PATCH', `/api/admin/users/${ctx.users.func.id}`, { roleTitle: 'Analista II' })).body.moved).toBeNull();
+    expect((await call('gest', 'PATCH', `/api/admin/users/${ctx.users.func.id}`, { managerId: ctx.users.gest.id })).status).toBe(403);
+  });
+
   it('transferir gestão move as delegações em aberto e mantém o histórico com o antigo', async () => {
     const t1 = await newTask(ctx, 'gest', 'Aberta');
     const t2 = await newTask(ctx, 'gest', 'Já com ciente');
