@@ -118,7 +118,7 @@ Anexos e integração com o Google Drive, trabalho entre times, vários respons�
 | (fora da árvore) | Administrador | não se aplica |
 
 - Cada pessoa tem **exatamente um** superior direto, exceto o CEO.
-- O superior de uma pessoa está **sempre no nível imediatamente acima**.
+- O superior de uma pessoa está **no nível imediatamente acima**. Exceção: o **gestor** também pode responder **direto ao CEO** (por exemplo, quando o CEO também comanda uma área). Assim uma pessoa pode ser CEO, fazer o papel de diretor de uma área e ser administradora com uma conta só.
 - A hierarquia é uma árvore de pessoas. Não existe o conceito de "time" como entidade.
 - **Subordinados diretos** são as pessoas cujo superior direto é você.
 - O **administrador** é um papel de sistema, fora da árvore. Ele não delega nem recebe tarefas. A mesma pessoa pode ter as duas coisas: um cargo na árvore e a permissão de administrador.
@@ -225,7 +225,7 @@ Só o administrador:
 
 ### 7.3 Delegação
 
-- **RN-14** Só delega quem tem subordinados diretos, e **só para um subordinado direto**. Nunca se pula nível nem se delega para cima.
+- **RN-14** Só delega quem tem subordinados diretos, e **só para um subordinado direto**. Nunca se delega para cima nem para quem não é subordinado direto (o CEO delega a um gestor só se esse gestor responder direto a ele).
 - **RN-15** **Não existe "delegar" avulso.** A tarefa é criada primeiro (ou recebida) e o botão **Delegar** fica dentro dela.
 - **RN-16** Ao delegar, o sistema cria **um novo cartão** para o subordinado, com **código próprio**, ligado ao cartão de origem (`parent`). O título e a descrição são copiados. Prazo sugerido e observação são opcionais. A observação vira o primeiro comentário.
 - **RN-17** Cada cartão pode ter **uma delegação ativa** por vez. Para delegar de novo, a anterior precisa estar cancelada ou ter recebido o ciente.
@@ -267,7 +267,7 @@ Só o administrador:
 
 ### 7.9 Transferência de gestão
 
-- **RN-38** O administrador escolhe a pessoa e o novo superior, que deve estar no nível imediatamente acima.
+- **RN-38** O administrador escolhe a pessoa e o novo superior, que deve estar no nível imediatamente acima (para gestor: um diretor ou o CEO).
 - **RN-39** **Todas as delegações em aberto** que o superior antigo fez a essa pessoa passam a ter o novo superior como delegador. Isso inclui as aguardando aceite, em andamento, concluídas aguardando ciente e devolvidas.
 - **RN-40** O histórico e as tarefas já arquivadas continuam com o superior antigo.
 - **RN-41** Os três envolvidos são avisados: a pessoa, o novo superior e o antigo. A mudança fica registrada em `ManagerChange` e no log de cada tarefa afetada.

@@ -9,6 +9,15 @@ import { notify, queueEmail } from './notify.js';
 
 export const LEVEL_TITLES = ['CEO', 'Diretor', 'Gestor', 'Funcionário'];
 
+/** RN-38: o superior está no nível logo acima; o gestor também pode responder direto ao CEO (item 29). */
+export function managerLevelsFor(level: number): number[] {
+  return level === 2 ? [1, 0] : [level - 1];
+}
+
+function managerLabel(level: number) {
+  return managerLevelsFor(level).map((l) => LEVEL_TITLES[l]).join(' ou o ');
+}
+
 export async function listUsers(db: Db) {
   return many(
     db,
@@ -34,7 +43,7 @@ async function validateManager(db: Db, level: number | null, managerId: string |
   if (!managerId) throw badRequest('Escolha o superior direto.');
   const m = await one(db, 'SELECT level, active FROM users WHERE id = $1', [managerId]);
   if (!m || !m.active) throw badRequest('Superior não encontrado.');
-  if (m.level !== level - 1) throw badRequest(`O superior de um ${LEVEL_TITLES[level]} deve ser um ${LEVEL_TITLES[level - 1]}.`);
+  if (!managerLevelsFor(level).includes(m.level)) throw badRequest(`O superior de um ${LEVEL_TITLES[level]} deve ser um ${managerLabel(level)}.`);
   return managerId;
 }
 
@@ -109,7 +118,7 @@ export async function transferManagement(db: Db, admin: Actor, userId: string, n
   if (u.level === null || u.level === 0) throw conflict('Esta pessoa não tem superior na hierarquia.');
   if (u.manager_id === newManagerId) throw badRequest('Esta pessoa já responde a este superior.');
   const m = await one(db, 'SELECT id, name, level, active FROM users WHERE id = $1', [newManagerId]);
-  if (!m || !m.active || m.level !== u.level - 1) throw badRequest(`O novo superior deve ser um ${LEVEL_TITLES[u.level - 1]} ativo.`);
+  if (!m || !m.active || !managerLevelsFor(u.level).includes(m.level)) throw badRequest(`O novo superior deve ser um ${managerLabel(u.level)} ativo.`);
   const old = await one(db, 'SELECT id, name FROM users WHERE id = $1', [u.manager_id]);
 
   const moved = await many(

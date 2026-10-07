@@ -294,6 +294,25 @@ describe('administração (seção 4.2 e 7.9)', () => {
     expect((await ctx.app.inject({ method: 'POST', url: '/api/auth/password/set', headers: { 'x-synctasks': '1' }, payload: { token, password: 'outra-senha-boa' } })).statusCode).toBe(422);
   });
 
+  it('gestor pode responder direto ao CEO; funcionário não (item 29)', async () => {
+    expect((await call('admin', 'POST', '/api/admin/users', { name: 'Func CEO', email: 'fceo@teste.com', level: 3, managerId: ctx.users.ceo.id })).status).toBe(422);
+    expect((await call('admin', 'POST', '/api/admin/users', { name: 'Gest CEO', email: 'gceo@teste.com', level: 2, managerId: ctx.users.ceo.id })).status).toBe(200);
+    expect((await call('admin', 'POST', `/api/admin/users/${ctx.users.func3.id}/transfer-management`, { managerId: ctx.users.ceo.id })).status).toBe(422);
+    expect((await call('admin', 'POST', `/api/admin/users/${ctx.users.gest3.id}/transfer-management`, { managerId: ctx.users.ceo.id })).status).toBe(200);
+    // o CEO delega direto ao gestor, que dá conta e recebe o ciente
+    const t = await newTask(ctx, 'ceo', 'Plano da área comercial');
+    const d = await delegateTask(ctx, 'ceo', t.id, 'gest3');
+    await acceptTask(ctx, 'gest3', d.cardId);
+    // colegas para transferir: só do mesmo nível (os diretores, também abaixo do CEO, ficam de fora)
+    const targets = (await call('gest3', 'GET', `/api/cards/${d.cardId}/transfer-targets`)).body.map((r: any) => r.id);
+    expect(targets).not.toContain(ctx.users.dir.id);
+    expect(targets).not.toContain(ctx.users.dir2.id);
+    expect((await call('gest3', 'POST', `/api/cards/${d.cardId}/complete`)).status).toBe(200);
+    expect((await call('ceo', 'POST', `/api/delegations/${d.delegationId}/ack`)).status).toBe(200);
+    // de volta para um diretor
+    expect((await call('admin', 'POST', `/api/admin/users/${ctx.users.gest3.id}/transfer-management`, { managerId: ctx.users.dir2.id })).status).toBe(200);
+  });
+
   it('transferir gestão move as delegações em aberto e mantém o histórico com o antigo', async () => {
     const t1 = await newTask(ctx, 'gest', 'Aberta');
     const t2 = await newTask(ctx, 'gest', 'Já com ciente');
