@@ -398,6 +398,12 @@ table.t tr.off td { color: var(--faint); }
 .sw-opt:hover { border-color: var(--faint); }
 .sw-opt[aria-checked='true'] { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
 .board-area { border-radius: 10px; }
+/* Item 34: zoom do quadro. Só as fases e os cartões mudam de tamanho; a altura da fase compensa o zoom para ocupar a tela. */
+.kanban { zoom: var(--zoom, 1); }
+@media (min-width: 821px) { .kanban .col { max-height: calc((100dvh - 11rem) / var(--zoom, 1)); } }
+.zoom { display: inline-flex; align-items: center; margin-right: 6px; }
+.zoom .b { min-width: 1.9rem; justify-content: center; font-size: 0.95rem; }
+.zoom .zoom-val { font: 500 0.78rem var(--mono); min-width: 3.2rem; }
 .board-area.colored { background: var(--bc); padding: 12px 12px 4px; }
 .board-area.colored .col { background: color-mix(in srgb, var(--bg) 82%, var(--bc)); }
 .board-area.colored > .hint { padding: 0 2px 8px; }

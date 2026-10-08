@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useRef, useState, type DragEvent, type FormEvent } from 'react';
+import { Fragment, useEffect, useRef, useState, type CSSProperties, type DragEvent, type FormEvent } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { get, patch, post, type Board, type Card } from '../lib/api';
 import { go } from '../lib/router';
@@ -12,6 +12,19 @@ import { ExportTrelloDialog } from '../components/ExportTrello';
 import { asSingle, MAX_BATCH, MAX_TITLE, splitLines } from '../lib/lines';
 
 const STORE_KEY = 'synctasks.board';
+const ZOOM_KEY = 'synctasks.zoom';
+
+/** Item 34: zoom do quadro, de 70% a 130%, guardado neste computador. */
+export const ZOOM_MIN = 70;
+export const ZOOM_MAX = 130;
+const ZOOM_STEP = 10;
+
+function rememberedZoom(): number {
+  try {
+    const z = Number(localStorage.getItem(ZOOM_KEY));
+    return z >= ZOOM_MIN && z <= ZOOM_MAX ? z : 100;
+  } catch { return 100; }
+}
 
 function rememberedBoard(): string | null {
   try { return localStorage.getItem(STORE_KEY) ?? localStorage.getItem('nerus.board'); } catch { return null; }
@@ -41,6 +54,12 @@ export function BoardsPage() {
   const qc = useQueryClient();
   const [dragTab, setDragTab] = useState<string | null>(null);
   const [tabDrop, setTabDrop] = useState<{ id: string; after: boolean } | null>(null);
+  const [zoom, setZoomState] = useState(rememberedZoom);
+  const setZoom = (z: number) => {
+    const next = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, z));
+    setZoomState(next);
+    try { localStorage.setItem(ZOOM_KEY, String(next)); } catch { /* sem armazenamento: só não lembra */ }
+  };
   const boardId = boards.data?.some((b) => b.id === selected) ? selected! : boards.data?.[0]?.id;
   const board = useQuery({ queryKey: ['board', boardId], queryFn: () => get<Board>(`/boards/${boardId}`), enabled: !!boardId });
 
@@ -107,6 +126,16 @@ export function BoardsPage() {
           </button>
         ))}
         <span className="tabs-side">
+          {board.data && (
+            <span className="zoom" role="group" aria-label="Zoom do quadro">
+              <button className="b ghost sm quiet" aria-label="Diminuir o zoom" title="Diminuir o zoom"
+                disabled={zoom <= ZOOM_MIN} onClick={() => setZoom(zoom - ZOOM_STEP)}>−</button>
+              <button className="b ghost sm quiet zoom-val" aria-label={`Zoom em ${zoom}%; clique para voltar a 100%`} title="Voltar a 100%"
+                onClick={() => setZoom(100)}>{zoom}%</button>
+              <button className="b ghost sm quiet" aria-label="Aumentar o zoom" title="Aumentar o zoom"
+                disabled={zoom >= ZOOM_MAX} onClick={() => setZoom(zoom + ZOOM_STEP)}>+</button>
+            </span>
+          )}
           <button className="b ghost sm quiet" onClick={() => setDialog('newBoard')}><Icon name="plus" />Quadro</button>
           {boards.data && (
             <Menu label="Opções do quadro" items={[
@@ -131,7 +160,7 @@ export function BoardsPage() {
         <div className="empty"><b>Você ainda não tem quadros.</b>Crie o primeiro e escolha as fases que fizerem sentido para você.</div>
       )}
       {board.isLoading && <p className="loading">Carregando o quadro…</p>}
-      {board.data && <Kanban board={board.data} today={me.today} onNewList={() => setDialog('newList')} />}
+      {board.data && <Kanban board={board.data} today={me.today} zoom={zoom} onNewList={() => setDialog('newList')} />}
 
       {dialog === 'newBoard' && (
         <NameDialog title="Novo quadro" label="Nome do quadro" confirm="Criar" onClose={() => setDialog(null)}
@@ -210,7 +239,7 @@ const SORTS: { by: 'title' | 'created' | 'due'; label: string; done: string }[] 
 
 type DropAt = { listId: string; beforeId: string | null } | null;
 
-function Kanban({ board, today, onNewList }: { board: Board; today: string; onNewList: () => void }) {
+function Kanban({ board, today, zoom, onNewList }: { board: Board; today: string; zoom: number; onNewList: () => void }) {
   const { run, error } = useAction();
   const toast = useToast();
   const [dragId, setDragId] = useState<string | null>(null);
@@ -278,7 +307,7 @@ function Kanban({ board, today, onNewList }: { board: Board; today: string; onNe
   return (
     <div className={`board-area${board.color ? ` colored bc-${board.color}` : ''}`}>
       <ErrorText error={error} />
-      <div className="kanban">
+      <div className="kanban" style={{ '--zoom': zoom / 100 } as CSSProperties}>
         {board.lists.map((l, i) => {
           const cards = cardsOf(l.id);
           const here = dropAt?.listId === l.id;

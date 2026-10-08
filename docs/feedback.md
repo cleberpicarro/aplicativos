@@ -163,3 +163,13 @@ O número 22 ficou com o **site comercial** (registrado junto com o site, no ram
 ### Como ficou (superior direto em Editar dados)
 
 33. **Superior direto em “Editar dados”:** em **Pessoas → … → Editar dados**, abaixo de Nível e Cargo exibido, aparece o campo **Superior direto** (com os níveis possíveis entre parênteses, por exemplo “(Gestor)” para funcionário e “(Diretor ou CEO)” para gestor), já marcando o superior atual. Ao escolher outro nome, aparece logo abaixo o aviso: “Ao salvar, as delegações em aberto de [antigo] para esta pessoa passam ao novo superior. O histórico e as tarefas arquivadas ficam com [antigo].” Ao salvar, o aviso diz para quem a pessoa passou a responder e quantas delegações mudaram. Nome, e-mail, cargo e superior são salvos juntos: se algo der errado, nada é salvo. A troca faz o mesmo de antes (avisa os três, registra no log de cada tarefa movida). **Transferir gestão** saiu do menu **…**. O CEO e quem é só administrador não têm o campo; pessoa inativa vê o campo travado. Os prints estão em `item-33/` nos arquivos do projeto. A Ajuda (Manual do administrador), a especificação (RN-38 e tela Pessoas), o teste da API e o roteiro de tela da administração foram atualizados.
+
+## Zoom do quadro (implementado)
+
+| # | Ponto | Tela | Status |
+|---|---|---|---|
+| 34 | **Zoom +/− na visão geral do quadro**, pedido do Cleber (08/10), para ver mais fases de uma vez. **Proposta:** à direita das abas, botões **−**, **100%** e **+**; cada clique muda 10%, de 70% a 130%; clicar na porcentagem volta a 100%; só as fases e os cartões mudam de tamanho (menu, abas e janela da tarefa ficam iguais); o zoom fica guardado no computador. **Decidido:** o Cleber disse “pode fazer” (08/10) seguindo a proposta. O número 32 ficou de fora porque já foi citado no item 33. | Meus quadros | Implementado |
+
+### Como ficou (zoom do quadro)
+
+34. **Zoom do quadro:** em **Meus quadros**, à direita das abas e antes de **+ Quadro**, ficam **−**, a porcentagem e **+**. De 70% a 130%, de 10 em 10; nos limites o botão fica apagado. Clicar na porcentagem volta a 100%. Em 70%, numa tela de notebook (1366 de largura), cabem 6 fases em vez de 4. Arrastar tarefas continua funcionando com qualquer zoom, e a fase continua ocupando a altura da tela. O zoom fica guardado no navegador daquele computador e vale para todos os quadros (não vai para a conta). É diferente de **A−/A+** do topo, que muda o texto de todas as telas. Prints em `zoom-quadro/` nos arquivos do projeto. Ajuda, especificação (12.2) e roteiro de tela “zoom do quadro” atualizados.

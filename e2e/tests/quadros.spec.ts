@@ -73,6 +73,32 @@ test.describe('meus quadros', () => {
     expect(titulos).toEqual([...titulos].sort((x, y) => x.localeCompare(y, 'pt-BR', { sensitivity: 'base' })));
   });
 
+  test('zoom do quadro: diminuir, lembrar, arrastar com zoom e voltar a 100%', async ({ page }) => {
+    await entrar(page, 'lucas');
+    const largura = () => page.locator('.col').first().evaluate((el) => el.getBoundingClientRect().width);
+    const normal = await largura();
+    const menos = page.getByRole('button', { name: 'Diminuir o zoom' });
+    for (let i = 0; i < 3; i++) await menos.click();
+    await expect(menos).toBeDisabled(); // 70% é o mínimo
+    await expect(page.locator('.zoom-val')).toHaveText('70%');
+    expect(await largura()).toBeLessThan(normal * 0.75);
+
+    await page.reload();
+    await expect(page.locator('.zoom-val')).toHaveText('70%');
+    const a = unico('Zoom');
+    await criarTarefa(page, a);
+    const fazendo = page.getByRole('region', { name: 'Fazendo', exact: true });
+    await page.locator('article.kc', { hasText: a }).dragTo(fazendo.locator('.col-list'));
+    await expect(fazendo.locator('article.kc', { hasText: a })).toBeVisible();
+
+    await page.locator('.zoom-val').click();
+    await expect(page.locator('.zoom-val')).toHaveText('100%');
+    expect(Math.abs((await largura()) - normal)).toBeLessThan(1);
+    const mais = page.getByRole('button', { name: 'Aumentar o zoom' });
+    for (let i = 0; i < 3; i++) await mais.click();
+    await expect(mais).toBeDisabled(); // 130% é o máximo
+  });
+
   test('fase com tarefas não pode ser arquivada; vazia pode', async ({ page }) => {
     await entrar(page, 'lucas');
     const feito = page.getByRole('region', { name: 'Feito', exact: true });
