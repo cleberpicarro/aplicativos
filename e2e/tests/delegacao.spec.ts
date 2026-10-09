@@ -35,7 +35,7 @@ test.describe('delegação de ponta a ponta', () => {
     const titulo = unico('Orçamento de marketing');
     // Carlos (diretor) cria e delega para Marina
     await entrar(page, 'carlos');
-    await irPara(page, 'Meus quadros');
+    await irPara(page, 'Tarefas');
     const origem = await criarTarefa(page, titulo);
     const paraMarina = await delegar(page, origem, /Marina/, 'Preciso até sexta');
 
@@ -98,7 +98,7 @@ test.describe('delegação de ponta a ponta', () => {
   test('devolver com justificativa, redelegar para outra pessoa e cancelar', async ({ page, browser }) => {
     const titulo = unico('Inventário do estoque');
     await entrar(page, 'marina');
-    await irPara(page, 'Meus quadros');
+    await irPara(page, 'Tarefas');
     const origem = await criarTarefa(page, titulo);
     const filho = await delegar(page, origem, /João/);
 
@@ -144,7 +144,7 @@ test.describe('delegação de ponta a ponta', () => {
   test('avisos: quem recebe uma delegação vê o aviso e abre a tarefa por ele', async ({ page, browser }) => {
     const titulo = unico('Revisar contrato');
     await entrar(page, 'paulo');
-    await irPara(page, 'Meus quadros');
+    await irPara(page, 'Tarefas');
     const origem = await criarTarefa(page, titulo);
     const filho = await delegar(page, origem, /Lucas/);
     const lucas = await outraPessoa(browser, 'lucas');

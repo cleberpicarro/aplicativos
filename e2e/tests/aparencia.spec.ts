@@ -41,7 +41,7 @@ test.describe('aparência e preferências', () => {
 
   test('mudar a ordem dos quadros pelo menu', async ({ page }) => {
     await entrar(page, 'paulo');
-    await irPara(page, 'Meus quadros');
+    await irPara(page, 'Tarefas');
     const nome = unico('Segundo');
     await page.getByRole('button', { name: 'Quadro', exact: true }).click();
     await dialogo(page, 'Novo quadro').getByLabel('Nome do quadro').fill(nome);

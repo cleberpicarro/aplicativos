@@ -4,7 +4,9 @@ import { BookmarkletButton } from './Capture';
 
 const SECTIONS: [string, string][] = [
   ['inicio', 'Primeiros passos'],
-  ['quadros', 'Meus quadros'],
+  ['quadros', 'Tarefas: quadros'],
+  ['tabela', 'Tarefas: tabela e filtros'],
+  ['arquivadas', 'Arquivadas'],
   ['trello', 'Importar e exportar (Trello)'],
   ['capturar', 'Capturar da web'],
   ['entrada', 'Caixa de entrada'],
@@ -55,14 +57,14 @@ export function HelpPage({ isAdmin }: { isAdmin: boolean }) {
       <Sec id="inicio" title="Primeiros passos">
         <ol>
           <li>Você recebe um e-mail com o link para <b>definir sua senha</b>. Depois, entre com seu e-mail e senha.</li>
-          <li>No menu à esquerda ficam o <b>Painel</b> e as <b>Tarefas delegadas</b> (só para quem tem equipe), <b>Meus quadros</b>, a <b>Caixa de entrada</b> e <b>Avisos</b>. Quem tem equipe começa pelo Painel.</li>
+          <li>No menu à esquerda ficam o <b>Painel</b> e as <b>Tarefas delegadas</b> (só para quem tem equipe), <b>Tarefas</b>, a <b>Caixa de entrada</b>, as <b>Arquivadas</b> e <b>Avisos</b>. Quem tem equipe começa pelo Painel.</li>
           <li>O menu pode ser recolhido pelo botão <b>Recolher menu</b>, no rodapé dele. Recolhido, ele mostra só os ícones.</li>
           <li>No topo, à direita, ficam a <b>busca</b>, o tamanho do texto (<b>A−</b> / <b>A+</b>) e o botão de <b>tema</b>: automático (segue o Windows), claro ou escuro. Cada clique troca o tema.</li>
         </ol>
       </Sec>
 
-      <Sec id="quadros" title="Meus quadros">
-        <p>Cada pessoa tem seus quadros e organiza como quiser. Ninguém mais vê os seus quadros.</p>
+      <Sec id="quadros" title="Tarefas: quadros">
+        <p>Cada pessoa tem seus quadros e organiza como quiser. Ninguém mais vê os seus quadros. Em <b>Tarefas</b>, a chave <b>Quadro / Tabela</b>, no topo à direita, troca entre os quadros (kanban) e a <b>tabela</b> com todas as tarefas; a escolha fica lembrada neste computador.</p>
         <ul>
           <li><b>Novo quadro:</b> clique em <b>+ Quadro</b>, à direita das abas. Ele começa com as fases A fazer, Fazendo e Feito.</li>
           <li><b>Menu do quadro:</b> no botão <b>…</b> à direita das abas dá para renomear o quadro, escolher a <b>cor do quadro</b>, criar uma nova fase, mover o quadro para a esquerda ou a direita e escolher o <b>fundo da área de trabalho</b> (vale para todas as telas e fica guardado na sua conta).</li>
@@ -75,7 +77,30 @@ export function HelpPage({ isAdmin }: { isAdmin: boolean }) {
           <li><b>Mover para outro quadro:</b> abra a tarefa e use <b>Mover para</b>: escolha o quadro e a fase. Ali também há <b>Para o topo</b> e <b>Para o fim</b>, úteis no celular.</li>
           <li><b>Abrir:</b> clique no título. Ali você edita título, descrição e prazo, monta o <b>checklist</b> e comenta.</li>
           <li><b>Concluir:</b> clique no círculo à esquerda do título, ou em <b>Concluir</b> dentro da tarefa. A fase não define se a tarefa está concluída: concluir é sempre um clique explícito.</li>
-          <li><b>Arquivar:</b> na tarefa concluída aparece um pequeno ícone de arquivo, no canto do cartão. Um clique tira a tarefa do quadro, e o aviso embaixo traz <b>Desfazer</b> por alguns segundos. Também há <b>Arquivar</b> dentro da tarefa e <b>Arquivar as concluídas</b> no menu <b>…</b> da fase. A tarefa arquivada continua na <b>busca</b>; abra-a e use <b>Desarquivar</b> para trazê-la de volta. Tarefa recebida por delegação é arquivada por quem delegou, ao dar o ciente.</li>
+          <li><b>Arquivar:</b> na tarefa concluída aparece um pequeno ícone de arquivo, no canto do cartão. Um clique tira a tarefa do quadro, e o aviso embaixo traz <b>Desfazer</b> por alguns segundos. Também há <b>Arquivar</b> dentro da tarefa e <b>Arquivar as concluídas</b> no menu <b>…</b> da fase. A tarefa arquivada vai para <b>Arquivadas</b>, no menu à esquerda, e continua na <b>busca</b>; use <b>Desarquivar</b> para trazê-la de volta. Tarefa recebida por delegação é arquivada por quem delegou, ao dar o ciente.</li>
+        </ul>
+      </Sec>
+
+      <Sec id="tabela" title="Tarefas: tabela e filtros">
+        <p>Em <b>Tarefas</b>, clique em <b>Tabela</b> (no topo, à direita) para ver as tarefas de <b>todos os seus quadros</b> e da caixa de entrada numa lista só. Só aparecem as suas tarefas, como nos quadros.</p>
+        <ul>
+          <li><b>Colunas:</b> código, tarefa, quadro e fase, prazo (vermelho quando atrasado), situação, delegação (“Delegada para…” ou “Recebida de…”), checklist e data de criação. No botão <b>Colunas</b> dá para mostrar também concluída em, arquivada em, privada, origem e descrição.</li>
+          <li><b>Ordenar:</b> clique no título da coluna; outro clique inverte a ordem.</li>
+          <li><b>Abrir:</b> clique na linha.</li>
+          <li><b>Filtro:</b> cada condição tem <b>campo</b>, <b>operador</b> e <b>valor</b>, por exemplo “Prazo · nos próximos · 7 dias”. No bloco <b>Todas estas condições</b> a tarefa precisa atender a todas; no bloco <b>Qualquer uma destas condições</b>, a pelo menos uma. As condições em uso aparecem acima da tabela, e o <b>×</b> de cada uma a tira na hora.</li>
+          <li><b>Filtros prontos e salvos:</b> clique no botão <b>Filtro</b> para escolher um pronto (Atrasadas, Vencem nos próximos 7 dias, Delegadas por mim em aberto…) ou um dos seus. Para guardar um filtro, dê um nome e clique em <b>Salvar filtro</b>. Só você vê os seus filtros. O último filtro usado fica lembrado.</li>
+          <li><b>Arquivadas:</b> ficam fora da tabela; para vê-las, use a condição <b>Arquivada · é · Sim</b>.</li>
+          <li><b>Exportar planilha:</b> baixa um arquivo que abre no Excel, com as colunas e o filtro que estão na tela (até 5.000 tarefas).</li>
+        </ul>
+      </Sec>
+
+      <Sec id="arquivadas" title="Arquivadas">
+        <p>No menu à esquerda, <b>Arquivadas</b> lista as tarefas que <b>você</b> arquivou, da mais recente para a mais antiga, com o quadro e a fase de onde saíram.</p>
+        <ul>
+          <li><b>Pesquisar:</b> digite um código (ST-000123, ou só 123) ou palavras do título e da descrição.</li>
+          <li><b>Desarquivar:</b> o botão na linha devolve a tarefa à mesma fase e posição (ou à primeira fase do quadro, se a fase foi arquivada). O aviso traz <b>Desfazer</b>.</li>
+          <li><b>Delegadas com ciente:</b> as tarefas que você delegou e em que deu o ciente também aparecem, marcadas <b>Delegada para…</b>. Elas são só para consulta: o ciente não se desfaz.</li>
+          <li>Tarefa que você recebeu por delegação e que foi arquivada pelo seu superior não aparece aqui.</li>
         </ul>
       </Sec>
 
@@ -83,7 +108,7 @@ export function HelpPage({ isAdmin }: { isAdmin: boolean }) {
         <p>Dá para trazer um quadro do Trello para os seus quadros. Cada quadro do Trello vira um quadro novo seu.</p>
         <ol>
           <li>No Trello, abra o quadro, clique no menu <b>…</b> e escolha <b>Imprimir, exportar e compartilhar</b> → <b>Exportar como JSON</b>. Salve o arquivo.</li>
-          <li>Aqui, em <b>Meus quadros</b>, abra o menu <b>…</b> do quadro (à direita das abas), clique em <b>Importar do Trello</b> e escolha o arquivo.</li>
+          <li>Aqui, em <b>Tarefas</b> (vendo os quadros), abra o menu <b>…</b> do quadro (à direita das abas), clique em <b>Importar do Trello</b> e escolha o arquivo.</li>
           <li>Confira a pré-visualização, ajuste o nome do quadro se quiser e clique em <b>Importar</b>.</li>
         </ol>
         <ul>

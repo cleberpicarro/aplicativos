@@ -30,7 +30,7 @@ test.describe('transferir e buscar', () => {
 
   test('buscar por código (com ou sem ST-) e por texto @celular', async ({ page }) => {
     await entrar(page, 'lucas');
-    await irPara(page, 'Meus quadros').catch(() => undefined);
+    await irPara(page, 'Tarefas').catch(() => undefined);
     const titulo = unico('Pedido de compra');
     const codigo = await criarTarefa(page, titulo);
     const busca = page.getByLabel('Buscar tarefa ou código');

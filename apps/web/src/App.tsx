@@ -15,6 +15,8 @@ import { ForgotPage, LoginPage, SetPasswordPage } from './pages/Auth';
 import { HelpPage } from './pages/Help';
 import { CapturePage } from './pages/Capture';
 import { DashboardPage } from './pages/Dashboard';
+import { ArchivedPage } from './pages/Archived';
+import { TablePage } from './pages/Table';
 
 const FS = [12, 13, 14, 15, 16, 18];
 const FS_KEY = 'synctasks.fs';
@@ -50,8 +52,9 @@ export function App() {
 
 const PAGES: Record<string, { title: string }> = {
   '/painel': { title: 'Painel' },
-  '/quadros': { title: 'Meus quadros' },
+  '/quadros': { title: 'Tarefas' },
   '/entrada': { title: 'Caixa de entrada' },
+  '/arquivadas': { title: 'Arquivadas' },
   '/delegadas': { title: 'Tarefas delegadas' },
   '/avisos': { title: 'Avisos' },
   '/pessoas': { title: 'Pessoas' },
@@ -99,6 +102,10 @@ function Shell() {
   const [collapsed, setCollapsed] = useState(() => stored('synctasks.side', ['open', 'closed'] as const, 'open') === 'closed');
   const lastPage = useRef('/quadros');
 
+  // Item 36: "Tarefas" em quadro (kanban) ou tabela. A escolha fica lembrada no navegador.
+  const [view, setViewState] = useState<'quadro' | 'tabela'>(() => stored('synctasks.visao', ['quadro', 'tabela'] as const, 'quadro'));
+  const setView = (v: 'quadro' | 'tabela') => { store('synctasks.visao', v); setViewState(v); };
+
   const toggleSide = () => setCollapsed((c) => { store('synctasks.side', c ? 'open' : 'closed'); return !c; });
 
   const hasReports = me.directReports.length > 0;
@@ -119,8 +126,9 @@ function Shell() {
 
   const nav: { path: string; label: string; icon: IconName; n?: number; attn?: boolean; show: boolean }[] = [
     { path: '/painel', label: 'Painel', icon: 'chart', show: hasReports },
-    { path: '/quadros', label: 'Meus quadros', icon: 'board', show: me.user.inHierarchy },
+    { path: '/quadros', label: 'Tarefas', icon: 'board', show: me.user.inHierarchy },
     { path: '/entrada', label: 'Caixa de entrada', icon: 'inbox', n: me.counts.inbox, show: me.user.inHierarchy },
+    { path: '/arquivadas', label: 'Arquivadas', icon: 'archive', show: me.user.inHierarchy },
     { path: '/delegadas', label: 'Tarefas delegadas', icon: 'users', n: me.counts.needAction, attn: true, show: hasReports },
     { path: '/avisos', label: 'Avisos', icon: 'bell', n: me.counts.unread, show: true },
     { path: '/pessoas', label: 'Pessoas', icon: 'shield', show: me.user.isAdmin },
@@ -164,6 +172,12 @@ function Shell() {
         <div className="topbar">
           <h1>{PAGES[page]?.title}</h1>
           <div className="tools">
+            {page === '/quadros' && (
+              <span className="view-switch" role="group" aria-label="Ver as tarefas em">
+                <button aria-pressed={view === 'quadro'} onClick={() => setView('quadro')} title="Quadros (kanban)" aria-label="Ver em quadros"><Icon name="board" />Quadro</button>
+                <button aria-pressed={view === 'tabela'} onClick={() => setView('tabela')} title="Todas as tarefas numa tabela, com filtros" aria-label="Ver em tabela"><Icon name="table" />Tabela</button>
+              </span>
+            )}
             {me.user.inHierarchy && <SearchBox />}
             <span className="seg" role="group" aria-label="Tamanho do texto">
               <button onClick={font.down} disabled={!font.down} aria-label="Diminuir texto" title="Diminuir texto">A−</button>
@@ -175,7 +189,8 @@ function Shell() {
           </div>
         </div>
         {page === '/painel' && <DashboardPage />}
-        {page === '/quadros' && <BoardsPage />}
+        {page === '/quadros' && (view === 'tabela' ? <TablePage /> : <BoardsPage />)}
+        {page === '/arquivadas' && <ArchivedPage />}
         {page === '/entrada' && <InboxPage />}
         {page === '/delegadas' && <DelegatedPage />}
         {page === '/avisos' && <NotificationsPage />}

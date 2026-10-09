@@ -47,7 +47,7 @@ export async function outraPessoa(browser: Browser, quem: Pessoa, opts: Paramete
 }
 
 export async function irPara(page: Page, menu: string) {
-  const link = page.getByRole('navigation', { name: 'Principal' }).getByRole('link', { name: new RegExp(menu) });
+  const link = page.getByRole('navigation', { name: 'Principal' }).getByRole('link', { name: new RegExp(`^${menu}(\\s*\\d+)?$`) });
   await link.click();
   await expect(page.locator('.topbar h1')).toHaveText(menu);
 }

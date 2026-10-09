@@ -19,7 +19,7 @@ test.describe('entrar e sair', () => {
 
   test('cada pessoa cai na tela certa e consegue sair @celular', async ({ page }) => {
     await entrar(page, 'joao');
-    await expect(page.locator('.topbar h1')).toHaveText('Meus quadros');
+    await expect(page.locator('.topbar h1')).toHaveText('Tarefas');
     await expect(page.getByRole('link', { name: /Painel/ })).toHaveCount(0); // funcionário não tem equipe
     await sair(page);
     await page.reload();
@@ -31,7 +31,7 @@ test.describe('entrar e sair', () => {
 
     await entrar(page, 'renata');
     await expect(page.locator('.topbar h1')).toHaveText('Pessoas');
-    await expect(page.getByRole('link', { name: /Meus quadros/ })).toHaveCount(0);
+    await expect(page.getByRole('link', { name: /^Tarefas$/ })).toHaveCount(0);
   });
 
   test('esqueci minha senha responde igual para qualquer e-mail', async ({ page }) => {

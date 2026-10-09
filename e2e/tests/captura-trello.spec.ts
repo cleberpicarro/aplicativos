@@ -14,7 +14,7 @@ test.describe('captura e importação', () => {
     await row.getByRole('button', { name: 'Aceitar e organizar' }).click();
     await dialogo(page, 'Aceitar e organizar').getByRole('button', { name: 'Aceitar' }).click();
     await expect(row).toHaveCount(0);
-    await irPara(page, 'Meus quadros');
+    await irPara(page, 'Tarefas');
     await expect(page.locator('article.kc', { hasText: titulo })).toBeVisible();
   });
 

@@ -166,7 +166,7 @@ Só o administrador:
 
 ### 6.1 Funcionário
 
-1. Abre o app em **Meus quadros** e organiza as tarefas nas fases que criou.
+1. Abre o app em **Tarefas** e organiza as tarefas nas fases que criou.
 2. Vê um número na **Caixa de entrada** quando chega uma delegação.
 3. Abre a caixa de entrada e, para cada item:
    - **aceita**, escolhendo em qual quadro e fase colocar; ou
@@ -402,15 +402,18 @@ Cada evento gera um **aviso no app** e um **e-mail**:
 Menu lateral, **nesta ordem**:
 
 1. **Painel** (só para quem tem subordinados; é a tela inicial dessas pessoas)
-2. **Meus quadros**
+2. **Tarefas** (antes “Meus quadros”; quadros ou tabela, item 36)
 3. **Caixa de entrada** (com contador)
-4. **Tarefas delegadas** (só para quem tem subordinados; contador do que precisa de ação, em âmbar)
-5. **Avisos** (contador de não lidos)
-6. **Pessoas** (só para o administrador)
+4. **Arquivadas** (item 35)
+5. **Tarefas delegadas** (só para quem tem subordinados; contador do que precisa de ação, em âmbar)
+6. **Avisos** (contador de não lidos)
+7. **Pessoas** (só para o administrador)
 
 No topo de cada tela: título, campo de **busca** (texto ou código) e controle **A− / A+**. No celular, o menu vira uma barra horizontal rolável.
 
-### 12.2 Meus quadros
+### 12.2 Tarefas: quadros
+
+- No topo, à direita, a chave **Quadro / Tabela** (item 36) troca entre os quadros (kanban, descritos abaixo) e a tabela (12.2a). A escolha fica guardada no navegador.
 
 - Abas com os quadros da pessoa à esquerda; à direita, discretos, **+ Quadro** e o menu **…** do quadro (renomear, **cor do quadro**, nova fase, mover o quadro para a esquerda/direita, **fundo da área de trabalho** e, separados no fim, **Importar do Trello** e **Exportar para o Trello**).
 - **Exportar para o Trello** (item 31): cria no Trello um quadro novo com as fases (listas, na mesma ordem) e as tarefas não arquivadas do quadro aberto: título, descrição com código ST-, situação e delegação no topo, prazo, marca de concluída, checklist e comentários (autor e data no texto). Privadas só se a pessoa marcar. A pessoa autoriza no Trello (permissão de 1 dia, só no navegador); o envio sai do navegador direto para o Trello, sem passar o código de acesso pelo servidor. Precisa da variável `TRELLO_API_KEY` no servidor; sem ela, o diálogo avisa. Nada muda no SyncTasks.
@@ -427,11 +430,29 @@ No topo de cada tela: título, campo de **busca** (texto ou código) e controle 
 - **Arquivar tarefa concluída:** ícone de arquivo no cartão concluído (só em tarefa própria), **Arquivar** dentro da tarefa e **Arquivar as concluídas** no menu da fase, sempre com **Desfazer** no aviso. A arquivada continua na busca e pode ser **desarquivada** (volta à mesma fase, ou à primeira fase do quadro se a fase foi arquivada). Arquivar e desarquivar entram no log.
 - **Estado vazio:** "Você ainda não tem quadros…", com o botão de criar.
 
+### 12.2a Tarefas: tabela e filtros (item 36)
+
+- Mostra numa tabela as tarefas **da própria pessoa** de todos os quadros e da caixa de entrada (as mesmas que ela vê nos quadros e na caixa de entrada; nunca de outra pessoa). Arquivadas só com a condição “Arquivada · é · Sim”; as apagadas pelo “Desfazer” da criação (item 30) nunca aparecem.
+- **Colunas padrão:** Código, Tarefa, Quadro · Fase (ou “Caixa de entrada”), Prazo (vermelho quando atrasado), Situação (Aberta, Concluída, Arquivada), Delegação (“Delegada para X”, com “aguarda seu ciente” quando for o caso, “Recebida de X” ou “Transferida por X”), Checklist e Criada em. Opcionais pelo botão **Colunas**: Concluída em, Arquivada em, Privada, Origem e Descrição. A escolha fica no navegador.
+- Clicar no título da coluna ordena (outro clique inverte); clicar na linha abre a tarefa. Mostra 100 por vez, com **Carregar mais**.
+- **Filtro por condições** (como no Pipedrive): cada condição é campo + operador + valor. Dois blocos: **Todas estas condições** (E) e **Qualquer uma destas condições** (OU); bloco vazio não conta. Campos: Título, Descrição, Código, Quadro, Fase, Situação, Prazo, Criada em, Concluída em, Delegada para, Recebida de, Privada, Arquivada e Origem. Operadores: texto (contém, não contém, é, está vazio, não está vazio); quadro, fase, situação e origem (é, não é); data (antes de, depois de, é, entre, nos últimos N dias, nos próximos N dias, está vazio, não está vazio, com “Hoje” como valor, que é o dia em Brasília); pessoa (é, não é, é alguém, é ninguém); privada e arquivada (sim ou não).
+- As condições em uso aparecem como etiquetas acima da tabela; o × tira a condição na hora.
+- **Filtros prontos:** Todas as abertas, Atrasadas, Vencem nos próximos 7 dias, Delegadas por mim em aberto, Concluídas nos últimos 30 dias. **Filtros salvos** com nome (até 50 por pessoa), visíveis só para quem os criou; podem ser editados e excluídos. O último filtro usado fica guardado no navegador.
+- **Exportar planilha:** CSV com separador “;” (abre direto no Excel em português), com as colunas e o filtro da tela, até 5.000 tarefas.
+- O servidor só aceita campos e operadores da lista; os valores sempre entram como parâmetros da consulta.
+
 ### 12.3 Caixa de entrada
 
 - Lista com ícone, título, código, origem ("Delegada por…" ou "Transferida por…"), prazo sugerido e observação.
 - Ações: **Aceitar e organizar** (escolher quadro e fase) e **Devolver**, só para delegações, com justificativa obrigatória.
 - **Estado vazio:** "Nada novo por aqui…".
+
+### 12.3a Arquivadas (item 35)
+
+- Lista as tarefas arquivadas **pela própria pessoa**, da mais recente para a mais antiga, 50 por vez com **Carregar mais**: código, título, quadro e fase de onde saiu, data de conclusão e data de arquivamento.
+- Entram: as tarefas **próprias** que ela arquivou (botão **Desarquivar** na linha, com **Desfazer** no aviso; volta à mesma fase e posição, ou à primeira fase do quadro se a fase foi arquivada) e as tarefas que ela **delegou e em que deu o ciente**, marcadas **“Delegada para X”**, só para consulta (o ciente não se desfaz; o quadro do subordinado não aparece).
+- Não entram: tarefas recebidas por delegação (quem arquivou foi o superior), delegações canceladas e as tarefas apagadas pelo “Desfazer” da criação (item 30).
+- **Pesquisa** por código (ST-000123, NT-…, ou só o número) ou por texto do título e da descrição.
 
 ### 12.4 Cartão (tarefa aberta)
 
@@ -623,6 +644,8 @@ Triggers bloqueiam `UPDATE` e `DELETE` nessa tabela.
 
 **`sessions` / `password_tokens`**: tokens de sessão e de definição de senha, com expiração.
 
+**`saved_filters`** (item 36): id, owner_id, name (até 80), filter jsonb (`{all: [...], any: [...]}`, cada condição `{field, op, value}`), created_at, updated_at. Só a dona ou o dono vê e altera.
+
 ### 14.2 Índices principais
 
 - `cards(owner_id, archived_at)`
@@ -656,6 +679,9 @@ REST com JSON, sob `/api`. A autenticação usa cookie httpOnly de sessão. Toda
 | `GET /delegations?scope=mine` | dados da tela Tarefas delegadas (agrupados por subordinado, com contadores) |
 | `GET /cards/:id/events` | log (admin, CEO e diretor) |
 | `GET /search?q=` | busca por texto ou código |
+| `GET /archived?q=&offset=` | tela Arquivadas (item 35) |
+| `GET /table?filter=&sort=&dir=&offset=&limit=` · `GET /table/options` | tabela com filtro por condições (item 36) |
+| `GET/POST /filters` · `PATCH/DELETE /filters/:id` | filtros salvos da tabela (só os da própria pessoa) |
 | `GET /notifications` · `POST /notifications/read` | avisos |
 | `GET/POST/PATCH /admin/users` · `POST /admin/users/:id/transfer-management` · `POST /admin/users/:id/deactivate` | administração |
 

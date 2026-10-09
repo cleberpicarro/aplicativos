@@ -24,7 +24,7 @@ const AUDITORS = ['admin', 'ceo', 'dir'];
 
 /** Fotografia das tabelas de dados: qualquer mudança aparece como diferença. */
 async function snapshot() {
-  const tables = ['boards', 'lists', 'cards', 'checklist_items', 'comments', 'delegations', 'card_events', 'users', 'manager_changes'];
+  const tables = ['boards', 'lists', 'cards', 'checklist_items', 'comments', 'delegations', 'card_events', 'users', 'manager_changes', 'saved_filters'];
   const out: Record<string, string> = {};
   for (const t of tables) {
     const r = await ctx.pool.query(`SELECT md5(coalesce(string_agg(x::text, '|' ORDER BY x::text), '')) AS h FROM ${t} x`);
@@ -69,6 +69,8 @@ beforeAll(async () => {
   const p4 = await newTask(ctx, 'gest', 'Na caixa de entrada');
   const d4 = await delegateTask(ctx, 'gest', p4.id, 'func2');
   s.inboxCard = d4.cardId;
+  // Filtro salvo da tabela (item 36).
+  s.filter = (await call('gest', 'POST', '/api/filters', { name: 'Do gestor', filter: { all: [{ field: 'status', op: 'eq', value: 'open' }] } })).body.id;
 });
 afterAll(async () => {
   await ctx.app.close();
@@ -120,6 +122,9 @@ async function attemptsAgainstGest(who: string): Promise<Attempt[]> {
     { method: 'POST', url: '/api/cards/undo-create', body: { ids: [s.priv, s.done, s.parent] }, route: 'POST /api/cards/undo-create' },
     { method: 'POST', url: `/api/cards/${s.own}/comments`, body: { body: 'intrometido' }, route: 'POST /api/cards/:id/comments' },
     { method: 'POST', url: `/api/cards/${s.priv}/comments`, body: { body: 'intrometido' }, route: 'POST /api/cards/:id/comments' },
+    { method: 'PATCH', url: `/api/filters/${s.filter}`, body: { name: 'invasão' }, route: 'PATCH /api/filters/:id' },
+    { method: 'PATCH', url: `/api/filters/${s.filter}`, body: { filter: { all: [] } }, route: 'PATCH /api/filters/:id' },
+    { method: 'DELETE', url: `/api/filters/${s.filter}`, route: 'DELETE /api/filters/:id' },
     ...card(s.own), ...card(s.priv), ...card(s.done), ...card(s.parent), ...card(s.inboxCard),
     ...deleg(s.deleg), ...deleg(s.awaiting), ...deleg(s.declined),
   ];
@@ -202,6 +207,11 @@ describe('permissões em massa (frente 2)', () => {
         const dash = JSON.stringify((await call(who, 'GET', '/api/dashboard')).body);
         expect(dash.includes('Segredo'), who).toBe(false);
       }
+      // Arquivadas e tabela (itens 35 e 36): só as tarefas da própria pessoa, com ou sem filtro.
+      expect(JSON.stringify((await call(who, 'GET', '/api/archived?q=Segredo')).body).includes('Segredo'), who).toBe(false);
+      const f = encodeURIComponent(JSON.stringify({ any: [{ field: 'title', op: 'contains', value: 'Segredo' }, { field: 'archived', op: 'eq', value: true }] }));
+      expect(JSON.stringify((await call(who, 'GET', `/api/table?filter=${f}`)).body).includes('Segredo'), who).toBe(false);
+      expect(JSON.stringify((await call(who, 'GET', '/api/filters')).body).includes('Do gestor'), who).toBe(false);
     }
     // O contador "próprias" do diretor não conta a privada (gest tem 2 abertas próprias não privadas: comum e as de origem).
     const ov = (await call('dir', 'GET', '/api/delegations')).body;
@@ -278,10 +288,11 @@ describe('permissões em massa (frente 2)', () => {
       'POST /api/cards/:id/accept', 'POST /api/cards/:id/decline', 'GET /api/cards/:id/transfer-targets', 'POST /api/cards/:id/transfer',
       'POST /api/delegations/:id/ack', 'POST /api/delegations/:id/reopen', 'POST /api/delegations/:id/cancel', 'POST /api/delegations/:id/redelegate',
       'GET /api/admin/users', 'POST /api/admin/users', 'PATCH /api/admin/users/:id', 'POST /api/admin/users/:id/transfer-management',
-      'POST /api/admin/users/:id/active', 'POST /api/admin/users/:id/invite',
+      'POST /api/admin/users/:id/active', 'POST /api/admin/users/:id/invite', 'PATCH /api/filters/:id', 'DELETE /api/filters/:id',
       // só leem ou alteram os dados da própria pessoa (não recebem identificador de outra)
       'GET /api/me', 'PATCH /api/me/prefs', 'GET /api/boards', 'POST /api/boards', 'GET /api/inbox', 'GET /api/delegations', 'GET /api/dashboard',
       'GET /api/search', 'GET /api/notifications', 'POST /api/notifications/read', 'POST /api/capture', 'POST /api/import/trello',
+      'GET /api/archived', 'GET /api/table', 'GET /api/table/options', 'GET /api/filters', 'POST /api/filters',
       // públicas por natureza
       'POST /api/auth/login', 'POST /api/auth/logout', 'POST /api/auth/password/forgot', 'POST /api/auth/password/set', 'GET /api/health', 'GET /compartilhar',
     ]);

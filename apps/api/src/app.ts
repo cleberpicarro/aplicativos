@@ -16,6 +16,8 @@ import * as misc from './services/misc.js';
 import { importTrello, trelloImportSchema } from './services/importer.js';
 import { captureWeb } from './services/capture.js';
 import { dashboard } from './services/dashboard.js';
+import { listArchived } from './services/archived.js';
+import * as table from './services/table.js';
 import { cardDetail, cardIdByCode, loadCard } from './services/cards.js';
 import { canSeeLog } from './services/actors.js';
 import { isoDate } from './lib/dates.js';
@@ -346,6 +348,50 @@ export async function buildApp({ pool, logger = false, serveWeb = false }: AppOp
   app.post('/api/import/trello', { bodyLimit: 20 * 1024 * 1024 }, async (req) => {
     const data = trelloImportSchema.parse(req.body);
     return inTx((db) => importTrello(db, need(req), data));
+  });
+
+  /* ---------------- arquivadas (item 35) ---------------- */
+  app.get('/api/archived', async (req) => {
+    const a = need(req);
+    const { q, offset } = z.object({ q: z.string().max(200).default(''), offset: z.coerce.number().int().min(0).max(100000).default(0) }).parse(req.query);
+    return listArchived(pool, a, q, offset);
+  });
+
+  /* ---------------- tabela com filtros (item 36) ---------------- */
+  app.get('/api/table', async (req) => {
+    const a = need(req);
+    const query = z
+      .object({
+        filter: z.string().max(20000).default('{}'),
+        sort: z.enum(Object.keys(table.SORTS) as [table.SortKey, ...table.SortKey[]]).default('due'),
+        dir: z.enum(['asc', 'desc']).default('asc'),
+        offset: z.coerce.number().int().min(0).max(100000).default(0),
+        limit: z.coerce.number().int().min(1).max(table.TABLE_MAX).default(table.TABLE_PAGE),
+      })
+      .parse(req.query);
+    let raw: unknown;
+    try {
+      raw = JSON.parse(query.filter);
+    } catch {
+      throw new HttpError(422, 'Filtro inválido.');
+    }
+    return table.tableRows(pool, a, table.filterSchema.parse(raw), query.sort, query.dir, query.offset, query.limit);
+  });
+  app.get('/api/table/options', async (req) => table.tableOptions(pool, need(req)));
+  app.get('/api/filters', async (req) => table.listFilters(pool, need(req)));
+  app.post('/api/filters', async (req) => {
+    const { name, filter } = z.object({ name: z.string().max(80), filter: table.filterSchema }).parse(req.body);
+    return inTx((db) => table.createFilter(db, need(req), name, filter));
+  });
+  app.patch('/api/filters/:id', async (req) => {
+    const { id } = z.object({ id: uuid }).parse(req.params);
+    const body = z.object({ name: z.string().max(80).optional(), filter: table.filterSchema.optional() }).parse(req.body);
+    return inTx((db) => table.updateFilter(db, need(req), id, body));
+  });
+  app.delete('/api/filters/:id', async (req) => {
+    const { id } = z.object({ id: uuid }).parse(req.params);
+    await inTx((db) => table.deleteFilter(db, need(req), id));
+    return { ok: true };
   });
 
   /* ---------------- busca e avisos ---------------- */
