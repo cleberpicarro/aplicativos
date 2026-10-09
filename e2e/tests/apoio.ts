@@ -32,7 +32,7 @@ export { expect };
 export async function entrar(page: Page, quem: Pessoa) {
   await page.goto('/');
   await page.getByLabel('E-mail').fill(EQUIPE[quem]);
-  await page.getByLabel('Senha').fill(SENHA);
+  await page.getByLabel('Senha', { exact: true }).fill(SENHA);
   await page.getByRole('button', { name: 'Entrar' }).click();
   await expect(page.locator('.topbar h1')).toBeVisible();
 }

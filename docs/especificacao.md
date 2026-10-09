@@ -495,7 +495,7 @@ Visual de referência: a amostra aprovada.
 
 ### 12.8 Login
 
-- E-mail e senha, "Esqueci minha senha" e a tela de definir senha (acessada pelo link do convite).
+- E-mail e senha, "Esqueci minha senha" e a tela de definir senha (acessada pelo link do convite). Todo campo de senha tem um botão de olho para mostrar ou ocultar o que foi digitado; começa sempre oculto.
 
 ### 12.9 Tela inicial
 

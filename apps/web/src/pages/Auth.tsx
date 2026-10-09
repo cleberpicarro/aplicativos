@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { post } from '../lib/api';
 import { go } from '../lib/router';
-import { ErrorText } from '../components/ui';
+import { ErrorText, PasswordInput } from '../components/ui';
 
 function Shell({ children }: { children: React.ReactNode }) {
   return (
@@ -40,7 +40,7 @@ export function LoginPage() {
       <form onSubmit={submit}>
         <h1>Entrar</h1>
         <div className="field"><label htmlFor="l-e">E-mail</label><input id="l-e" type="email" className="input" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} required autoFocus /></div>
-        <div className="field"><label htmlFor="l-p">Senha</label><input id="l-p" type="password" className="input" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required /></div>
+        <div className="field"><label htmlFor="l-p">Senha</label><PasswordInput id="l-p" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required /></div>
         <ErrorText error={error} />
         <button className="b pri" type="submit" disabled={busy}>{busy ? 'Entrando…' : 'Entrar'}</button>
         <button type="button" className="link" onClick={() => go('/esqueci')}>Esqueci minha senha</button>
@@ -107,8 +107,8 @@ export function SetPasswordPage({ token }: { token: string }) {
           </>
         ) : (
           <>
-            <div className="field"><label htmlFor="s-p">Nova senha (mínimo de 8 caracteres)</label><input id="s-p" type="password" className="input" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={8} autoFocus /></div>
-            <div className="field"><label htmlFor="s-c">Repita a senha</label><input id="s-c" type="password" className="input" autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} required /></div>
+            <div className="field"><label htmlFor="s-p">Nova senha (mínimo de 8 caracteres)</label><PasswordInput id="s-p" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={8} autoFocus /></div>
+            <div className="field"><label htmlFor="s-c">Repita a senha</label><PasswordInput id="s-c" autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} required /></div>
             <ErrorText error={error} />
             <button className="b pri" type="submit">Definir senha</button>
           </>

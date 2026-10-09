@@ -1,4 +1,4 @@
-import { createContext, Fragment, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
+import { createContext, Fragment, type InputHTMLAttributes, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { get, type Card, type Me } from '../lib/api';
 import { STATUS, daysBetween, fullDate, initials, shortDate, statusOf, type StatusKey } from '../lib/format';
@@ -144,6 +144,26 @@ export function Menu({ label, items }: { label: string; items: { label: string; 
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+/** Campo de senha com o botão de olho para mostrar ou ocultar o que foi digitado. */
+export function PasswordInput(props: Omit<InputHTMLAttributes<HTMLInputElement>, 'type'>) {
+  const [visible, setVisible] = useState(false);
+  return (
+    <div className="password-field">
+      <input {...props} type={visible ? 'text' : 'password'} className="input" autoCapitalize="off" autoCorrect="off" spellCheck={false} />
+      <button
+        type="button"
+        className="password-eye"
+        aria-label={visible ? 'Ocultar senha' : 'Mostrar senha'}
+        aria-pressed={visible}
+        title={visible ? 'Ocultar senha' : 'Mostrar senha'}
+        onClick={() => setVisible((v) => !v)}
+      >
+        <Icon name={visible ? 'eyeOff' : 'eye'} />
+      </button>
     </div>
   );
 }

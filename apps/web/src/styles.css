@@ -103,6 +103,12 @@ h1 { font-size: 1.25rem; font-weight: 600; letter-spacing: -0.015em; margin: 0; 
 .input::placeholder, .textarea::placeholder { color: var(--faint); }
 .input:focus, .select:focus, .textarea:focus { outline: none; border-color: var(--accent); }
 .field { display: grid; gap: 4px; }
+.password-field { position: relative; }
+.password-field .input { padding-right: 2.4rem; }
+.password-field .input::-ms-reveal { display: none; }
+.password-eye { position: absolute; right: 2px; top: 50%; transform: translateY(-50%); width: 2rem; height: 1.8rem; display: grid; place-items: center; border: 0; background: none; color: var(--muted); border-radius: 5px; cursor: pointer; }
+.password-eye:hover { color: var(--fg); }
+.password-eye:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .field > label, .label { font-size: 0.8rem; color: var(--muted); }
 .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .check { display: inline-flex; gap: 8px; align-items: center; font-size: 0.9rem; cursor: pointer; }

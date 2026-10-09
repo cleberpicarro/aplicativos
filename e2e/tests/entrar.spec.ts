@@ -11,10 +11,22 @@ test.describe('entrar e sair', () => {
   test('senha errada mostra erro e não entra @celular', async ({ page }) => {
     await page.goto('/');
     await page.getByLabel('E-mail').fill(EQUIPE.joao);
-    await page.getByLabel('Senha').fill('senha-errada');
+    await page.getByLabel('Senha', { exact: true }).fill('senha-errada');
     await page.getByRole('button', { name: 'Entrar' }).click();
     await expect(page.getByText('E-mail ou senha incorretos.')).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Entrar' })).toBeVisible();
+  });
+
+  test('o olho mostra e oculta a senha @celular', async ({ page }) => {
+    await page.goto('/');
+    const senha = page.getByLabel('Senha', { exact: true });
+    await senha.fill('minha-senha');
+    await expect(senha).toHaveAttribute('type', 'password');
+    await page.getByRole('button', { name: 'Mostrar senha' }).click();
+    await expect(senha).toHaveAttribute('type', 'text');
+    await expect(senha).toHaveValue('minha-senha');
+    await page.getByRole('button', { name: 'Ocultar senha' }).click();
+    await expect(senha).toHaveAttribute('type', 'password');
   });
 
   test('cada pessoa cai na tela certa e consegue sair @celular', async ({ page }) => {
