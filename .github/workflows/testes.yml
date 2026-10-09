@@ -18,7 +18,8 @@ jobs:
     timeout-minutes: 30
     services:
       postgres:
-        image: postgres:16
+        # Imagem oficial espelhada na AWS: sem o limite de downloads do Docker Hub, que derrubava a verificação.
+        image: public.ecr.aws/docker/library/postgres:16
         env:
           POSTGRES_USER: nerus
           POSTGRES_PASSWORD: nerus
@@ -69,7 +70,8 @@ jobs:
     timeout-minutes: 20
     services:
       postgres:
-        image: postgres:16
+        # Imagem oficial espelhada na AWS: sem o limite de downloads do Docker Hub, que derrubava a verificação.
+        image: public.ecr.aws/docker/library/postgres:16
         env:
           POSTGRES_USER: nerus
           POSTGRES_PASSWORD: nerus
