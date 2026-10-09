@@ -37,6 +37,8 @@ test.describe('entrar e sair', () => {
   test('esqueci minha senha responde igual para qualquer e-mail', async ({ page }) => {
     await page.goto('/');
     await page.getByRole('button', { name: 'Esqueci minha senha' }).click();
+    // espera a tela trocar: a de login também tem um campo "E-mail"
+    await expect(page.getByRole('button', { name: 'Enviar link' })).toBeVisible();
     await page.getByLabel('E-mail').fill('ninguem@nerus.com.br');
     await page.getByRole('button', { name: 'Enviar link' }).click();
     await expect(page.getByText(/Se houver uma conta com ninguem@nerus.com.br, enviamos um link/)).toBeVisible();

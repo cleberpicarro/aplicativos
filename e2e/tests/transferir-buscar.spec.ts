@@ -8,6 +8,8 @@ test.describe('transferir e buscar', () => {
     const dlg = await abrirTarefa(page, codigo);
     await dlg.getByRole('button', { name: 'Transferir' }).click();
     const t = dialogo(page, 'Transferir tarefa');
+    // a lista de destinos chega do servidor depois que a janela abre
+    await expect(t.locator('select option', { hasText: 'Beatriz' })).toHaveCount(1);
     const opcoes = await t.locator('select option').allInnerTexts();
     expect(opcoes.some((o) => o.includes('Beatriz'))).toBe(true); // colega
     expect(opcoes.some((o) => o.includes('Marina'))).toBe(true); // superior direto
