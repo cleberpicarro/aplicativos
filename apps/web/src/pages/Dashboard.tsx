@@ -164,7 +164,7 @@ export function DashboardPage() {
 
 function CardLine({ card, today, extra }: { card: Card; today: string; extra?: string }) {
   return (
-    <button className="ag-card" onClick={() => go(`/tarefa/${card.code}`)} title={card.title}>
+    <button className="ag-card" onClick={() => go(`/tarefa/${card.id}`)} title={card.title}>
       <CardStatusIcon card={card} />
       <span className="t">{card.title}</span>
       <span className="o">{card.ownerName}</span>

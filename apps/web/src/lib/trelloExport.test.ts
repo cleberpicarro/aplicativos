@@ -3,8 +3,8 @@ import type { Board, Card, CardDetail } from './api';
 import { authorizeUrl, buildTrelloExport, countSteps, looksLikeToken, sendToTrello } from './trelloExport';
 
 const card = (p: Partial<Card>): Card => ({
-  id: 'x', code: 'ST-000001', title: 'Tarefa', description: '', dueDate: null, isPrivate: false, completedAt: null, archivedAt: null,
-  ownerId: 'u', ownerName: 'Ana', boardId: 'b', listId: 'l1', position: 1, inInbox: false, transferredFrom: null,
+  id: 'x', code: 'ST-000001', num: 1, title: 'Tarefa', description: '', dueDate: null, isPrivate: false, completedAt: null, archivedAt: null,
+  ownerId: 'u', ownerName: 'Ana', boardId: 'b', boardName: 'Projetos', color: null, listId: 'l1', position: 1, inInbox: false, transferredFrom: null,
   delegation: null, child: null, checklist: { done: 0, total: 0 }, source: null, createdAt: '2026-10-01T12:00:00Z', ...p,
 });
 
@@ -12,12 +12,12 @@ const board: Board = {
   id: 'b', name: 'Projetos', color: null,
   lists: [{ id: 'l2', name: 'Feito', position: 2 }, { id: 'l1', name: 'A fazer', position: 1 }],
   cards: [
-    card({ id: 'c2', code: 'ST-000002', title: 'Segunda', position: 2, dueDate: '2026-11-20', description: 'Detalhes' }),
-    card({ id: 'c1', code: 'ST-000001', title: 'Primeira', position: 1,
-      child: { delegationId: 'd', cardId: 'f', code: 'ST-000009', ownerName: 'Bruno', status: 'AWAITING_ACK', reopened: false } }),
-    card({ id: 'c3', code: 'ST-000003', title: 'Pronta', listId: 'l2', completedAt: '2026-10-02T10:00:00Z' }),
-    card({ id: 'c4', code: 'ST-000004', title: 'Segredo', isPrivate: true }),
-    card({ id: 'c5', code: 'ST-000005', title: 'Velha', archivedAt: '2026-10-03T10:00:00Z' }),
+    card({ id: 'c2', code: 'ST-000002', num: 2, title: 'Segunda', position: 2, dueDate: '2026-11-20', description: 'Detalhes' }),
+    card({ id: 'c1', code: 'ST-000001', num: 1, title: 'Primeira', position: 1,
+      child: { delegationId: 'd', cardId: 'f', code: 'ST-000009', num: 9, ownerName: 'Bruno', status: 'AWAITING_ACK', reopened: false } }),
+    card({ id: 'c3', code: 'ST-000003', num: 3, title: 'Pronta', listId: 'l2', completedAt: '2026-10-02T10:00:00Z' }),
+    card({ id: 'c4', code: 'ST-000004', num: 4, title: 'Segredo', isPrivate: true }),
+    card({ id: 'c5', code: 'ST-000005', num: 5, title: 'Velha', archivedAt: '2026-10-03T10:00:00Z' }),
   ],
 };
 
@@ -37,11 +37,11 @@ describe('exportar para o Trello', () => {
     expect(buildTrelloExport(board, details, true).lists[0].cards.map((c) => c.name)).toContain('Segredo');
   });
 
-  it('leva código, situação, delegação, prazo, conclusão, checklist e comentários', () => {
+  it('leva número, situação, delegação, prazo, conclusão, checklist e comentários', () => {
     const [primeira, segunda] = plan.lists[0].cards;
-    expect(primeira.desc).toContain('Código no SyncTasks: ST-000001');
-    expect(primeira.desc).toContain('Delegada para Bruno (ST-000009): Concluída, aguardando ciente');
-    expect(segunda.desc).toMatch(/ST-000002[\s\S]*---\n\nDetalhes$/);
+    expect(primeira.desc).toContain('Número no SyncTasks: #1');
+    expect(primeira.desc).toContain('Delegada para Bruno (#9): Concluída, aguardando ciente');
+    expect(segunda.desc).toMatch(/#2[\s\S]*---\n\nDetalhes$/);
     expect(segunda.due).toBe('2026-11-20T12:00:00-03:00');
     expect(segunda.checklist).toEqual([{ name: 'Passo 1', checked: true }, { name: 'Passo 2', checked: false }]);
     expect(segunda.comments[0]).toMatch(/^Ana, em .+:\n\nOlá$/);

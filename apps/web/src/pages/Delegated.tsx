@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { get, post, type Card, type Overview } from '../lib/api';
 import { go, useRoute } from '../lib/router';
-import { TIPS, daysBetween, firstName, plural } from '../lib/format';
+import { TIPS, cardNo, daysBetween, firstName, plural } from '../lib/format';
 import { Avatar, CardStatusIcon, Due, TipIcon, ErrorText } from '../components/ui';
 import { Icon } from '../components/Icons';
 import { ConfirmDialog, RedelegateDialog, ReopenDialog, useAction } from '../components/dialogs';
@@ -86,12 +86,12 @@ export function DelegatedPage() {
     <div key={c.id} className="row dl">
       <CardStatusIcon card={c} />
       <div className="title">
-        <button className={c.archivedAt ? 'done-t' : ''} onClick={() => go(`/tarefa/${c.code}`)} title={c.title}>{c.title}</button>
+        <button className={c.archivedAt ? 'done-t' : ''} onClick={() => go(`/tarefa/${c.id}`)} title={c.title}>{c.title}</button>
         {c.delegation?.status === 'DECLINED' && <span className="note" title={c.delegation.declineReason ?? ''}>“{c.delegation.declineReason}”</span>}
         {c.checklist.total > 0 && <span className="cl">{c.checklist.done}/{c.checklist.total}</span>}
       </div>
       <span className="person">{withPerson && <><Avatar name={c.ownerName} /><span>{c.ownerName}</span></>}</span>
-      <span className="code">{c.code}</span>
+      <span className="code" title="Número da tarefa no seu quadro">{cardNo(c.delegation?.parentNum ?? c.num)}</span>
       <Due date={c.dueDate} done={!!c.completedAt} today={data!.today} />
       <span className="lnk">{childIcon(c)}</span>
       <div className="acts fixed">{actions(c)}</div>

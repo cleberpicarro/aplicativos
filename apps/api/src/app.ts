@@ -187,7 +187,7 @@ export async function buildApp({ pool, logger = false, serveWeb = false }: AppOp
     return inTx((db) => tasks.undoCreate(db, need(req), ids));
   });
   app.get('/api/cards/by-code/:code', async (req) => {
-    const { code } = z.object({ code: z.string().max(30) }).parse(req.params);
+    const { code } = z.object({ code: z.string().max(40) }).parse(req.params);
     const id = await cardIdByCode(pool, code);
     if (!id) throw notFound('Tarefa não encontrada.');
     return cardDetail(pool, need(req), id);
@@ -199,7 +199,7 @@ export async function buildApp({ pool, logger = false, serveWeb = false }: AppOp
   app.patch('/api/cards/:id', async (req) => {
     const { id } = z.object({ id: uuid }).parse(req.params);
     const body = z
-      .object({ title: z.string().max(200).optional(), description: z.string().max(20000).optional(), dueDate: date.optional(), isPrivate: z.boolean().optional() })
+      .object({ title: z.string().max(200).optional(), description: z.string().max(20000).optional(), dueDate: date.optional(), isPrivate: z.boolean().optional(), color: z.string().max(20).nullable().optional() })
       .parse(req.body);
     await inTx((db) => tasks.updateCard(db, need(req), id, body));
     return { ok: true };
@@ -396,8 +396,8 @@ export async function buildApp({ pool, logger = false, serveWeb = false }: AppOp
 
   /* ---------------- busca e avisos ---------------- */
   app.get('/api/search', async (req) => {
-    const { q } = z.object({ q: z.string().max(200).default('') }).parse(req.query);
-    return misc.search(pool, need(req), q);
+    const { q, board } = z.object({ q: z.string().max(200).default(''), board: uuid.optional() }).parse(req.query);
+    return misc.search(pool, need(req), q, board);
   });
   app.get('/api/notifications', async (req) => misc.listNotifications(pool, need(req)));
   app.post('/api/notifications/read', async (req) => {

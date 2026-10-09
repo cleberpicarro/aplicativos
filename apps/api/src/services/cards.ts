@@ -6,18 +6,19 @@ export type ViewerRole = 'owner' | 'delegator' | 'auditor';
 
 /** Linha completa do cartão: delegação recebida, delegação para baixo (filho) e contagem do checklist. */
 export const CARD_SELECT = `
-  SELECT c.*, l.board_id, o.name AS owner_name,
+  SELECT c.*, l.board_id, bo.name AS board_name, o.name AS owner_name,
     d.id AS d_id, d.status AS d_status, d.reopened AS d_reopened, d.delegator_id AS d_delegator_id,
     du.name AS d_delegator_name, d.suggested_due AS d_suggested_due, d.decline_reason AS d_decline_reason,
     tf.name AS transferred_from_name,
-    pc.code AS parent_code,
+    pc.code AS parent_code, pc.num AS parent_num,
     ch.id AS child_delegation_id, ch.card_id AS child_card_id, ch.status AS child_status, ch.reopened AS child_reopened,
-    chc.code AS child_code, cho.name AS child_owner_name,
+    chc.code AS child_code, chc.num AS child_num, cho.name AS child_owner_name,
     (SELECT count(*) FROM checklist_items i WHERE i.card_id = c.id)::int AS cl_total,
     (SELECT count(*) FROM checklist_items i WHERE i.card_id = c.id AND i.done)::int AS cl_done
   FROM cards c
   JOIN users o ON o.id = c.owner_id
   LEFT JOIN lists l ON l.id = c.list_id
+  LEFT JOIN boards bo ON bo.id = l.board_id
   LEFT JOIN delegations d ON d.card_id = c.id
   LEFT JOIN users du ON du.id = d.delegator_id
   LEFT JOIN users tf ON tf.id = c.transferred_from_id
@@ -32,7 +33,12 @@ export const CARD_SELECT = `
 
 export interface CardDto {
   id: string;
+  /** Código único antigo (ST-000123), só por dentro: links e códigos antigos. */
   code: string;
+  /** Item 37: número da tarefa no quadro (ou na caixa de entrada) onde ela está; aparece como #12. */
+  num: number;
+  /** Item 38: cor do cartão, escolhida por quem é dono dele. */
+  color: string | null;
   title: string;
   description: string;
   dueDate: string | null;
@@ -42,6 +48,7 @@ export interface CardDto {
   ownerId: string;
   ownerName: string;
   boardId: string | null;
+  boardName: string | null;
   listId: string | null;
   position: number;
   inInbox: boolean;
@@ -55,8 +62,9 @@ export interface CardDto {
     suggestedDue: string | null;
     declineReason: string | null;
     parentCode: string | null;
+    parentNum: number | null;
   };
-  child: null | { delegationId: string; cardId: string; code: string; ownerName: string; status: string; reopened: boolean };
+  child: null | { delegationId: string; cardId: string; code: string; num: number; ownerName: string; status: string; reopened: boolean };
   checklist: { done: number; total: number };
   source: string | null;
   createdAt: string;
@@ -66,6 +74,8 @@ export function toCardDto(r: any): CardDto {
   return {
     id: r.id,
     code: r.code,
+    num: r.num,
+    color: r.color ?? null,
     title: r.title,
     description: r.description,
     dueDate: r.due_date,
@@ -75,6 +85,7 @@ export function toCardDto(r: any): CardDto {
     ownerId: r.owner_id,
     ownerName: r.owner_name,
     boardId: r.board_id ?? null,
+    boardName: r.board_name ?? null,
     listId: r.list_id,
     position: r.position,
     inInbox: r.list_id === null && !r.archived_at && (!r.d_id || r.d_status === 'PENDING_ACCEPT'),
@@ -89,6 +100,7 @@ export function toCardDto(r: any): CardDto {
           suggestedDue: r.d_suggested_due,
           declineReason: r.d_decline_reason,
           parentCode: r.parent_code,
+          parentNum: r.parent_num ?? null,
         }
       : null,
     child: r.child_delegation_id
@@ -96,6 +108,7 @@ export function toCardDto(r: any): CardDto {
           delegationId: r.child_delegation_id,
           cardId: r.child_card_id,
           code: r.child_code,
+          num: r.child_num,
           ownerName: r.child_owner_name,
           status: r.child_status,
           reopened: r.child_reopened,
@@ -134,14 +147,29 @@ export async function loadCard(db: Db, actor: Actor, cardId: string, opts: { loc
   return { row: r, role, dto: toCardDto(r) };
 }
 
+/** Código antigo, único no sistema: ST-000123 ou NT-000123 (também st123). Devolve o número interno (seq). */
 export function parseCode(input: string): number | null {
-  // Aceita ST-000123, NT-000123 (código antigo), st123 ou só o número.
-  const m = /^\s*(?:[ns]t\s*-?\s*)?0*(\d{1,15})\s*$/i.exec(input);
+  const m = /^\s*[ns]t\s*-?\s*0*(\d{1,15})\s*$/i.exec(input);
   return m ? Number(m[1]) : null;
 }
 
+/** Item 37: número da tarefa no quadro, digitado como 12 ou #12. */
+export function parseNum(input: string): number | null {
+  const m = /^\s*#?\s*0*(\d{1,9})\s*$/.exec(input);
+  if (!m) return null;
+  const n = Number(m[1]);
+  return n > 0 && n < 2 ** 31 ? n : null;
+}
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Abre a tarefa pelo link: o identificador da tarefa (links novos) ou o código antigo ST-/NT- (links de e-mails antigos). */
 export async function cardIdByCode(db: Db, code: string): Promise<string | null> {
-  const seq = parseCode(code);
+  if (UUID.test(code.trim())) {
+    const r = await one(db, 'SELECT id FROM cards WHERE id = $1', [code.trim()]);
+    return r?.id ?? null;
+  }
+  const seq = parseCode(code) ?? (/^\s*\d{1,15}\s*$/.test(code) ? Number(code) : null);
   if (seq === null) return null;
   const r = await one(db, 'SELECT id FROM cards WHERE seq = $1', [seq]);
   return r?.id ?? null;
@@ -178,6 +206,12 @@ export async function nextPosition(db: Db, sql: string, params: unknown[]): Prom
   return (r?.max ?? 0) + 1;
 }
 
-export function cardRef(r: { id: string; code: string; title: string }) {
-  return { id: r.id, code: r.code, title: r.title };
+/** Número atual da tarefa (muda quando ela chega a outro quadro ou caixa de entrada). */
+export async function numOf(db: Db, cardId: string): Promise<number> {
+  const r = await one<{ num: number }>(db, 'SELECT num FROM cards WHERE id = $1', [cardId]);
+  return r!.num;
+}
+
+export function cardRef(r: { id: string; num: number; title: string }) {
+  return { id: r.id, num: r.num, title: r.title };
 }

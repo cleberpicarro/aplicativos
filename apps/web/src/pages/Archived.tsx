@@ -2,13 +2,14 @@ import { useEffect, useState } from 'react';
 import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import { get, post } from '../lib/api';
 import { go } from '../lib/router';
-import { fullDate } from '../lib/format';
+import { cardNo, fullDate } from '../lib/format';
 import { ErrorText, useToast } from '../components/ui';
 
 /** Item 35: tarefas arquivadas pela pessoa (as próprias e as delegadas com ciente), com pesquisa e desarquivar. */
 export interface ArchivedItem {
   id: string;
   code: string;
+  num: number;
   title: string;
   dueDate: string | null;
   completedAt: string | null;
@@ -78,10 +79,10 @@ export function ArchivedPage() {
             <tbody>
               {items.map((it) => (
                 <tr key={it.id}>
-                  <td className="code">{it.code}</td>
+                  <td className="code">{cardNo(it.num)}</td>
                   <td className="c-title">
                     <span className="ttl">
-                    <button className="cell-link" onClick={() => go(`/tarefa/${it.code}`)} title={it.title}>{it.title}</button>
+                    <button className="cell-link" onClick={() => go(`/tarefa/${it.id}`)} title={it.title}>{it.title}</button>
                     {it.kind === 'delegated' && <span className="tag del" title="Você delegou e deu o ciente">Delegada para {it.delegatedTo}</span>}
                     </span>
                   </td>

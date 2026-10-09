@@ -98,7 +98,7 @@ export function ExportTrelloDialog({ board, onClose }: { board: Board; onClose: 
             <div className="box" style={{ display: 'grid', gap: 4 }}>
               <b style={{ fontWeight: 500 }}>Vai ser criado no Trello um quadro novo “{board.name}” com:</b>
               <span>{board.lists.length} {plural(board.lists.length, 'lista', 'listas')} (as fases, na mesma ordem) e {cards.length} {plural(cards.length, 'cartão', 'cartões')}</span>
-              <span>Cada cartão leva título, descrição, prazo, se está concluída, checklist e comentários (com o autor e a data no texto). O código ST- e a situação da delegação vão no topo da descrição.</span>
+              <span>Cada cartão leva título, descrição, prazo, se está concluída, checklist e comentários (com o autor e a data no texto). O número da tarefa (#12) e a situação da delegação vão no topo da descrição.</span>
               <span className="muted">Tarefas arquivadas ficam de fora. Nada muda aqui no SyncTasks.</span>
             </div>
             {privates > 0 && (

@@ -2,6 +2,11 @@ import type { Card, DelegationStatus } from './api';
 
 const MONTHS = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
 
+/** Item 37: número da tarefa no quadro, sem prefixo. */
+export function cardNo(num: number | null | undefined): string {
+  return num == null ? '' : `#${num}`;
+}
+
 export function localToday(): string {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;

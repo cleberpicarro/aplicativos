@@ -28,9 +28,9 @@ export function exportableCards(board: Board, includePrivate: boolean): Card[] {
 }
 
 function describe(c: Card): string {
-  const lines = [`Código no SyncTasks: ${c.code}`, `Situação: ${STATUS[statusOf(c)].label}`];
-  if (c.delegation) lines.push(`Delegada por ${c.delegation.delegatorName}${c.delegation.parentCode ? ` (tarefa ${c.delegation.parentCode})` : ''}`);
-  if (c.child) lines.push(`Delegada para ${c.child.ownerName} (${c.child.code}): ${STATUS[delegationKey(c.child.status, c.child.reopened)].label}`);
+  const lines = [`Número no SyncTasks: #${c.num}`, `Situação: ${STATUS[statusOf(c)].label}`];
+  if (c.delegation) lines.push(`Delegada por ${c.delegation.delegatorName}${c.delegation.parentNum != null ? ` (tarefa #${c.delegation.parentNum})` : ''}`);
+  if (c.child) lines.push(`Delegada para ${c.child.ownerName} (#${c.child.num}): ${STATUS[delegationKey(c.child.status, c.child.reopened)].label}`);
   if (c.transferredFrom) lines.push(`Transferida por ${c.transferredFrom.name}`);
   if (c.isPrivate) lines.push('Privada no SyncTasks');
   const head = lines.join('\n');

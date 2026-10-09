@@ -2,7 +2,7 @@ import { Fragment, useEffect, useRef, useState, type CSSProperties, type DragEve
 import { useQuery } from '@tanstack/react-query';
 import { get, patch, post, type Board, type Card } from '../lib/api';
 import { go } from '../lib/router';
-import { firstName } from '../lib/format';
+import { cardNo, firstName } from '../lib/format';
 import { CardStatusIcon, Dialog, Due, Menu, TipIcon, ErrorText, useMe, useToast } from '../components/ui';
 import { useQueryClient } from '@tanstack/react-query';
 import { Icon } from '../components/Icons';
@@ -26,7 +26,8 @@ function rememberedZoom(): number {
   } catch { return 100; }
 }
 
-function rememberedBoard(): string | null {
+/** Último quadro aberto neste computador (também usado pela busca: “12” abre a tarefa 12 dele). */
+export function rememberedBoard(): string | null {
   try { return localStorage.getItem(STORE_KEY) ?? localStorage.getItem('nerus.board'); } catch { return null; }
 }
 
@@ -390,14 +391,14 @@ function Tile({ card, today, dragging, onDragStart, onDragEnd, onDragOver, onDro
     toast('Tarefa arquivada.', 'ok', { label: 'Desfazer', onClick: () => run(() => post(`/cards/${card.id}/unarchive`), 'Tarefa de volta ao quadro.') });
   };
   return (
-    <article className={`kc${done ? ' done' : ''}${dragging ? ' dragging' : ''}`} draggable onDragStart={onDragStart} onDragEnd={onDragEnd}
+    <article data-id={card.id} className={`kc${done ? ' done' : ''}${dragging ? ' dragging' : ''}${card.color ? ` painted bc-${card.color}` : ''}`} draggable onDragStart={onDragStart} onDragEnd={onDragEnd}
       onDragOver={onDragOver} onDrop={onDrop}>
       <button className={`ck${done ? ' on' : ''}`} onClick={toggle} disabled={!canToggle} aria-label={done ? `Desfazer conclusão de ${card.title}` : `Concluir ${card.title}`}>
         {done && <Icon name="check" />}
       </button>
-      <button className="t" onClick={() => go(`/tarefa/${card.code}`)} title={card.title}>{card.title}</button>
+      <button className="t" onClick={() => go(`/tarefa/${card.id}`)} title={card.title}>{card.title}</button>
       <div className="meta">
-        <span className="code">{card.code}</span>
+        <span className="code">{cardNo(card.num)}</span>
         <Due date={card.dueDate} done={done} today={today} />
         {card.checklist.total > 0 && <span className="cl" title="Checklist"><Icon name="checks" />{card.checklist.done}/{card.checklist.total}</span>}
         {d && <TipIcon name="into" tip={`Delegada por ${d.delegatorName}`} />}

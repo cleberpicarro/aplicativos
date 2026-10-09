@@ -117,7 +117,8 @@ describe('delegação (RN-14 a RN-19)', () => {
     const notes = (await call('gest', 'GET', '/api/notifications')).body;
     expect(notes[0].type).toBe('due_changed');
     const mail = await ctx.pool.query(`SELECT subject FROM email_outbox WHERE to_email = 'gest@teste.com' ORDER BY created_at DESC LIMIT 1`);
-    expect(mail.rows[0].subject).toContain(`[${d.code}]`);
+    const num = (await call('func', 'GET', `/api/cards/${d.cardId}`)).body.card.num;
+    expect(mail.rows[0].subject).toContain(`[#${num}]`);
   });
 
   it('tarefa recebida por delegação não pode ser privada', async () => {
@@ -260,7 +261,7 @@ describe('código da tarefa (seção 8)', () => {
     const c = await newTask(ctx, 'func', 'C');
     expect(b.code).toBe('ST-999999');
     expect(c.code).toBe('ST-1000000');
-    const found = (await call('func', 'GET', '/api/search?q=1000000')).body;
+    const found = (await call('func', 'GET', '/api/search?q=ST-1000000')).body;
     expect(found.byCode.code).toBe('ST-1000000');
   });
 });
@@ -375,7 +376,7 @@ describe('avisos e e-mails (seção 11)', () => {
     const sent: string[] = [];
     const n = await processOutbox(ctx.pool, { send: async (to, subject) => void sent.push(`${to}|${subject}`) });
     expect(n).toBeGreaterThan(0);
-    expect(sent.some((s) => s.startsWith('func@teste.com|') && s.includes(`[${d.code}]`))).toBe(true);
+    expect(sent.some((s) => s.startsWith('func@teste.com|') && s.includes(`[#${d.num}]`))).toBe(true);
   });
 
   it('falha de envio fica pendente e para após 5 tentativas', async () => {
@@ -649,5 +650,78 @@ describe('quinta rodada', () => {
     expect((await call('func', 'PATCH', `/api/boards/${boards[2].id}`, { position: boards[0].position - 1 })).status).toBe(200);
     expect(await names()).toEqual(['Terceiro', 'Meu trabalho', 'Segundo']);
     expect((await call('func2', 'PATCH', `/api/boards/${boards[2].id}`, { position: 0 })).status).toBe(404);
+  });
+});
+
+describe('sexta rodada', () => {
+  it('número próprio em cada quadro e na caixa de entrada (item 37)', async () => {
+    const a = await newTask(ctx, 'func', 'Primeira');
+    await newTask(ctx, 'func2', 'De outra pessoa');
+    const b = await newTask(ctx, 'func', 'Segunda');
+    expect([a.num, b.num]).toEqual([1, 2]); // a tarefa de outra pessoa não pula a numeração
+    const outro = (await call('func', 'POST', '/api/boards', { name: 'Outro' })).body;
+    const lists = (await call('func', 'GET', `/api/boards/${outro.id}`)).body.lists;
+    const c = (await call('func', 'POST', '/api/cards', { listId: lists[0].id, title: 'No outro quadro' })).body;
+    expect(c.num).toBe(1);
+    // mover para outro quadro dá o próximo número de lá e o log guarda o antigo
+    expect((await call('func', 'POST', `/api/cards/${a.id}/move`, { listId: lists[0].id })).status).toBe(200);
+    const moved = (await call('func', 'GET', `/api/cards/${a.id}`)).body.card;
+    expect(moved).toMatchObject({ num: 2, boardName: 'Outro' });
+    const ev = (await ctx.pool.query(`SELECT before, after FROM card_events WHERE card_id = $1 AND type = 'moved'`, [a.id])).rows[0];
+    expect([ev.before.num, ev.after.num]).toEqual([1, 2]);
+    // número nunca reaproveitado no quadro, nem depois de arquivar ou de a tarefa sair
+    const d = await newTask(ctx, 'func', 'Terceira');
+    expect(d.num).toBe(3);
+    // mover entre fases do mesmo quadro mantém o número
+    expect((await call('func', 'POST', `/api/cards/${d.id}/move`, { listId: d.lists[1].id })).status).toBe(200);
+    expect((await call('func', 'GET', `/api/cards/${d.id}`)).body.card.num).toBe(3);
+    // caixa de entrada: numeração própria; ao aceitar, recebe o número do quadro
+    const g = await newTask(ctx, 'gest', 'Para delegar');
+    const dl = await delegateTask(ctx, 'gest', g.id, 'func');
+    expect(dl.num).toBe(1);
+    expect((await call('func', 'GET', `/api/cards/${dl.cardId}`)).body.card.delegation.parentNum).toBe(g.num);
+    expect((await call('gest', 'GET', `/api/cards/${g.id}`)).body.card.child.num).toBe(1);
+    await acceptTask(ctx, 'func', dl.cardId);
+    expect((await call('func', 'GET', `/api/cards/${dl.cardId}`)).body.card.num).toBe(4);
+    // busca: o número abre direto quando só há uma; o quadro aberto decide quando há várias
+    expect((await call('func', 'GET', '/api/search?q=%233')).body.byCode.id).toBe(d.id);
+    const two = (await call('func', 'GET', '/api/search?q=2')).body;
+    expect(two.byCode).toBeNull();
+    expect(two.results.map((x: any) => x.id).sort()).toEqual([a.id, b.id].sort());
+    expect((await call('func', 'GET', `/api/search?q=2&board=${outro.id}`)).body.byCode.id).toBe(a.id);
+    // o número de outra pessoa não aparece na busca
+    expect((await call('func2', 'GET', `/api/search?q=4`)).body.byCode).toBeNull();
+    // link novo pelo identificador e link antigo com ST-/NT- abrem a tarefa
+    expect((await call('func', 'GET', `/api/cards/by-code/${d.id}`)).body.card.id).toBe(d.id);
+    expect((await call('func', 'GET', `/api/cards/by-code/${d.code}`)).body.card.id).toBe(d.id);
+    // tabela: filtro e ordenação pelo número
+    const f = encodeURIComponent(JSON.stringify({ all: [{ field: 'code', op: 'eq', value: '#3' }] }));
+    expect((await call('func', 'GET', `/api/table?filter=${f}`)).body.rows.map((x: any) => x.id)).toEqual([d.id]);
+  });
+
+  it('a cor de um cartão é de quem tem a tarefa e não entra no log (item 38)', async () => {
+    const t = await newTask(ctx, 'gest', 'Destacar');
+    expect((await call('gest', 'PATCH', `/api/cards/${t.id}`, { color: 'verde' })).status).toBe(200);
+    expect((await call('gest', 'GET', `/api/cards/${t.id}`)).body.card.color).toBe('verde');
+    expect((await call('gest', 'PATCH', `/api/cards/${t.id}`, { color: 'neon' })).status).toBeGreaterThanOrEqual(400);
+    const ev = (await ctx.pool.query(`SELECT count(*)::int AS n FROM card_events WHERE card_id = $1 AND type <> 'created'`, [t.id])).rows[0];
+    expect(ev.n).toBe(0);
+    // aparece no quadro e acompanha a tarefa ao mudar de quadro
+    const boards = (await call('gest', 'GET', '/api/boards')).body;
+    expect((await call('gest', 'GET', `/api/boards/${boards[0].id}`)).body.cards.find((c: any) => c.id === t.id).color).toBe('verde');
+    // no cartão delegado, o subordinado começa sem cor e escolhe a dele; o delegador não pinta o cartão do outro
+    const d = await delegateTask(ctx, 'gest', t.id, 'func');
+    expect((await call('func', 'GET', `/api/cards/${d.cardId}`)).body.card.color).toBe(null);
+    expect((await call('gest', 'PATCH', `/api/cards/${d.cardId}`, { color: 'rosa' })).status).toBe(403);
+    expect((await call('func', 'PATCH', `/api/cards/${d.cardId}`, { color: 'rosa' })).status).toBe(200);
+    // filtro "Cor" na tabela
+    const f = (v: object) => encodeURIComponent(JSON.stringify({ all: [v] }));
+    expect((await call('gest', 'GET', `/api/table?filter=${f({ field: 'color', op: 'eq', value: 'verde' })}`)).body.rows.map((x: any) => x.id)).toEqual([t.id]);
+    expect((await call('gest', 'GET', `/api/table?filter=${f({ field: 'color', op: 'empty' })}`)).body.rows.some((x: any) => x.id === t.id)).toBe(false);
+    // transferir: quem recebe vê sem cor
+    const u = await newTask(ctx, 'func', 'Passar adiante');
+    await call('func', 'PATCH', `/api/cards/${u.id}`, { color: 'azul' });
+    expect((await call('func', 'POST', `/api/cards/${u.id}/transfer`, { toUserId: ctx.users.func2.id })).status).toBe(200);
+    expect((await call('func2', 'GET', `/api/cards/${u.id}`)).body.card.color).toBe(null);
   });
 });

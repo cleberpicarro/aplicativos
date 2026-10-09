@@ -1,11 +1,12 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { del, get, patch, post, type CardDetail } from '../lib/api';
-import { TIPS, dateTime, delegationKey, firstName, fullDate, relative, statusOf } from '../lib/format';
+import { TIPS, cardNo, dateTime, delegationKey, firstName, fullDate, relative, statusOf } from '../lib/format';
 import { Avatar, Dialog, ErrorText, StatusPill, useMe, useToast } from './ui';
 import { Icon } from './Icons';
 import { AcceptDialog, ConfirmDialog, DeclineDialog, DelegateDialog, RedelegateDialog, ReopenDialog, TransferDialog, useAction } from './dialogs';
 import { go } from '../lib/router';
+import { BOARD_COLORS } from '../pages/Boards';
 
 type Sub = null | 'delegate' | 'transfer' | 'decline' | 'reopen' | 'redelegate' | 'accept' | 'cancel';
 
@@ -21,7 +22,7 @@ export function CardModal({ code, onClose }: { code: string; onClose: () => void
   if (q.error || !q.data) {
     return (
       <Dialog title="Tarefa não encontrada" onClose={onClose}>
-        <p style={{ margin: 0 }}>Não há uma tarefa {code} que você possa ver.</p>
+        <p style={{ margin: 0 }}>Esta tarefa não existe ou você não pode vê-la.</p>
       </Dialog>
     );
   }
@@ -93,12 +94,13 @@ export function CardModal({ code, onClose }: { code: string; onClose: () => void
       <Dialog
         wide
         onClose={onClose}
-        label={`Tarefa ${card.code}`}
+        label={`Tarefa ${cardNo(card.num)}`}
         title={
           <span className="meta-line" style={{ color: 'inherit' }}>
-            <span className="code">{card.code}</span>
+            <span className="code" title={card.boardName ? `Número da tarefa no quadro “${card.boardName}”` : 'Número da tarefa na caixa de entrada'}>{cardNo(card.num)}</span>
             <StatusPill status={status} />
             {card.isPrivate && <span className="pill"><Icon name="lock" />Privada</span>}
+            {owner && !archived && <CardColor id={card.id} color={card.color} />}
           </span>
         }
       >
@@ -123,7 +125,7 @@ export function CardModal({ code, onClose }: { code: string; onClose: () => void
                 {card.source === 'web' && <span>· Capturada da web</span>}
                 {card.source === 'email' && <span>· Capturada do e-mail</span>}
                 {card.source === 'trello' && <span>· Importada do Trello</span>}
-                {d?.parentCode && <span>· Desdobramento de <span className="code">{d.parentCode}</span></span>}
+                {d?.parentNum != null && <span>· Desdobramento da tarefa <span className="code">{cardNo(d.parentNum)}</span> de {d.delegatorId === me.user.id ? 'você' : firstName(d.delegatorName)}</span>}
               </div>
 
               {d?.status === 'DECLINED' && (
@@ -134,10 +136,10 @@ export function CardModal({ code, onClose }: { code: string; onClose: () => void
                   <div className="meta-line" style={{ color: 'inherit' }}>
                     <Icon name="out" />
                     <span>Repassada para <b style={{ fontWeight: 500 }}>{card.child.ownerName}</b></span>
-                    <span className="code">{card.child.code}</span>
+                    <span className="code" title={`Número no quadro de ${firstName(card.child.ownerName)}`}>{cardNo(card.child.num)}</span>
                     <StatusPill status={delegationKey(card.child.status, card.child.reopened)} />
                   </div>
-                  {owner && <button className="link" style={{ marginTop: 6 }} onClick={() => go(`/tarefa/${card.child!.code}`)}>Abrir a tarefa repassada</button>}
+                  {owner && <button className="link" style={{ marginTop: 6 }} onClick={() => go(`/tarefa/${card.child!.cardId}`)}>Abrir a tarefa repassada</button>}
                 </div>
               )}
 
@@ -301,6 +303,45 @@ function Comments({ cardId, comments, canPost }: { cardId: string; comments: Car
   );
 }
 
+/* ---------- cor do cartão (item 38) ---------- */
+function CardColor({ id, color }: { id: string; color: string | null }) {
+  const [open, setOpen] = useState(false);
+  const { run, error } = useAction();
+  const ref = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent) => { if (!ref.current?.contains(e.target as Node)) setOpen(false); };
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.stopPropagation(); setOpen(false); } };
+    document.addEventListener('mousedown', close);
+    document.addEventListener('keydown', esc, true);
+    return () => { document.removeEventListener('mousedown', close); document.removeEventListener('keydown', esc, true); };
+  }, [open]);
+  const pick = async (c: string | null) => {
+    setOpen(false);
+    if (c !== color) await run(() => patch(`/cards/${id}`, { color: c }), c ? 'Cor do cartão alterada.' : 'Cartão sem cor.');
+  };
+  return (
+    <span className="cc-wrap" ref={ref}>
+      <button className="b sm ghost" aria-expanded={open} aria-haspopup="true" onClick={() => setOpen(!open)} data-tip="Cor deste cartão no quadro (só você vê)">
+        {color ? <span className={`swatch bc-${color}`} aria-hidden="true" /> : <Icon name="drop" />}Cor
+      </button>
+      {open && (
+        <div className="cc-pop swatches" role="radiogroup" aria-label="Cor do cartão">
+          <button role="radio" aria-checked={!color} className="sw-opt" onClick={() => pick(null)}>
+            <span className="swatch big none" aria-hidden="true" />Sem cor
+          </button>
+          {BOARD_COLORS.map((c) => (
+            <button key={c.id} role="radio" aria-checked={color === c.id} className="sw-opt" onClick={() => pick(c.id)}>
+              <span className={`swatch big bc-${c.id}`} aria-hidden="true" />{c.label}
+            </button>
+          ))}
+        </div>
+      )}
+      <ErrorText error={error} />
+    </span>
+  );
+}
+
 /* ---------- log ---------- */
 interface Ev { id: number; type: string; before: any; after: any; created_at: string; actor_name: string | null }
 
@@ -316,17 +357,17 @@ function describe(e: Ev): { text: string; change?: string } {
     case 'description_changed': return { text: 'alterou a descrição', change: `“${cut(b.description || '')}” → “${cut(a.description || '')}”` };
     case 'due_changed': return { text: 'alterou o prazo', change: `${df(b.dueDate)} → ${df(a.dueDate)}` };
     case 'privacy_changed': return { text: a.isPrivate ? 'tornou a tarefa privada' : 'tornou a tarefa visível' };
-    case 'moved': return a.board ? { text: `moveu para outro quadro`, change: `“${b.board} · ${b.list}” → “${a.board} · ${a.list}”` } : { text: `moveu de “${b.list}” para “${a.list}”` };
+    case 'moved': return a.board ? { text: `moveu para outro quadro`, change: `“${b.board} · ${b.list}”${b.num ? ` (#${b.num})` : ''} → “${a.board} · ${a.list}”${a.num ? ` (#${a.num})` : ''}` } : { text: `moveu de “${b.list}” para “${a.list}”` };
     case 'captured': return { text: a.email ? 'capturou do e-mail' : 'capturou da web', change: a.url ?? undefined };
-    case 'accepted': return { text: `aceitou e colocou em “${a.board} · ${a.list}”` };
+    case 'accepted': return { text: `aceitou e colocou em “${a.board} · ${a.list}”${a.num ? ` (#${a.num})` : ''}` };
     case 'checklist_added': return { text: 'adicionou item ao checklist', change: `“${a.text}”` };
     case 'checklist_edited': return { text: 'editou item do checklist', change: `“${b.text}” → “${a.text}”` };
     case 'checklist_checked': return { text: 'marcou item do checklist', change: `“${a.text}”` };
     case 'checklist_unchecked': return { text: 'desmarcou item do checklist', change: `“${a.text}”` };
     case 'checklist_removed': return { text: 'removeu item do checklist', change: `“${b.text}”` };
     case 'comment_added': return { text: 'comentou', change: `“${cut(a.body)}”` };
-    case 'delegated': return { text: `delegou para ${a.to}`, change: `Prazo sugerido: ${df(a.suggestedDue)}${a.parentCode ? ` · origem ${a.parentCode}` : ''}` };
-    case 'delegated_down': return { text: `delegou para baixo: ${a.to}`, change: a.childCode };
+    case 'delegated': return { text: `delegou para ${a.to}`, change: `Prazo sugerido: ${df(a.suggestedDue)}${a.parentNum ? ` · origem #${a.parentNum}` : a.parentCode ? ` · origem ${a.parentCode}` : ''}` };
+    case 'delegated_down': return { text: `delegou para baixo: ${a.to}`, change: a.childNum ? `#${a.childNum}` : a.childCode };
     case 'declined': return { text: 'devolveu a tarefa', change: `“${a.reason}”` };
     case 'completed': return { text: 'concluiu a tarefa' };
     case 'completion_undone': return { text: 'desfez a conclusão' };
@@ -335,7 +376,7 @@ function describe(e: Ev): { text: string; change?: string } {
     case 'acked': return { text: 'deu ciente: tarefa arquivada' };
     case 'reopened': return { text: 'reabriu a tarefa', change: `“${a.reason}”` };
     case 'canceled': return { text: 'cancelou a delegação' };
-    case 'child_canceled': return { text: 'cancelou a delegação para baixo', change: a.childCode };
+    case 'child_canceled': return { text: 'cancelou a delegação para baixo', change: a.childNum ? `#${a.childNum}` : a.childCode };
     case 'redelegated': return { text: `redelegou para ${a.to}`, change: `Prazo sugerido: ${df(a.suggestedDue)}` };
     case 'transferred': return { text: `transferiu de ${b.owner} para ${a.owner}` };
     case 'management_transferred': return { text: 'transferência de gestão', change: `Acompanhamento passou de ${b.delegator ?? '—'} para ${a.delegator}` };

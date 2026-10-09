@@ -52,7 +52,7 @@ export async function irPara(page: Page, menu: string) {
   await expect(page.locator('.topbar h1')).toHaveText(menu);
 }
 
-/** Cria uma tarefa na fase indicada do quadro aberto e devolve o código dela. */
+/** Cria uma tarefa na fase indicada do quadro aberto e devolve o identificador dela (usado nos links). */
 export async function criarTarefa(page: Page, titulo: string, fase = 'A fazer') {
   const col = page.getByRole('region', { name: fase, exact: true });
   await col.getByRole('button', { name: 'Adicionar tarefa' }).click();
@@ -61,14 +61,27 @@ export async function criarTarefa(page: Page, titulo: string, fase = 'A fazer') 
   const card = col.locator('article.kc', { hasText: titulo });
   await expect(card).toBeVisible();
   await col.getByRole('button', { name: 'Cancelar' }).click();
-  return (await card.locator('.code').innerText()).trim();
+  return (await card.getAttribute('data-id'))!;
 }
 
-export async function abrirTarefa(page: Page, codigo: string) {
-  await page.goto(`/#/tarefa/${codigo}`);
-  const dlg = page.getByRole('dialog', { name: `Tarefa ${codigo}` });
+/** Abre a tarefa pelo link (identificador ou código antigo ST-). O título da janela traz o número no quadro: “Tarefa #12”. */
+export async function abrirTarefa(page: Page, id: string) {
+  await page.goto(`/#/tarefa/${id}`);
+  const dlg = page.getByRole('dialog', { name: /^Tarefa #\d+$/ });
   await expect(dlg).toBeVisible();
   return dlg;
+}
+
+/** Atalhos pela API (mesma sessão da página) para montar o cenário sem repetir telas já testadas em outros roteiros. */
+export async function api(page: Page, method: 'GET' | 'POST' | 'PATCH', url: string, data?: unknown) {
+  const r = await page.request.fetch(`/api${url}`, { method, data, headers: { 'X-SyncTasks': '1' } });
+  expect(r.status(), `${method} ${url}`).toBeLessThan(400);
+  return r.json();
+}
+
+/** Número da tarefa no quadro de quem a tem, como aparece na tela (#12). */
+export async function numeroDe(page: Page, id: string) {
+  return `#${(await api(page, 'GET', `/cards/${id}`)).card.num}`;
 }
 
 export function dialogo(page: Page, titulo: string) {

@@ -4,7 +4,7 @@ import { get, type Card } from '../lib/api';
 import { go } from '../lib/router';
 import { Avatar, CardStatusIcon, Due, useMe } from '../components/ui';
 import { Icon } from '../components/Icons';
-import { TIPS } from '../lib/format';
+import { TIPS, cardNo } from '../lib/format';
 import { BookmarkletButton } from './Capture';
 import { AcceptDialog, DeclineDialog } from '../components/dialogs';
 
@@ -30,11 +30,11 @@ export function InboxPage() {
               <div key={c.id} className="row inbox">
                 <CardStatusIcon card={c} />
                 <div className="title">
-                  <button onClick={() => go(`/tarefa/${c.code}`)} title={c.title}>{c.title}</button>
+                  <button onClick={() => go(`/tarefa/${c.id}`)} title={c.title}>{c.title}</button>
                   {note && <span className="note" title={note}>{note}</span>}
                 </div>
                 <span className="person" title={`${how} ${from}`.trim()}>{web ? <span className="ico"><Icon name="inbox" /></span> : <Avatar name={from} />}<span>{from}</span></span>
-                <span className="code">{c.code}</span>
+                <span className="code">{cardNo(c.num)}</span>
                 <Due date={c.dueDate} today={me.today} />
                 <div className="acts">
                   <button className="b pri" title={TIPS.accept} onClick={() => setAccepting(c)}>Aceitar e organizar</button>

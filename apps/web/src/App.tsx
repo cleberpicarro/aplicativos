@@ -2,11 +2,11 @@ import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { get, post, type Card } from './lib/api';
 import { go, useRoute } from './lib/router';
-import { STATUS, type StatusKey } from './lib/format';
+import { STATUS, cardNo, type StatusKey } from './lib/format';
 import { Avatar, CardStatusIcon, Dialog, StatusIcon, TipIcon, useMe } from './components/ui';
 import { Icon, type IconName } from './components/Icons';
 import { CardModal } from './components/CardModal';
-import { BoardsPage } from './pages/Boards';
+import { BoardsPage, rememberedBoard } from './pages/Boards';
 import { InboxPage } from './pages/Inbox';
 import { DelegatedPage } from './pages/Delegated';
 import { NotificationsPage } from './pages/Notifications';
@@ -121,7 +121,7 @@ function Shell() {
     if (!cardCode && !PAGES[route.path]) go(home);
   }, [route.path]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
-    document.title = `${cardCode ?? PAGES[page]?.title ?? ''} · SyncTasks`;
+    document.title = `${cardCode ? 'Tarefa' : PAGES[page]?.title ?? ''} · SyncTasks`;
   }, [page, cardCode]);
 
   const nav: { path: string; label: string; icon: IconName; n?: number; attn?: boolean; show: boolean }[] = [
@@ -204,13 +204,18 @@ function Shell() {
 }
 
 function SearchBox() {
+  const me = useMe().data;
   const [q, setQ] = useState('');
   const [open, setOpen] = useState(false);
   const [term, setTerm] = useState('');
   const ref = useRef<HTMLDivElement>(null);
   const res = useQuery({
     queryKey: ['search', term],
-    queryFn: () => get<{ byCode: (Card & { role: string }) | null; results: Card[] }>(`/search?q=${encodeURIComponent(term)}`),
+    queryFn: () => {
+      // Item 37: um número (12 ou #12) abre a tarefa 12 do quadro aberto; se não houver lá, mostra as de outros quadros.
+      const board = rememberedBoard();
+      return get<{ byCode: (Card & { role: string }) | null; results: Card[] }>(`/search?q=${encodeURIComponent(term)}${board ? `&board=${board}` : ''}`);
+    },
     enabled: term.length > 0,
   });
   useEffect(() => {
@@ -222,18 +227,18 @@ function SearchBox() {
     document.addEventListener('mousedown', close);
     return () => document.removeEventListener('mousedown', close);
   }, []);
-  const pick = (code: string) => { setOpen(false); setQ(''); go(`/tarefa/${code}`); };
+  const pick = (id: string) => { setOpen(false); setQ(''); go(`/tarefa/${id}`); };
   const submit = (e: FormEvent) => {
     e.preventDefault();
     const d = res.data;
     const first = d?.byCode ?? d?.results[0];
-    if (first) pick(first.code);
+    if (first) pick(first.id);
   };
   const items = res.data ? (res.data.byCode ? [res.data.byCode] : res.data.results) : [];
   return (
     <div className="search" ref={ref}>
       <form onSubmit={submit} role="search">
-        <input className="input" type="search" placeholder="Buscar tarefa ou código" aria-label="Buscar tarefa ou código" value={q}
+        <input className="input" type="search" placeholder="Buscar tarefa ou número" aria-label="Buscar tarefa ou número" value={q}
           onChange={(e) => { setQ(e.target.value); setOpen(true); }} onFocus={() => setOpen(true)}
           onKeyDown={(e) => { if (e.key === 'Escape') setOpen(false); }} />
       </form>
@@ -242,10 +247,10 @@ function SearchBox() {
           {res.isLoading && <p className="hint">Buscando…</p>}
           {res.data && items.length === 0 && <p className="hint">Nada encontrado entre as tarefas que você pode ver.</p>}
           {items.map((c) => (
-            <button key={c.id} onClick={() => pick(c.code)}>
+            <button key={c.id} onClick={() => pick(c.id)}>
               <CardStatusIcon card={c} />
               <span className="t">{c.title}</span>
-              <span className="code">{c.code}</span>
+              <span className="code">{c.ownerId === me?.user.id ? `${cardNo(c.num)} · ${c.boardName ?? (c.inInbox ? 'Caixa de entrada' : 'fora dos quadros')}` : c.ownerName}</span>
             </button>
           ))}
         </div>

@@ -2,13 +2,13 @@
 
 export type Field =
   | 'code' | 'title' | 'description' | 'board' | 'list' | 'status' | 'due' | 'created' | 'completed'
-  | 'delegatedTo' | 'receivedFrom' | 'private' | 'archived' | 'source';
+  | 'delegatedTo' | 'receivedFrom' | 'private' | 'archived' | 'source' | 'color';
 export type Op = 'contains' | 'not_contains' | 'eq' | 'neq' | 'empty' | 'not_empty' | 'before' | 'after' | 'between' | 'last_days' | 'next_days';
 export type Value = string | number | boolean | [string, string] | null;
 export interface Condition { field: Field; op: Op; value?: Value }
 export interface Filter { all: Condition[]; any: Condition[] }
 
-type Kind = 'code' | 'text' | 'board' | 'list' | 'status' | 'date' | 'person' | 'bool' | 'source';
+type Kind = 'code' | 'text' | 'board' | 'list' | 'status' | 'date' | 'person' | 'bool' | 'source' | 'color';
 
 export const FIELDS: { id: Field; label: string; kind: Kind }[] = [
   { id: 'title', label: 'Título', kind: 'text' },
@@ -25,6 +25,7 @@ export const FIELDS: { id: Field; label: string; kind: Kind }[] = [
   { id: 'private', label: 'Privada', kind: 'bool' },
   { id: 'archived', label: 'Arquivada', kind: 'bool' },
   { id: 'source', label: 'Origem', kind: 'source' },
+  { id: 'color', label: 'Cor', kind: 'color' },
 ];
 
 export const OPS: Record<Kind, Op[]> = {
@@ -37,6 +38,7 @@ export const OPS: Record<Kind, Op[]> = {
   person: ['eq', 'neq', 'not_empty', 'empty'],
   bool: ['eq'],
   source: ['eq', 'neq'],
+  color: ['eq', 'neq', 'not_empty', 'empty'],
 };
 
 export const OP_LABEL: Record<Op, string> = {
@@ -45,6 +47,12 @@ export const OP_LABEL: Record<Op, string> = {
 };
 /** Para pessoa, "vazio" se lê melhor como "ninguém" / "alguém". */
 const PERSON_OP_LABEL: Partial<Record<Op, string>> = { empty: 'é ninguém', not_empty: 'é alguém' };
+/** Item 38: cor do cartão. */
+const COLOR_OP_LABEL: Partial<Record<Op, string>> = { empty: 'sem cor', not_empty: 'com alguma cor' };
+export const COLOR_VALUES = [
+  { id: 'azul', label: 'Azul' }, { id: 'verde', label: 'Verde' }, { id: 'amarelo', label: 'Amarelo' }, { id: 'laranja', label: 'Laranja' },
+  { id: 'vermelho', label: 'Vermelho' }, { id: 'roxo', label: 'Roxo' }, { id: 'rosa', label: 'Rosa' }, { id: 'cinza', label: 'Cinza' },
+];
 
 export const STATUS_VALUES = [{ id: 'open', label: 'Aberta' }, { id: 'done', label: 'Concluída' }];
 export const SOURCE_VALUES = [
@@ -56,7 +64,8 @@ export const SOURCE_VALUES = [
 
 export const fieldOf = (id: Field) => FIELDS.find((f) => f.id === id)!;
 export const opsFor = (id: Field) => OPS[fieldOf(id).kind];
-export const opLabel = (field: Field, op: Op) => (fieldOf(field).kind === 'person' && PERSON_OP_LABEL[op]) || OP_LABEL[op];
+export const opLabel = (field: Field, op: Op) =>
+  (fieldOf(field).kind === 'person' && PERSON_OP_LABEL[op]) || (fieldOf(field).kind === 'color' && COLOR_OP_LABEL[op]) || OP_LABEL[op];
 export const needsValue = (op: Op) => op !== 'empty' && op !== 'not_empty';
 
 /** Valor inicial ao escolher campo e operador, para a condição já valer sem digitar nada quando possível. */
@@ -69,6 +78,7 @@ export function defaultValue(field: Field, op: Op): Value {
   if (kind === 'status') return 'open';
   if (kind === 'bool') return true;
   if (kind === 'source') return 'web';
+  if (kind === 'color') return 'azul';
   return '';
 }
 
@@ -100,7 +110,7 @@ const br = (d: string) => (d === 'today' ? 'hoje' : `${d.slice(8, 10)}/${d.slice
 export function describe(c: Condition, names: Names): string {
   const f = fieldOf(c.field);
   const head = `${f.label} ${opLabel(c.field, c.op)}`;
-  if (!needsValue(c.op)) return head;
+  if (!needsValue(c.op)) return f.kind === 'color' ? `${opLabel(c.field, c.op).replace(/^./, (m) => m.toUpperCase())}` : head;
   const v = c.value;
   if (c.op === 'between' && Array.isArray(v)) return `${f.label} entre ${br(v[0])} e ${br(v[1])}`;
   if (c.op === 'last_days' || c.op === 'next_days') return `${head} ${v} ${v === 1 ? 'dia' : 'dias'}`;
@@ -112,6 +122,7 @@ export function describe(c: Condition, names: Names): string {
     case 'status': return `${head} ${STATUS_VALUES.find((s) => s.id === v)?.label ?? v}`;
     case 'source': return `${head} ${SOURCE_VALUES.find((s) => s.id === v)?.label ?? v}`;
     case 'bool': return `${head} ${v ? 'sim' : 'não'}`;
+    case 'color': return `${head} ${(COLOR_VALUES.find((s) => s.id === v)?.label ?? String(v)).toLowerCase()}`;
     default: return `${head} “${v}”`;
   }
 }

@@ -86,7 +86,7 @@ export async function newTask(ctx: Ctx, who: string, title: string, dueDate?: st
   const board = (await call(who, 'GET', `/api/boards/${boards[0].id}`)).body;
   const c = (await call(who, 'POST', '/api/cards', { listId: board.lists[0].id, title })).body;
   if (dueDate) await call(who, 'PATCH', `/api/cards/${c.id}`, { dueDate });
-  return { id: c.id as string, code: c.code as string, listId: board.lists[0].id as string, lists: board.lists as { id: string; name: string }[] };
+  return { id: c.id as string, code: c.code as string, num: c.num as number, listId: board.lists[0].id as string, lists: board.lists as { id: string; name: string }[] };
 }
 
 export async function firstListOf(ctx: Ctx, who: string) {
@@ -100,7 +100,7 @@ export async function firstListOf(ctx: Ctx, who: string) {
 export async function delegateTask(ctx: Ctx, from: string, cardId: string, to: string, extra: object = {}) {
   const r = await api(ctx)(from, 'POST', `/api/cards/${cardId}/delegate`, { toUserId: ctx.users[to].id, ...extra });
   if (r.status !== 200) throw new Error(`delegar falhou: ${JSON.stringify(r.body)}`);
-  return r.body as { cardId: string; code: string; delegationId: string };
+  return r.body as { cardId: string; code: string; num: number; delegationId: string };
 }
 
 export async function acceptTask(ctx: Ctx, who: string, cardId: string) {

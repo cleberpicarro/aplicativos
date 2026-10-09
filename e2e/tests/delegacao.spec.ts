@@ -1,4 +1,4 @@
-import { test, expect, entrar, outraPessoa, irPara, criarTarefa, abrirTarefa, dialogo, aviso, unico } from './apoio';
+import { test, expect, entrar, outraPessoa, irPara, criarTarefa, abrirTarefa, dialogo, aviso, unico, api } from './apoio';
 import type { Page } from '@playwright/test';
 
 async function delegar(page: Page, codigo: string, para: RegExp, obs?: string) {
@@ -10,7 +10,8 @@ async function delegar(page: Page, codigo: string, para: RegExp, obs?: string) {
   await d.getByRole('button', { name: 'Delegar' }).click();
   await expect(d).toHaveCount(0);
   await expect(dlg.locator('.box', { hasText: 'Repassada para' })).toBeVisible();
-  const filho = (await dlg.locator('.box .code').innerText()).trim();
+  await expect(dlg.locator('.box .code')).toHaveText(/^#\d+$/); // número do cartão ligado, no lugar de quem recebeu
+  const filho = (await api(page, 'GET', `/cards/${codigo}`)).card.child.cardId as string;
   await dlg.getByRole('button', { name: 'Fechar' }).click();
   return filho;
 }
@@ -47,7 +48,7 @@ test.describe('delegação de ponta a ponta', () => {
       await aceitarDaCaixa(marina.page, titulo);
       const dlgM = await abrirTarefa(marina.page, paraMarina);
       await expect(dlgM.locator('.cmt p')).toHaveText(['Preciso até sexta']);
-      await expect(dlgM.getByText(`Desdobramento de ${origem}`)).toBeVisible();
+      await expect(dlgM.getByText(/Desdobramento da tarefa #\d+ de Carlos/)).toBeVisible();
       await dlgM.getByRole('button', { name: 'Fechar' }).click();
       const paraJoao = await delegar(marina.page, paraMarina, /João/);
 
@@ -130,7 +131,7 @@ test.describe('delegação de ponta a ponta', () => {
     const beatriz = await outraPessoa(browser, 'beatriz');
     try {
       await irPara(beatriz.page, 'Caixa de entrada');
-      await expect(beatriz.page.locator('.row.inbox', { hasText: titulo }).locator('.code')).toHaveText(filho); // mesmo código
+      await expect(beatriz.page.locator('.row.inbox', { hasText: titulo }).locator('.code')).toHaveText(/^#\d+$/); // mesmo cartão, com o número da caixa de entrada dela
     } finally {
       await beatriz.fechar();
     }
@@ -151,7 +152,7 @@ test.describe('delegação de ponta a ponta', () => {
     try {
       await irPara(lucas.page, 'Avisos');
       await lucas.page.getByRole('button', { name: new RegExp(`delegou: ${titulo}`) }).click();
-      await expect(lucas.page.getByRole('dialog', { name: `Tarefa ${filho}` })).toBeVisible();
+      await expect(lucas.page.getByRole('dialog', { name: /^Tarefa #\d+$/ })).toBeVisible();
     } finally {
       await lucas.fechar();
     }

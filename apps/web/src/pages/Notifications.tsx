@@ -2,11 +2,11 @@ import { useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { get, post } from '../lib/api';
 import { go } from '../lib/router';
-import { dateTime, relative } from '../lib/format';
+import { cardNo, dateTime, relative } from '../lib/format';
 import { useMe } from '../components/ui';
 import { Icon } from '../components/Icons';
 
-interface Note { id: string; type: string; text: string; read_at: string | null; created_at: string; card_code: string | null; card_title: string | null }
+interface Note { id: string; type: string; text: string; read_at: string | null; created_at: string; card_id: string | null; card_num: number | null; card_title: string | null }
 
 export function NotificationsPage() {
   const me = useMe().data!;
@@ -26,12 +26,12 @@ export function NotificationsPage() {
             <div key={n.id} className={`row${n.read_at ? '' : ' unread'}`}>
               <span className="ico">{n.read_at ? <Icon name="bell" /> : <span className="dot" aria-label="Não lido" />}</span>
               <div className="title">
-                {n.card_code ? (
-                  <button onClick={() => go(`/tarefa/${n.card_code}`)} title={n.card_title ?? ''}>{n.text}</button>
+                {n.card_id ? (
+                  <button onClick={() => go(`/tarefa/${n.card_id}`)} title={n.card_title ?? ''}>{n.text}</button>
                 ) : (
                   <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{n.text}</span>
                 )}
-                {n.card_code && <span className="note">{n.card_code} · {n.card_title}</span>}
+                {n.card_id && <span className="note">{cardNo(n.card_num)} · {n.card_title}</span>}
               </div>
               <time className="code" title={dateTime(n.created_at)}>{relative(n.created_at)}</time>
             </div>

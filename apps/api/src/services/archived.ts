@@ -1,6 +1,6 @@
 import { many, type Db } from '../lib/db.js';
 import type { Actor } from './actors.js';
-import { parseCode } from './cards.js';
+import { parseCode, parseNum } from './cards.js';
 
 /** Item 35: quantas tarefas a tela "Arquivadas" mostra por vez. */
 export const ARCHIVED_PAGE = 50;
@@ -12,9 +12,17 @@ export const ARCHIVED_PAGE = 50;
 export const NOT_UNDONE = `(c.archived_at IS NULL OR coalesce((SELECT ue.after->>'undo' FROM card_events ue
   WHERE ue.card_id = c.id AND ue.type = 'archived' ORDER BY ue.id DESC LIMIT 1), '') <> 'true')`;
 
-/** Texto da pesquisa: código (ST-000123, NT-…, 123) ou palavras do título e da descrição, como na busca do topo. */
-export function textOrCode(q: string, params: unknown[]): string {
+/** Item 37: na lista, a tarefa delegada aparece com o número que ela tem no quadro de quem delegou. */
+const NUM = `CASE WHEN d.id IS NULL THEN c.num ELSE coalesce(pc.num, c.num) END`;
+
+/** Texto da pesquisa: número (12 ou #12), código antigo (ST-000123, NT-…) ou palavras do título e da descrição. */
+export function textOrCode(q: string, params: unknown[], num = 'c.num'): string {
   const parts: string[] = [];
+  const n = parseNum(q);
+  if (n !== null) {
+    params.push(n);
+    parts.push(`${num} = $${params.length}`);
+  }
   const seq = parseCode(q);
   if (seq !== null) {
     params.push(seq);
@@ -36,15 +44,16 @@ export function textOrCode(q: string, params: unknown[]): string {
 export async function listArchived(db: Db, actor: Actor, q: string, offset: number) {
   const params: unknown[] = [actor.id];
   const query = q.trim();
-  const search = query ? ` AND ${textOrCode(query, params)}` : '';
+  const search = query ? ` AND ${textOrCode(query, params, NUM)}` : '';
   params.push(ARCHIVED_PAGE + 1, offset);
   const rows = await many(
     db,
-    `SELECT c.id, c.code, c.title, c.due_date, c.completed_at, c.archived_at, c.created_at,
+    `SELECT c.id, c.code, ${NUM} AS num, c.color, c.title, c.due_date, c.completed_at, c.archived_at, c.created_at,
             CASE WHEN d.id IS NULL THEN 'own' ELSE 'delegated' END AS kind,
             b.name AS board_name, l.name AS list_name, o.name AS delegated_to
        FROM cards c
        LEFT JOIN delegations d ON d.card_id = c.id
+       LEFT JOIN cards pc ON pc.id = d.parent_card_id
        LEFT JOIN lists l ON l.id = c.list_id AND d.id IS NULL
        LEFT JOIN boards b ON b.id = l.board_id
        JOIN users o ON o.id = c.owner_id
@@ -58,6 +67,7 @@ export async function listArchived(db: Db, actor: Actor, q: string, offset: numb
     items: rows.slice(0, ARCHIVED_PAGE).map((r) => ({
       id: r.id,
       code: r.code,
+      num: r.num as number,
       title: r.title,
       dueDate: r.due_date,
       completedAt: r.completed_at,

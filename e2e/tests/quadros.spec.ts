@@ -18,7 +18,11 @@ test.describe('meus quadros', () => {
 
     const titulo = unico('Escrever relatório');
     const codigo = await criarTarefa(page, titulo);
-    expect(codigo).toMatch(/^ST-\d{6}$/);
+    // Item 37: quadro novo começa do 1, sem “ST-”
+    await expect(page.locator('article.kc', { hasText: titulo }).locator('.code')).toHaveText('#1');
+    const segunda = unico('Segunda tarefa');
+    await criarTarefa(page, segunda);
+    await expect(page.locator('article.kc', { hasText: segunda }).locator('.code')).toHaveText('#2');
 
     const dlg = await abrirTarefa(page, codigo);
     await dlg.getByLabel('Descrição').fill('Dados do trimestre');
@@ -37,9 +41,15 @@ test.describe('meus quadros', () => {
     await dlg.getByLabel('Novo comentário').fill('Começando hoje');
     await dlg.getByRole('button', { name: 'Comentar' }).click();
     await expect(dlg.locator('.cmt p')).toHaveText(['Começando hoje']);
+    // Item 38: cor de um cartão só, escolhida na tarefa aberta
+    await dlg.getByRole('button', { name: 'Cor', exact: true }).click();
+    await dlg.getByRole('radio', { name: 'Verde' }).click();
+    await aviso(page, 'Cor do cartão alterada.');
     await dlg.getByRole('button', { name: 'Fechar' }).click();
 
     const card = page.locator('article.kc', { hasText: titulo });
+    await expect(card).toHaveClass(/painted bc-verde/);
+    await expect(page.locator('article.kc', { hasText: segunda })).not.toHaveClass(/painted/);
     await expect(card.locator('.cl')).toHaveText('1/2');
     await expect(card.locator('.due')).toContainText('20 dez');
 
@@ -151,7 +161,7 @@ test.describe('meus quadros', () => {
     await page.keyboard.press('Enter');
     await dialogo(page, 'O texto tem 2 linhas').getByRole('button', { name: 'Criar 1 tarefa' }).click();
     await expect(cards).toHaveText(['Reunião de equipe']);
-    const codigo = (await col.locator('article.kc .code').innerText()).trim();
+    const codigo = (await col.locator('article.kc').getAttribute('data-id'))!;
     const dlg = await abrirTarefa(page, codigo);
     await expect(dlg.getByLabel('Descrição')).toHaveValue('pauta: metas');
   });
@@ -168,7 +178,7 @@ test.describe('meus quadros', () => {
     await gestora.goto(`/#/tarefa/${codigo}`);
     await expect(gestora.getByRole('dialog', { name: 'Tarefa não encontrada' })).toBeVisible();
     await gestora.keyboard.press('Escape');
-    await gestora.getByLabel('Buscar tarefa ou código').fill(titulo);
+    await gestora.getByLabel('Buscar tarefa ou número').fill(titulo);
     await expect(gestora.getByText('Nada encontrado entre as tarefas que você pode ver.')).toBeVisible();
     await fechar();
   });

@@ -2,11 +2,11 @@ import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query';
 import { del, get, patch, post, type Card } from '../lib/api';
 import { go } from '../lib/router';
-import { fullDate } from '../lib/format';
+import { cardNo, fullDate } from '../lib/format';
 import { Dialog, Due, ErrorText, useMe, useToast } from '../components/ui';
 import { Icon } from '../components/Icons';
 import {
-  COLUMNS, DEFAULT_COLUMNS, EMPTY, FIELDS, READY, SOURCE_VALUES, STATUS_VALUES, cleanFilter, defaultValue, describe, fieldOf, isComplete,
+  COLOR_VALUES, COLUMNS, DEFAULT_COLUMNS, EMPTY, FIELDS, READY, SOURCE_VALUES, STATUS_VALUES, cleanFilter, defaultValue, describe, fieldOf, isComplete,
   needsValue, newCondition, opLabel, opsFor, toCsv, type Column, type Condition, type Field, type Filter, type Names, type Op, type Value,
 } from '../lib/tableFilter';
 
@@ -181,7 +181,7 @@ export function TablePage() {
             </thead>
             <tbody>
               {list.map((r) => (
-                <tr key={r.id} className="clickable" onClick={() => go(`/tarefa/${r.code}`)}>
+                <tr key={r.id} className="clickable" onClick={() => go(`/tarefa/${r.id}`)}>
                   {shown.map((c) => <td key={c.id} className={`c-${c.id}`}>{cellView(r, c.id, me.today)}</td>)}
                 </tr>
               ))}
@@ -212,10 +212,11 @@ export function TablePage() {
 
 function cellView(r: Row, col: Column, today: string) {
   switch (col) {
-    case 'code': return <span className="code">{r.code}</span>;
+    case 'code': return <span className="code">{cardNo(r.num)}</span>;
     case 'title': return (
       <span className="ttl">
-        <button className={`cell-link${r.completedAt ? ' done-t' : ''}`} title={r.title} onClick={(e) => { e.stopPropagation(); go(`/tarefa/${r.code}`); }}>{r.title}</button>
+        {r.color && <span className={`dot-color bc-${r.color}`} title={`Cor: ${COLOR_VALUES.find((x) => x.id === r.color)?.label ?? r.color}`} />}
+        <button className={`cell-link${r.completedAt ? ' done-t' : ''}`} title={r.title} onClick={(e) => { e.stopPropagation(); go(`/tarefa/${r.id}`); }}>{r.title}</button>
         {r.isPrivate && <span className="ico" title="Privada"><Icon name="lock" /></span>}
       </span>
     );
@@ -238,7 +239,7 @@ function cellView(r: Row, col: Column, today: string) {
 
 function csvCell(r: Row, col: Column): string | number | null {
   switch (col) {
-    case 'code': return r.code;
+    case 'code': return cardNo(r.num);
     case 'title': return r.title;
     case 'where': return whereText(r);
     case 'due': return r.dueDate ? fullDate(r.dueDate) : '';
@@ -419,6 +420,7 @@ function ValueInput({ c, options, onChange }: { c: Condition; options?: Options;
       );
     case 'status': return select(STATUS_VALUES.map((s) => ({ id: s.id, label: s.label })));
     case 'source': return select(SOURCE_VALUES.map((s) => ({ id: s.id, label: s.label })));
+    case 'color': return select(COLOR_VALUES);
     case 'bool':
       return (
         <select className="select" aria-label="Valor" value={v ? 'sim' : 'nao'} onChange={(e) => onChange(e.target.value === 'sim')}>
@@ -432,7 +434,7 @@ function ValueInput({ c, options, onChange }: { c: Condition; options?: Options;
       return select((people ?? []).map((p) => ({ id: p.id, label: p.name })), 'Escolha a pessoa…');
     }
     default:
-      return <input className="input" aria-label="Valor" maxLength={200} value={typeof v === 'string' ? v : ''} placeholder={kind === 'code' ? 'ST-000123' : 'Texto'}
+      return <input className="input" aria-label="Valor" maxLength={200} value={typeof v === 'string' ? v : ''} placeholder={kind === 'code' ? '12' : 'Texto'}
         onChange={(e) => onChange(e.target.value)} />;
   }
 }

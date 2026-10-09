@@ -64,7 +64,7 @@ test.describe('captura e importação', () => {
     expect(pedidos[0].caminho).toBe('/boards');
     expect(pedidos.filter((p) => p.caminho === '/lists').length).toBeGreaterThanOrEqual(1);
     const cartao = pedidos.find((p) => p.caminho === '/cards' && p.dados.get('name') === titulo);
-    expect(cartao?.dados.get('desc')).toContain('Código no SyncTasks: ST-');
+    expect(cartao?.dados.get('desc')).toMatch(/^Número no SyncTasks: #\d+/);
     await d.locator('.dialog-f').getByRole('button', { name: 'Fechar' }).click();
     await expect(d).toHaveCount(0);
   });

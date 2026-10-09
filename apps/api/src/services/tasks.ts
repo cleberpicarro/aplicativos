@@ -1,8 +1,8 @@
 import { one, many, type Db } from '../lib/db.js';
 import { badRequest, conflict, forbidden, notFound } from '../lib/errors.js';
 import type { Actor } from './actors.js';
-import { loadCard, nextPosition, cardRef } from './cards.js';
-import { ownList } from './boards.js';
+import { loadCard, nextPosition, cardRef, numOf } from './cards.js';
+import { BOARD_COLORS, ownList } from './boards.js';
 import { logEvent } from './events.js';
 import { notify } from './notify.js';
 
@@ -25,7 +25,7 @@ async function insertCard(db: Db, actor: Actor, listId: string, title: string, d
   const position = await nextPosition(db, 'SELECT max(position) AS max FROM cards WHERE list_id = $1', [listId]);
   const c = await one(
     db,
-    `INSERT INTO cards (owner_id, list_id, position, title, description, created_by) VALUES ($1, $2, $3, $4, $5, $1) RETURNING id, code, title`,
+    `INSERT INTO cards (owner_id, list_id, position, title, description, created_by) VALUES ($1, $2, $3, $4, $5, $1) RETURNING id, code, num, title`,
     [actor.id, listId, position, title, description],
   );
   await logEvent(db, c.id, actor.id, 'created', undefined, description ? { title, description } : { title });
@@ -74,6 +74,7 @@ export interface CardPatch {
   description?: string;
   dueDate?: string | null;
   isPrivate?: boolean;
+  color?: string | null;
 }
 
 export async function updateCard(db: Db, actor: Actor, cardId: string, patch: CardPatch) {
@@ -97,6 +98,11 @@ export async function updateCard(db: Db, actor: Actor, cardId: string, patch: Ca
     if (row.d_id && OPEN.includes(row.d_status)) {
       await notify(db, row.d_delegator_id, 'due_changed', `${actor.name.split(' ')[0]} alterou o prazo para ${fmtDate(patch.dueDate)} (antes ${fmtDate(row.due_date)})`, cardRef(row));
     }
+  }
+  // Item 38: a cor do cartão é só aparência e só de quem tem a tarefa: não entra no log.
+  if (patch.color !== undefined && patch.color !== row.color) {
+    if (patch.color !== null && !(BOARD_COLORS as readonly string[]).includes(patch.color)) throw badRequest('Cor inválida.');
+    await db.query('UPDATE cards SET color = $2 WHERE id = $1', [cardId, patch.color]);
   }
   if (patch.isPrivate !== undefined && patch.isPrivate !== row.is_private) {
     if (row.d_id && patch.isPrivate) throw conflict('Uma tarefa recebida por delegação não pode ser privada.');
@@ -127,9 +133,10 @@ export async function moveCard(db: Db, actor: Actor, cardId: string, listId: str
     const from = await one(db, 'SELECT l.name AS list, b.name AS board, b.id AS board_id FROM lists l JOIN boards b ON b.id = l.board_id WHERE l.id = $1', [row.list_id]);
     const to = await one(db, 'SELECT name FROM boards WHERE id = $1', [list.board_id]);
     const otherBoard = from && from.board_id !== list.board_id;
+    // Item 37: em outro quadro a tarefa recebe o próximo número de lá; o log guarda o número antigo.
     await logEvent(db, cardId, actor.id, 'moved',
-      otherBoard ? { board: from.board, list: from.list } : { list: from?.list ?? null },
-      otherBoard ? { board: to.name, list: list.name } : { list: list.name });
+      otherBoard ? { board: from.board, list: from.list, num: row.num } : { list: from?.list ?? null },
+      otherBoard ? { board: to.name, list: list.name, num: await numOf(db, cardId) } : { list: list.name });
   }
 }
 

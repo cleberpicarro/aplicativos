@@ -3,7 +3,8 @@ import { one, many, type Db } from '../lib/db.js';
 import { badRequest, notFound } from '../lib/errors.js';
 import { isoDate } from '../lib/dates.js';
 import type { Actor } from './actors.js';
-import { CARD_SELECT, parseCode, toCardDto } from './cards.js';
+import { CARD_SELECT, parseCode, parseNum, toCardDto } from './cards.js';
+import { BOARD_COLORS } from './boards.js';
 import { NOT_UNDONE } from './archived.js';
 
 /*
@@ -39,6 +40,7 @@ export const FIELD_OPS = {
   private: ['eq'],
   archived: ['eq'],
   source: PICK_OPS,
+  color: PERSON_OPS,
 } as const satisfies Record<string, readonly string[]>;
 
 export type Field = keyof typeof FIELD_OPS;
@@ -60,9 +62,9 @@ export type Filter = z.infer<typeof filterSchema>;
 export type Condition = z.infer<typeof conditionSchema>;
 
 export const SORTS = {
-  code: 'c.seq',
+  code: 'c.num',
   title: 'lower(c.title)',
-  board: 'b.position, l.position',
+  board: 'bo.position, l.position',
   due: 'c.due_date',
   status: '(c.completed_at IS NOT NULL)',
   delegation: 'coalesce(cho.name, du.name)',
@@ -145,6 +147,9 @@ function pick(sql: Sql, col: string, c: Condition, cast = ''): string {
 export function conditionSql(sql: Sql, c: Condition): string {
   switch (c.field) {
     case 'code': {
+      // Item 37: o número no quadro (12 ou #12); o código antigo ST-/NT- continua achando a tarefa.
+      const num = parseNum(str(c));
+      if (num !== null) return `c.num = ${sql.p(num)}`;
       const seq = parseCode(str(c));
       return seq === null ? 'false' : `c.seq = ${sql.p(seq)}`;
     }
@@ -168,6 +173,13 @@ export function conditionSql(sql: Sql, c: Condition): string {
       if (typeof c.value !== 'boolean') throw badRequest('Escolha sim ou não.');
       const col = c.field === 'private' ? 'c.is_private' : '(c.archived_at IS NOT NULL)';
       return `${col} = ${sql.p(c.value)}`;
+    }
+    case 'color': {
+      if (c.op === 'empty') return 'c.color IS NULL';
+      if (c.op === 'not_empty') return 'c.color IS NOT NULL';
+      const v = str(c);
+      if (!(BOARD_COLORS as readonly string[]).includes(v)) throw badRequest('Cor inválida.');
+      return c.op === 'eq' ? `c.color = ${sql.p(v)}` : `c.color IS DISTINCT FROM ${sql.p(v)}`;
     }
     case 'source': {
       const v = str(c);
@@ -196,8 +208,7 @@ export function whereFor(actor: Actor, filter: Filter) {
 
 export async function tableRows(db: Db, actor: Actor, filter: Filter, sort: SortKey, dir: 'asc' | 'desc', offset: number, limit: number) {
   const { where, params } = whereFor(actor, filter);
-  const from = `${CARD_SELECT.replace('SELECT c.*, l.board_id,', 'SELECT c.*, l.board_id, b.name AS board_name, l.name AS list_name,')}
-    LEFT JOIN boards b ON b.id = l.board_id`;
+  const from = CARD_SELECT.replace('SELECT c.*, l.board_id,', 'SELECT c.*, l.board_id, l.name AS list_name,');
   const nulls = dir === 'asc' ? 'NULLS LAST' : 'NULLS FIRST';
   const order = [...SORTS[sort].split(', '), 'c.seq'].map((col) => `${col} ${dir.toUpperCase()} ${nulls}`).join(', ');
   const total = (await one<{ n: number }>(db, `SELECT count(*)::int AS n FROM cards c

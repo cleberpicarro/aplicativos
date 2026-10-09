@@ -26,7 +26,12 @@ export type DelegationStatus = 'PENDING_ACCEPT' | 'IN_PROGRESS' | 'AWAITING_ACK'
 
 export interface Card {
   id: string;
+  /** Código único antigo (ST-000123): só por dentro, para links e códigos antigos. */
   code: string;
+  /** Item 37: número da tarefa no quadro (ou na caixa de entrada); aparece como #12. */
+  num: number;
+  /** Item 38: cor do cartão, escolhida por quem tem a tarefa. */
+  color: string | null;
   title: string;
   description: string;
   dueDate: string | null;
@@ -36,6 +41,7 @@ export interface Card {
   ownerId: string;
   ownerName: string;
   boardId: string | null;
+  boardName: string | null;
   listId: string | null;
   position: number;
   inInbox: boolean;
@@ -49,8 +55,9 @@ export interface Card {
     suggestedDue: string | null;
     declineReason: string | null;
     parentCode: string | null;
+    parentNum: number | null;
   };
-  child: null | { delegationId: string; cardId: string; code: string; ownerName: string; status: DelegationStatus; reopened: boolean };
+  child: null | { delegationId: string; cardId: string; code: string; num: number; ownerName: string; status: DelegationStatus; reopened: boolean };
   checklist: { done: number; total: number };
   source: 'web' | 'email' | 'trello' | null;
   createdAt: string;

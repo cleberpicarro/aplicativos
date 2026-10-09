@@ -43,8 +43,8 @@ export function CapturePage({ params }: { params: URLSearchParams }) {
     setBusy(true);
     setError(null);
     try {
-      const r = await post<{ code: string }>('/capture', { title, url: url.trim(), text });
-      setSaved(r.code);
+      const r = await post<{ num: number }>('/capture', { title, url: url.trim(), text });
+      setSaved(`#${r.num}`);
     } catch (err) {
       setError(err);
     } finally {

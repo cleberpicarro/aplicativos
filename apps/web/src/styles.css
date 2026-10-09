@@ -419,6 +419,14 @@ table.t tr.off td { color: var(--faint); }
 :root[data-theme='dark'] .bc-amarelo { --bc: #2b2515; } :root[data-theme='dark'] .bc-laranja { --bc: #2d2017; }
 :root[data-theme='dark'] .bc-vermelho { --bc: #2e1b1b; } :root[data-theme='dark'] .bc-roxo { --bc: #231c33; }
 :root[data-theme='dark'] .bc-rosa { --bc: #2e1b27; } :root[data-theme='dark'] .bc-cinza { --bc: #232628; }
+/* Item 38: cartão pintado com a cor que a pessoa escolheu (mesma paleta suave do quadro, com versão escura). */
+.kc.painted { background: var(--bc); border-color: color-mix(in srgb, var(--bc), var(--fg) 14%); }
+.kc.painted:hover { border-color: var(--muted); }
+.cc-wrap { position: relative; display: inline-flex; flex-direction: column; }
+.cc-wrap > button .swatch { width: 0.85rem; height: 0.85rem; }
+.cc-pop { position: absolute; top: calc(100% + 4px); left: 0; z-index: 30; width: min(20rem, 80vw); padding: 8px; background: var(--bg);
+  border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 8px 24px rgb(0 0 0 / 0.16); font-weight: 400; }
+.dot-color { display: inline-block; width: 0.6rem; height: 0.6rem; border-radius: 50%; background: var(--bc); border: 1px solid color-mix(in srgb, var(--bc), var(--fg) 25%); margin-right: 6px; vertical-align: 0; flex: none; }
 .drop-line { height: 3px; border-radius: 2px; background: var(--accent); margin: -1px 2px; flex: none; }
 .col.over { border-color: var(--accent); }
 

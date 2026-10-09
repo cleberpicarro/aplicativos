@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { get, post, type Card } from '../lib/api';
-import { firstName } from '../lib/format';
+import { cardNo, firstName } from '../lib/format';
 import { Dialog, ErrorText, useMe, useToast } from './ui';
 
 /** Executa uma ação, mostra o resultado e recarrega os dados da tela. */
@@ -54,8 +54,8 @@ export function DelegateDialog({ card, onClose }: { card: Card; onClose: Close }
   return (
     <Dialog title="Delegar tarefa" onClose={onClose} footer={<Footer busy={busy} onClose={onClose} label="Delegar" />}>
       <form id="dlg" onSubmit={submit} className="dialog-b" style={{ padding: 0 }}>
-        <div className="box"><span className="code">{card.code}</span> <b style={{ fontWeight: 500 }}>{card.title}</b></div>
-        <p className="hint">A pessoa recebe um cartão ligado a este, com código próprio. Você acompanha até dar o ciente.</p>
+        <div className="box"><span className="code">{cardNo(card.num)}</span> <b style={{ fontWeight: 500 }}>{card.title}</b></div>
+        <p className="hint">A pessoa recebe um cartão ligado a este, com o número do quadro dela. Você acompanha até dar o ciente.</p>
         <div className="field">
           <label htmlFor="d-to">Para (subordinado direto)</label>
           <select id="d-to" className="select input" value={to} onChange={(e) => setTo(e.target.value)} required>
@@ -102,7 +102,7 @@ export function RedelegateDialog({ card, onClose }: { card: Card; onClose: Close
           <label htmlFor="r-due">Prazo sugerido</label>
           <input id="r-due" type="date" className="input" value={due} onChange={(e) => setDue(e.target.value)} />
         </div>
-        <p className="hint">O código {card.code} é mantido.</p>
+        <p className="hint">É o mesmo cartão: a nova pessoa o recebe na caixa de entrada, com o número de lá.</p>
         <ErrorText error={error} />
       </form>
     </Dialog>
@@ -119,7 +119,7 @@ export function DeclineDialog({ card, onClose }: { card: Card; onClose: Close })
   return (
     <Dialog title="Devolver tarefa" onClose={onClose} footer={<Footer busy={busy} onClose={onClose} label="Devolver" danger />}>
       <form id="dlg" onSubmit={submit} className="dialog-b" style={{ padding: 0 }}>
-        <p style={{ margin: 0 }}><span className="code">{card.code}</span> {card.title}</p>
+        <p style={{ margin: 0 }}><span className="code">{cardNo(card.num)}</span> {card.title}</p>
         <p className="hint">A tarefa volta para {firstName(card.delegation!.delegatorName)}, que decide se redelega ou cancela.</p>
         <div className="field">
           <label htmlFor="x-reason">Justificativa (obrigatória)</label>
@@ -142,7 +142,7 @@ export function ReopenDialog({ card, onClose }: { card: Card; onClose: Close }) 
   return (
     <Dialog title="Reabrir tarefa" onClose={onClose} footer={<Footer busy={busy} onClose={onClose} label="Reabrir e devolver" />}>
       <form id="dlg" onSubmit={submit} className="dialog-b" style={{ padding: 0 }}>
-        <p style={{ margin: 0 }}><span className="code">{card.code}</span> {card.title}</p>
+        <p style={{ margin: 0 }}><span className="code">{cardNo(card.num)}</span> {card.title}</p>
         <div className="field">
           <label htmlFor="ro-c">O que precisa ser refeito? (vai como comentário para {firstName(card.ownerName)})</label>
           <textarea id="ro-c" className="textarea" value={comment} onChange={(e) => setComment(e.target.value)} required minLength={3} />
@@ -170,7 +170,7 @@ export function TransferDialog({ card, onClose }: { card: Card; onClose: Close }
   return (
     <Dialog title="Transferir tarefa" onClose={onClose} footer={<Footer busy={busy || !targets.data?.length} onClose={onClose} label="Transferir" />}>
       <form id="dlg" onSubmit={submit} className="dialog-b" style={{ padding: 0 }}>
-        <p style={{ margin: 0 }}><span className="code">{card.code}</span> {card.title}</p>
+        <p style={{ margin: 0 }}><span className="code">{cardNo(card.num)}</span> {card.title}</p>
         <p className="hint">
           {card.delegation
             ? `Esta tarefa foi delegada por ${card.delegation.delegatorName}, que continua acompanhando e verá “delegada para …”.`
@@ -208,7 +208,7 @@ export function AcceptDialog({ card, onClose }: { card: Card; onClose: Close }) 
   return (
     <Dialog title="Aceitar e organizar" onClose={onClose} footer={<Footer busy={busy || !lId} onClose={onClose} label="Aceitar" />}>
       <form id="dlg" onSubmit={submit} className="dialog-b" style={{ padding: 0 }}>
-        <p style={{ margin: 0 }}><span className="code">{card.code}</span> {card.title}</p>
+        <p style={{ margin: 0 }}><span className="code">{cardNo(card.num)}</span> {card.title}</p>
         <div className="row2">
           <div className="field">
             <label htmlFor="a-b">Quadro</label>

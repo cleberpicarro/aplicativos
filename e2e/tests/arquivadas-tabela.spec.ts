@@ -1,13 +1,6 @@
 import fs from 'node:fs';
 import type { Page } from '@playwright/test';
-import { test, expect, entrar, outraPessoa, irPara, criarTarefa, dialogo, aviso, unico } from './apoio';
-
-/** Atalhos pela API (mesma sessão da página) para montar o cenário sem repetir telas já testadas em outros roteiros. */
-async function api(page: Page, method: 'GET' | 'POST' | 'PATCH', url: string, data?: unknown) {
-  const r = await page.request.fetch(`/api${url}`, { method, data, headers: { 'X-SyncTasks': '1' } });
-  expect(r.status(), `${method} ${url}`).toBeLessThan(400);
-  return r.json();
-}
+import { test, expect, entrar, outraPessoa, irPara, criarTarefa, dialogo, aviso, unico, api, numeroDe } from './apoio';
 const idDe = async (page: Page, codigo: string) => (await api(page, 'GET', `/cards/by-code/${codigo}`)).card.id as string;
 
 function ontem() {
@@ -23,6 +16,7 @@ test.describe('arquivadas (item 35)', () => {
     await irPara(page, 'Tarefas');
     const propria = unico('Planilha de custos');
     const codigo = await criarTarefa(page, propria);
+    const numero = await numeroDe(page, codigo);
     const card = page.locator('article.kc', { hasText: propria });
     await card.getByRole('button', { name: `Concluir ${propria}` }).click();
     await card.getByRole('button', { name: `Arquivar ${propria}` }).click();
@@ -54,7 +48,8 @@ test.describe('arquivadas (item 35)', () => {
     await expect(linhaDelegada).toContainText('Só consulta');
 
     const pesquisa = page.getByLabel('Pesquisar nas arquivadas');
-    await pesquisa.fill(codigo);
+    await expect(linha.locator('td.code')).toHaveText(numero);
+    await pesquisa.fill(numero);
     await expect(page.locator('table.arch tbody tr')).toHaveCount(1);
     await expect(linha).toBeVisible();
     await pesquisa.fill(delegada.split(' ').slice(0, 2).join(' '));
@@ -130,8 +125,8 @@ test.describe('tarefas em tabela (item 36)', () => {
 
     // Clicar na linha abre a tarefa; a visão em tabela fica lembrada
     await tabela.locator('tbody tr', { hasText: outra }).locator('td.c-where').click();
-    await expect(page.getByRole('dialog', { name: /^Tarefa ST-/ })).toBeVisible();
-    await page.getByRole('dialog', { name: /^Tarefa ST-/ }).getByRole('button', { name: 'Fechar' }).click();
+    await expect(page.getByRole('dialog', { name: /^Tarefa #\d+$/ })).toBeVisible();
+    await page.getByRole('dialog', { name: /^Tarefa #\d+$/ }).getByRole('button', { name: 'Fechar' }).click();
     await page.reload();
     await expect(page.getByRole('button', { name: 'Ver em tabela' })).toHaveAttribute('aria-pressed', 'true');
     await expect(page.getByRole('button', { name: `Filtro: ${nome}` })).toBeVisible();

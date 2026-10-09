@@ -227,7 +227,7 @@ Só o administrador:
 
 - **RN-14** Só delega quem tem subordinados diretos, e **só para um subordinado direto**. Nunca se delega para cima nem para quem não é subordinado direto (o CEO delega a um gestor só se esse gestor responder direto a ele).
 - **RN-15** **Não existe "delegar" avulso.** A tarefa é criada primeiro (ou recebida) e o botão **Delegar** fica dentro dela.
-- **RN-16** Ao delegar, o sistema cria **um novo cartão** para o subordinado, com **código próprio**, ligado ao cartão de origem (`parent`). O título e a descrição são copiados. Prazo sugerido e observação são opcionais. A observação vira o primeiro comentário.
+- **RN-16** Ao delegar, o sistema cria **um novo cartão** para o subordinado, com **número próprio** (o da caixa de entrada dele; ao aceitar, o do quadro onde ele organiza), ligado ao cartão de origem (`parent`). O título e a descrição são copiados. Prazo sugerido e observação são opcionais. A observação vira o primeiro comentário.
 - **RN-17** Cada cartão pode ter **uma delegação ativa** por vez. Para delegar de novo, a anterior precisa estar cancelada ou ter recebido o ciente.
 - **RN-18** A delegação vai para **uma pessoa**. Para três pessoas, são três tarefas.
 - **RN-19** O cartão delegado chega na **caixa de entrada** do subordinado.
@@ -246,14 +246,14 @@ Só o administrador:
 - **RN-26** **Reabrir** exige comentário com o motivo. A tarefa volta para "em andamento", marcada como reaberta, e o detentor é avisado.
 - **RN-27** Sem ciente, a tarefa fica pendente na tela do delegador **indefinidamente**. Não há prazo automático.
 - **RN-28** **Cancelar** uma delegação, em andamento ou devolvida, arquiva o cartão do subordinado como cancelado e o avisa. O cartão de origem fica livre para nova delegação.
-- **RN-29** **Redelegar** uma tarefa devolvida a envia para o mesmo ou outro subordinado direto, opcionalmente com novo prazo. **O código é mantido.**
+- **RN-29** **Redelegar** uma tarefa devolvida a envia para o mesmo ou outro subordinado direto, opcionalmente com novo prazo. É o **mesmo cartão**: chega à caixa de entrada de quem recebe, com o número de lá (item 37).
 
 ### 7.6 Transferência de tarefa
 
 - **RN-30** O detentor pode transferir uma tarefa para: um **subordinado direto**, um **colega do mesmo nível com o mesmo superior** ou o **próprio superior direto**.
 - **RN-31** Quem transfere **deixa de acompanhar** a tarefa.
 - **RN-32** Se a tarefa transferida tiver sido **delegada**, o delegador original **continua acompanhando**, com a marca "delegada para [novo detentor]", e continua responsável pelo ciente. O delegador não aparece como destino possível.
-- **RN-33** A tarefa transferida chega na caixa de entrada do destino. O código é mantido.
+- **RN-33** A tarefa transferida chega na caixa de entrada do destino, com o próximo número da caixa de entrada dele (item 37). A cor do cartão não vai junto (item 38).
 
 ### 7.7 Visibilidade nas telas do superior
 
@@ -262,7 +262,7 @@ Só o administrador:
 
 ### 7.8 Busca
 
-- **RN-36** O campo de busca aceita um **código** (`ST-000123`, `123`, `st123` ou o formato antigo `NT-000123`), que abre a tarefa direto, ou um **texto**, que busca no título e na descrição.
+- **RN-36** O campo de busca aceita um **número** (`12` ou `#12`, item 37), que abre a tarefa 12 do quadro aberto (ou a única tarefa 12 da pessoa) e, se houver tarefa 12 em outros quadros dela, mostra a lista para escolher; os códigos antigos (`ST-000123`, `NT-000123`) continuam abrindo a tarefa direto; ou um **texto**, que busca no título e na descrição.
 - **RN-37** A busca só retorna tarefas que o usuário pode ver: as dele e as que ele delegou.
 
 ### 7.9 Transferência de gestão
@@ -281,13 +281,15 @@ Só o administrador:
 
 ## 8. Código da tarefa
 
-- **RN-44** Toda tarefa recebe um código único e legível: **`ST-` seguido de no mínimo 6 dígitos**, por exemplo `ST-000001`. Até a troca de nome o prefixo era `NT-`; os códigos antigos continuam sendo aceitos na busca e nos links (o número é o mesmo).
-- **RN-45** O código é gerado por uma sequência do banco (`BIGINT`). **Nunca é reutilizado**, nem após cancelamento ou arquivamento.
-- **RN-46** **Não há teto.** O número é exibido com zeros à esquerda até 6 dígitos. A partir de 1.000.000 a exibição cresce naturalmente (`ST-1000000`), sem quebrar nada.
-- **RN-47** Transferir, redelegar, dar ciente e reabrir **mantêm** o código. Uma nova delegação gera um **novo** cartão, portanto um novo código.
-- **RN-48** O código aparece no cartão, nas listas, na caixa de entrada, na tela Tarefas delegadas, no log e no **assunto dos e-mails**.
+Desde o item 37 (09/10/2026), o código que aparece é **só um número, com numeração própria em cada quadro**.
 
-**Capacidade.** Com cerca de 99 pessoas criando 10 tarefas por dia útil (cerca de 250 dias por ano), o volume é de aproximadamente 250 mil tarefas por ano. Seis dígitos (999.999) cobrem cerca de 4 anos nesse ritmo, que é alto. Depois disso o código passa a ter 7 dígitos automaticamente. O formato anterior, com 4 dígitos (9.999), se esgotaria em poucos dias.
+- **RN-44** Toda tarefa tem um **número no quadro** onde está, sem prefixo e sem zeros, mostrado como **`#12`**. Cada quadro conta as próprias tarefas a partir de 1, e a **caixa de entrada** de cada pessoa tem numeração própria. O mesmo número pode existir em quadros diferentes e em pessoas diferentes.
+- **RN-45** O número vem de um contador do quadro (ou da caixa de entrada) e **nunca é reaproveitado** nesse lugar, nem depois de arquivar, cancelar ou de a tarefa sair dele.
+- **RN-46** Por dentro, cada tarefa continua com um **código único no sistema** (`ST-000123`, antes `NT-`), que nunca muda. Ele não aparece na tela, mas os links e códigos antigos (dos e-mails já enviados, por exemplo) continuam abrindo a tarefa certa. Os links novos usam o identificador da tarefa.
+- **RN-47** A tarefa recebe o **próximo número de onde chega** ao: ser criada, capturada ou importada; mudar de quadro (item 16); sair da caixa de entrada para um quadro (aceitar); voltar à caixa de entrada (devolução); redelegar; transferir; desarquivar em outro quadro. Mudar de fase no mesmo quadro, concluir, arquivar, dar ciente e reabrir mantêm o número. O log guarda o número antigo quando a tarefa muda de quadro.
+- **RN-48** O número aparece no cartão, nas listas, na caixa de entrada, na tabela, nas arquivadas, nos avisos, no log e no **assunto dos e-mails** (`[#12]`). Numa tarefa delegada, cada um vê o número do próprio quadro: na tela Tarefas delegadas, o delegador vê o número do cartão dele; dentro da tarefa aberta aparecem os dois ("Desdobramento da tarefa #7 de Carlos", "Repassada para João #3").
+
+**Capacidade.** O contador de cada quadro vai até 2 bilhões; o código interno não tem teto.
 
 ---
 
@@ -374,14 +376,14 @@ Cada evento gera um **aviso no app** e um **e-mail**:
 
 | Evento | Quem recebe | Assunto do e-mail (exemplo) |
 |---|---|---|
-| Nova delegação | subordinado | `[ST-000123] Marina delegou: Conferir notas fiscais` |
-| Delegação devolvida | delegador | `[ST-000123] João devolveu: Conferir notas fiscais` |
-| Prazo alterado | delegador | `[ST-000123] Prazo alterado para 10/10` |
-| Tarefa concluída (aguardando ciente) | delegador | `[ST-000123] Concluída, aguardando seu ciente` |
-| Tarefa reaberta | subordinado | `[ST-000123] Reaberta por Marina` |
-| Ciente dado (arquivada) | subordinado | `[ST-000123] Ciente dado, tarefa arquivada` |
-| Tarefa transferida para você | destino | `[ST-000123] Carlos transferiu para você` |
-| Delegação cancelada | subordinado | `[ST-000123] Delegação cancelada` |
+| Nova delegação | subordinado | `[#12] Marina delegou: Conferir notas fiscais` |
+| Delegação devolvida | delegador | `[#12] João devolveu: Conferir notas fiscais` |
+| Prazo alterado | delegador | `[#12] Prazo alterado para 10/10` |
+| Tarefa concluída (aguardando ciente) | delegador | `[#12] Concluída, aguardando seu ciente` |
+| Tarefa reaberta | subordinado | `[#12] Reaberta por Marina` |
+| Ciente dado (arquivada) | subordinado | `[#12] Ciente dado, tarefa arquivada` |
+| Tarefa transferida para você | destino | `[#12] Carlos transferiu para você` |
+| Delegação cancelada | subordinado | `[#12] Delegação cancelada` |
 | Gestão transferida | pessoa, novo e antigo superior | `Mudança de gestão: João agora responde a Paulo` |
 | Convite / definir senha | pessoa nova | `Seu acesso ao SyncTasks` |
 
@@ -416,7 +418,7 @@ No topo de cada tela: título, campo de **busca** (texto ou código) e controle 
 - No topo, à direita, a chave **Quadro / Tabela** (item 36) troca entre os quadros (kanban, descritos abaixo) e a tabela (12.2a). A escolha fica guardada no navegador.
 
 - Abas com os quadros da pessoa à esquerda; à direita, discretos, **+ Quadro** e o menu **…** do quadro (renomear, **cor do quadro**, nova fase, mover o quadro para a esquerda/direita, **fundo da área de trabalho** e, separados no fim, **Importar do Trello** e **Exportar para o Trello**).
-- **Exportar para o Trello** (item 31): cria no Trello um quadro novo com as fases (listas, na mesma ordem) e as tarefas não arquivadas do quadro aberto: título, descrição com código ST-, situação e delegação no topo, prazo, marca de concluída, checklist e comentários (autor e data no texto). Privadas só se a pessoa marcar. A pessoa autoriza no Trello (permissão de 1 dia, só no navegador); o envio sai do navegador direto para o Trello, sem passar o código de acesso pelo servidor. Precisa da variável `TRELLO_API_KEY` no servidor; sem ela, o diálogo avisa. Nada muda no SyncTasks.
+- **Exportar para o Trello** (item 31): cria no Trello um quadro novo com as fases (listas, na mesma ordem) e as tarefas não arquivadas do quadro aberto: título, descrição com o número da tarefa, situação e delegação no topo, prazo, marca de concluída, checklist e comentários (autor e data no texto). Privadas só se a pessoa marcar. A pessoa autoriza no Trello (permissão de 1 dia, só no navegador); o envio sai do navegador direto para o Trello, sem passar o código de acesso pelo servidor. Precisa da variável `TRELLO_API_KEY` no servidor; sem ela, o diálogo avisa. Nada muda no SyncTasks.
 - **Zoom do quadro** (item 34): à direita das abas, botões **−**, **porcentagem** e **+**; de 70% a 130%, de 10 em 10; clicar na porcentagem volta a 100%. Muda só o tamanho das fases e dos cartões (menu, abas e a janela da tarefa ficam iguais). Fica guardado no navegador (vale para todos os quadros naquele computador).
 - **Ordem dos quadros:** arrastando a aba (uma linha mostra onde vai entrar) ou pelo menu do quadro. Fica gravada no servidor.
 - **Fundo da área de trabalho:** padrão (branco) ou 7 cores mais firmes (cinza-azulado, azul, verde-água, verde, areia, lilás, rosa), com versões para o tema escuro. Vale para todas as telas e fica gravado na conta da pessoa. Fases e cartões continuam claros; a cor do quadro, se houver, fica por cima, só na área do quadro.
@@ -425,7 +427,7 @@ No topo de cada tela: título, campo de **busca** (texto ou código) e controle 
 - Arrastar funciona entre fases e **dentro da mesma fase**: uma linha mostra onde a tarefa vai cair (acima ou abaixo do cartão, conforme a metade em que o ponteiro está).
 - No cartão aberto, **Mover para** escolhe quadro e fase, ou leva a tarefa **para o topo / para o fim** da fase. Mudar de quadro fica no log com o quadro e a fase de origem.
 - **+ Fase** ao final.
-- **Cartão no quadro:** botão de concluir (círculo), título (até 2 linhas), código, prazo, progresso do checklist e ícones (delegada por, repassada para, privada, aguardando ciente, reaberta).
+- **Cartão no quadro:** botão de concluir (círculo), título (até 2 linhas), número (#12), prazo, progresso do checklist e ícones (delegada por, repassada para, privada, aguardando ciente, reaberta).
 - Arrastar e soltar entre fases. No celular, usar "Mover para" dentro do cartão.
 - **Arquivar tarefa concluída:** ícone de arquivo no cartão concluído (só em tarefa própria), **Arquivar** dentro da tarefa e **Arquivar as concluídas** no menu da fase, sempre com **Desfazer** no aviso. A arquivada continua na busca e pode ser **desarquivada** (volta à mesma fase, ou à primeira fase do quadro se a fase foi arquivada). Arquivar e desarquivar entram no log.
 - **Estado vazio:** "Você ainda não tem quadros…", com o botão de criar.
@@ -433,9 +435,9 @@ No topo de cada tela: título, campo de **busca** (texto ou código) e controle 
 ### 12.2a Tarefas: tabela e filtros (item 36)
 
 - Mostra numa tabela as tarefas **da própria pessoa** de todos os quadros e da caixa de entrada (as mesmas que ela vê nos quadros e na caixa de entrada; nunca de outra pessoa). Arquivadas só com a condição “Arquivada · é · Sim”; as apagadas pelo “Desfazer” da criação (item 30) nunca aparecem.
-- **Colunas padrão:** Código, Tarefa, Quadro · Fase (ou “Caixa de entrada”), Prazo (vermelho quando atrasado), Situação (Aberta, Concluída, Arquivada), Delegação (“Delegada para X”, com “aguarda seu ciente” quando for o caso, “Recebida de X” ou “Transferida por X”), Checklist e Criada em. Opcionais pelo botão **Colunas**: Concluída em, Arquivada em, Privada, Origem e Descrição. A escolha fica no navegador.
+- **Colunas padrão:** Código (o número #12, item 37), Tarefa (com uma bolinha da cor do cartão, item 38), Quadro · Fase (ou “Caixa de entrada”), Prazo (vermelho quando atrasado), Situação (Aberta, Concluída, Arquivada), Delegação (“Delegada para X”, com “aguarda seu ciente” quando for o caso, “Recebida de X” ou “Transferida por X”), Checklist e Criada em. Opcionais pelo botão **Colunas**: Concluída em, Arquivada em, Privada, Origem e Descrição. A escolha fica no navegador.
 - Clicar no título da coluna ordena (outro clique inverte); clicar na linha abre a tarefa. Mostra 100 por vez, com **Carregar mais**.
-- **Filtro por condições** (como no Pipedrive): cada condição é campo + operador + valor. Dois blocos: **Todas estas condições** (E) e **Qualquer uma destas condições** (OU); bloco vazio não conta. Campos: Título, Descrição, Código, Quadro, Fase, Situação, Prazo, Criada em, Concluída em, Delegada para, Recebida de, Privada, Arquivada e Origem. Operadores: texto (contém, não contém, é, está vazio, não está vazio); quadro, fase, situação e origem (é, não é); data (antes de, depois de, é, entre, nos últimos N dias, nos próximos N dias, está vazio, não está vazio, com “Hoje” como valor, que é o dia em Brasília); pessoa (é, não é, é alguém, é ninguém); privada e arquivada (sim ou não).
+- **Filtro por condições** (como no Pipedrive): cada condição é campo + operador + valor. Dois blocos: **Todas estas condições** (E) e **Qualquer uma destas condições** (OU); bloco vazio não conta. Campos: Título, Descrição, Código, Quadro, Fase, Situação, Prazo, Criada em, Concluída em, Delegada para, Recebida de, Privada, Arquivada, Origem e Cor (item 38). Código aceita 12 ou #12 (e os códigos antigos ST-/NT-). Operadores: texto (contém, não contém, é, está vazio, não está vazio); quadro, fase, situação e origem (é, não é); data (antes de, depois de, é, entre, nos últimos N dias, nos próximos N dias, está vazio, não está vazio, com “Hoje” como valor, que é o dia em Brasília); pessoa (é, não é, é alguém, é ninguém); privada e arquivada (sim ou não); cor (é, não é, com alguma cor, sem cor).
 - As condições em uso aparecem como etiquetas acima da tabela; o × tira a condição na hora.
 - **Filtros prontos:** Todas as abertas, Atrasadas, Vencem nos próximos 7 dias, Delegadas por mim em aberto, Concluídas nos últimos 30 dias. **Filtros salvos** com nome (até 50 por pessoa), visíveis só para quem os criou; podem ser editados e excluídos. O último filtro usado fica guardado no navegador.
 - **Exportar planilha:** CSV com separador “;” (abre direto no Excel em português), com as colunas e o filtro da tela, até 5.000 tarefas.
@@ -452,17 +454,17 @@ No topo de cada tela: título, campo de **busca** (texto ou código) e controle 
 - Lista as tarefas arquivadas **pela própria pessoa**, da mais recente para a mais antiga, 50 por vez com **Carregar mais**: código, título, quadro e fase de onde saiu, data de conclusão e data de arquivamento.
 - Entram: as tarefas **próprias** que ela arquivou (botão **Desarquivar** na linha, com **Desfazer** no aviso; volta à mesma fase e posição, ou à primeira fase do quadro se a fase foi arquivada) e as tarefas que ela **delegou e em que deu o ciente**, marcadas **“Delegada para X”**, só para consulta (o ciente não se desfaz; o quadro do subordinado não aparece).
 - Não entram: tarefas recebidas por delegação (quem arquivou foi o superior), delegações canceladas e as tarefas apagadas pelo “Desfazer” da criação (item 30).
-- **Pesquisa** por código (ST-000123, NT-…, ou só o número) ou por texto do título e da descrição.
+- **Pesquisa** pelo número (12 ou #12; na delegada, o número do cartão de quem delegou), pelo código antigo (ST-, NT-) ou por texto do título e da descrição.
 
 ### 12.4 Cartão (tarefa aberta)
 
-- Título editável, código, status **com texto** e prazo.
+- Título editável, número (#12), status **com texto**, botão **Cor** (item 38: paleta de 8 cores suaves + Sem cor; o cartão fica todo dessa cor no quadro; só o dono vê e muda, não entra no log) e prazo.
 - Descrição.
 - Prazo. Quando é uma delegação, mostra também o prazo sugerido original.
 - Checklist, com progresso.
 - Mover para outra fase.
 - Privacidade, só em tarefa própria.
-- Bloco **Desdobramento**: "Repassada para X (status)" ou "Desdobramento da tarefa ST-…".
+- Bloco **Desdobramento**: "Repassada para X #3 (status)" ou "Desdobramento da tarefa #7 de Carlos".
 - Comentários.
 - **Log:** só para administrador, CEO e diretores.
 - **Ações do detentor:** Concluir ou Desfazer, Delegar (se tiver subordinados e não houver delegação ativa), Transferir e Devolver ao delegador (se for delegação em andamento).
@@ -512,6 +514,7 @@ A base é a **amostra visual aprovada**.
    - **Vermelho:** atrasado.
    - **Âmbar:** precisa da sua ação (aguardando ciente, devolvida).
    - **Cor de destaque** (verde-petróleo): só o botão principal e o item ativo.
+   - **Exceções escolhidas pela pessoa:** a cor do quadro (item 12), o fundo da área de trabalho (item 24) e a **cor de um cartão** (item 38), sempre em tons suaves, com versão para o tema escuro. Os sinais de atrasado e de ação continuam por cima.
 3. **Status por ícone, com dica** ao passar o mouse ou tocar, em vez de texto longo. Dentro do cartão aberto o status aparece com texto. O botão **Legenda** explica todos os ícones.
 4. **O título da tarefa tem prioridade.** O tamanho e o peso são os mesmos em todo lugar. Nas listas, ocupa uma linha com reticências. No quadro, até 2 linhas. O nome completo aparece na dica. Nada ao lado dele o encolhe: o que encolhe primeiro são a justificativa e a observação.
 5. **Uma só família de fonte** (Geist, com fontes do sistema como alternativa), com dois pesos. Código e datas usam a variante monoespaçada, alinhados em coluna.
@@ -594,7 +597,9 @@ Restrição: `manager.level = level - 1`, validada na aplicação e em trigger.
 |---|---|---|
 | id | uuid PK | |
 | seq | bigint único | da sequência `card_code_seq` |
-| code | text gerado | `'ST-' \|\| lpad(seq::text, 6, '0')`. Acima de 6 dígitos mostra o número inteiro |
+| code | text gerado | `'ST-' \|\| lpad(seq::text, 6, '0')`. Código interno: links e códigos antigos |
+| num | int | item 37: número no quadro (ou na caixa de entrada), dado pelo gatilho `cards_num` a partir de `boards.next_num` / `users.inbox_next_num` |
+| color | text null | item 38: cor do cartão (paleta do quadro); só o dono muda |
 | owner_id | uuid FK users | detentor |
 | list_id | uuid FK lists null | nulo = na caixa de entrada |
 | position | float8 | |

@@ -84,7 +84,7 @@ export function HelpPage({ isAdmin }: { isAdmin: boolean }) {
       <Sec id="tabela" title="Tarefas: tabela e filtros">
         <p>Em <b>Tarefas</b>, clique em <b>Tabela</b> (no topo, à direita) para ver as tarefas de <b>todos os seus quadros</b> e da caixa de entrada numa lista só. Só aparecem as suas tarefas, como nos quadros.</p>
         <ul>
-          <li><b>Colunas:</b> código, tarefa, quadro e fase, prazo (vermelho quando atrasado), situação, delegação (“Delegada para…” ou “Recebida de…”), checklist e data de criação. No botão <b>Colunas</b> dá para mostrar também concluída em, arquivada em, privada, origem e descrição.</li>
+          <li><b>Colunas:</b> número (#12), tarefa (com uma bolinha da cor do cartão, se tiver), quadro e fase, prazo (vermelho quando atrasado), situação, delegação (“Delegada para…” ou “Recebida de…”), checklist e data de criação. No botão <b>Colunas</b> dá para mostrar também concluída em, arquivada em, privada, origem e descrição.</li>
           <li><b>Ordenar:</b> clique no título da coluna; outro clique inverte a ordem.</li>
           <li><b>Abrir:</b> clique na linha.</li>
           <li><b>Filtro:</b> cada condição tem <b>campo</b>, <b>operador</b> e <b>valor</b>, por exemplo “Prazo · nos próximos · 7 dias”. No bloco <b>Todas estas condições</b> a tarefa precisa atender a todas; no bloco <b>Qualquer uma destas condições</b>, a pelo menos uma. As condições em uso aparecem acima da tabela, e o <b>×</b> de cada uma a tira na hora.</li>
@@ -97,7 +97,7 @@ export function HelpPage({ isAdmin }: { isAdmin: boolean }) {
       <Sec id="arquivadas" title="Arquivadas">
         <p>No menu à esquerda, <b>Arquivadas</b> lista as tarefas que <b>você</b> arquivou, da mais recente para a mais antiga, com o quadro e a fase de onde saíram.</p>
         <ul>
-          <li><b>Pesquisar:</b> digite um código (ST-000123, ou só 123) ou palavras do título e da descrição.</li>
+          <li><b>Pesquisar:</b> digite o número (12 ou #12) ou palavras do título e da descrição.</li>
           <li><b>Desarquivar:</b> o botão na linha devolve a tarefa à mesma fase e posição (ou à primeira fase do quadro, se a fase foi arquivada). O aviso traz <b>Desfazer</b>.</li>
           <li><b>Delegadas com ciente:</b> as tarefas que você delegou e em que deu o ciente também aparecem, marcadas <b>Delegada para…</b>. Elas são só para consulta: o ciente não se desfaz.</li>
           <li>Tarefa que você recebeu por delegação e que foi arquivada pelo seu superior não aparece aqui.</li>
@@ -116,7 +116,7 @@ export function HelpPage({ isAdmin }: { isAdmin: boolean }) {
           <li><b>Comentários</b> entram em seu nome, com o autor e a data originais no texto.</li>
           <li><b>Membros</b> dos cartões ficam anotados na descrição. Todas as tarefas ficam com você; para entregar a alguém da equipe, use <b>Delegar</b>.</li>
           <li><b>Ficam de fora:</b> listas e cartões arquivados, etiquetas e anexos.</li>
-          <li>Cada tarefa importada ganha um código novo, e o log registra que veio do Trello.</li>
+          <li>Cada tarefa importada ganha um número no quadro novo (1, 2, 3…), e o log registra que veio do Trello.</li>
         </ul>
         <h3>Exportar para o Trello</h3>
         <p>Faz o caminho inverso: cria no Trello um quadro novo com as fases e as tarefas do quadro aberto. Nada muda aqui no SyncTasks.</p>
@@ -127,7 +127,7 @@ export function HelpPage({ isAdmin }: { isAdmin: boolean }) {
         </ol>
         <ul>
           <li><b>Vão:</b> fases (viram listas, na mesma ordem) e tarefas com título, descrição, prazo, marca de concluída, checklist e comentários (com o autor e a data no texto).</li>
-          <li>No topo da descrição de cada cartão ficam o <b>código ST-</b>, a situação e, se houver, para quem foi delegada ou quem delegou.</li>
+          <li>No topo da descrição de cada cartão ficam o <b>número da tarefa</b>, a situação e, se houver, para quem foi delegada ou quem delegou.</li>
           <li><b>Ficam de fora:</b> tarefas arquivadas e, a não ser que você marque, as privadas. O log não vai.</li>
           <li>A permissão do Trello vale por 1 dia e fica só no seu navegador; o SyncTasks não guarda senha nem código do Trello.</li>
         </ul>
@@ -167,7 +167,7 @@ export function HelpPage({ isAdmin }: { isAdmin: boolean }) {
           <li>Abra a tarefa e clique em <b>Delegar</b>.</li>
           <li>Escolha a pessoa, o prazo sugerido e, se quiser, uma observação.</li>
         </ol>
-        <p>A pessoa recebe um <b>cartão ligado ao seu</b>, com código próprio, e é avisada no app e por e-mail. O seu cartão continua no seu quadro com o ícone de “repassada para”.</p>
+        <p>A pessoa recebe um <b>cartão ligado ao seu</b>, com o número do quadro dela, e é avisada no app e por e-mail. O seu cartão continua no seu quadro com o ícone de “repassada para”.</p>
         <p className="ex">Exemplo: o diretor delega “Orçamento 2027” ao gestor. O gestor abre essa tarefa e delega parte dela ao funcionário. Cada nível dá o ciente no nível de baixo antes de concluir o seu.</p>
       </Sec>
 
@@ -202,7 +202,7 @@ export function HelpPage({ isAdmin }: { isAdmin: boolean }) {
           </li>
         </ol>
         <p>Enquanto ninguém der o ciente, a tarefa continua em “Precisam da sua ação”.</p>
-        <p>Para uma tarefa devolvida, quem delegou pode <b>Redelegar</b> (para a mesma ou outra pessoa, mantendo o código) ou <b>Cancelar</b>.</p>
+        <p>Para uma tarefa devolvida, quem delegou pode <b>Redelegar</b> (para a mesma ou outra pessoa; é o mesmo cartão, que chega à caixa de entrada dela) ou <b>Cancelar</b>.</p>
       </Sec>
 
       <Sec id="devolver" title="Devolver e transferir">
@@ -218,8 +218,10 @@ export function HelpPage({ isAdmin }: { isAdmin: boolean }) {
 
       <Sec id="codigo" title="Código, busca e avisos">
         <ul>
-          <li>Toda tarefa tem um <b>código único</b>, como <code>ST-000123</code>. Ele nunca muda e nunca é reutilizado. Links antigos com <code>NT-</code> continuam funcionando.</li>
-          <li>Na <b>busca</b>, digite o código (também vale só o número, como <kbd>123</kbd>) ou uma palavra do título ou da descrição. Aparecem só tarefas que você pode ver.</li>
+          <li>Toda tarefa tem um <b>número no quadro</b>, como <code>#12</code>. Cada quadro conta as próprias tarefas a partir de 1, e a <b>caixa de entrada</b> tem a numeração dela. Um número nunca é reaproveitado no mesmo quadro, nem depois de arquivar.</li>
+          <li>Ao <b>mover para outro quadro</b>, aceitar uma tarefa da caixa de entrada ou receber por transferência, a tarefa ganha o próximo número de onde chegou; o log guarda o número antigo. Numa tarefa delegada, cada um vê o número do próprio quadro.</li>
+          <li>Na <b>busca</b>, digite o número (<kbd>12</kbd> ou <kbd>#12</kbd>): abre a tarefa 12 do quadro aberto; se houver tarefa 12 em outros quadros seus, aparece a lista para escolher. Também vale uma palavra do título ou da descrição. Aparecem só tarefas que você pode ver. Links e códigos antigos (<code>ST-</code>, <code>NT-</code>) continuam abrindo a tarefa.</li>
+          <li><b>Cor do cartão:</b> na tarefa aberta, clique em <b>Cor</b> (ao lado do número) e escolha uma das cores, ou <b>Sem cor</b>. O cartão fica todo dessa cor no quadro. A cor é só sua: numa tarefa delegada, o cartão de quem recebe começa sem cor, e quem recebe por transferência também vê sem cor.</li>
           <li><b>Avisos</b> chegam no app e por e-mail quando: uma tarefa é delegada a você, devolvida, concluída, reaberta, arquivada com ciente, cancelada, transferida para você, ou quando o prazo de uma tarefa que você delegou muda.</li>
         </ul>
       </Sec>

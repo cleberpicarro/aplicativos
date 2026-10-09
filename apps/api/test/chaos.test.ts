@@ -61,7 +61,8 @@ async function runChaos(seed: number) {
               d.id AS d_id, d.status AS d_status,
               (SELECT x.id FROM delegations x WHERE x.parent_card_id = c.id AND x.status NOT IN ('ACKED','CANCELED') LIMIT 1) AS child_open
          FROM cards c LEFT JOIN delegations d ON d.card_id = c.id
-        WHERE c.owner_id = $1 AND (d.id IS NULL OR d.status NOT IN ('DECLINED','CANCELED'))`,
+        WHERE c.owner_id = $1 AND (d.id IS NULL OR d.status NOT IN ('DECLINED','CANCELED'))
+        ORDER BY c.seq`,
       [idOf(who)],
     );
   const reportsOf = (who: string) => PEOPLE.filter((p) => ctx.users[p] && keyOfManager.get(p) === who);
@@ -74,7 +75,7 @@ async function runChaos(seed: number) {
   const actions: Record<string, () => Promise<void>> = {
     async criar() {
       const who = r.pick(PEOPLE);
-      const lists = await q(`SELECT l.id FROM lists l JOIN boards b ON b.id = l.board_id WHERE b.owner_id = $1 AND l.archived_at IS NULL`, [idOf(who)]);
+      const lists = await q(`SELECT l.id FROM lists l JOIN boards b ON b.id = l.board_id WHERE b.owner_id = $1 AND l.archived_at IS NULL ORDER BY b.position, l.position, l.id`, [idOf(who)]);
       const res = await act(who, 'POST', '/api/cards', { listId: r.pick(lists).id, title: `Tarefa ${r.next().toString(36).slice(2, 7)}` });
       if (res.status === 200 && r.chance(0.5)) await act(who, 'PATCH', `/api/cards/${res.body.id}`, { dueDate: day(Math.floor(r.next() * 30) - 10) });
     },
@@ -101,13 +102,15 @@ async function runChaos(seed: number) {
       const who = r.pick(PEOPLE);
       const cards = (await cardsOf(who)).filter((c) => !c.archived_at);
       if (!cards.length) return;
-      const c = r.pick(cards);
+      // Metade das vezes, conclui uma tarefa recebida em andamento, para o fluxo chegar ao ciente com frequência.
+      const received = cards.filter((c) => c.d_status === 'IN_PROGRESS' && !c.completed_at);
+      const c = received.length && r.chance(0.5) ? r.pick(received) : r.pick(cards);
       await act(who, 'POST', `/api/cards/${c.id}/${c.completed_at && r.chance(0.7) ? 'uncomplete' : 'complete'}`);
     },
     async responder() {
       // delegador dá ciente, reabre, cancela ou redelega
       const who = r.pick(PEOPLE.filter((p) => reportsOf(p).length));
-      const mine = await q(`SELECT id, status FROM delegations WHERE delegator_id = $1 AND status NOT IN ('ACKED','CANCELED')`, [idOf(who)]);
+      const mine = await q(`SELECT id, status FROM delegations WHERE delegator_id = $1 AND status NOT IN ('ACKED','CANCELED') ORDER BY created_at, id`, [idOf(who)]);
       if (!mine.length) return;
       const waiting = mine.filter((x) => x.status === 'AWAITING_ACK');
       const d = waiting.length && r.chance(0.7) ? r.pick(waiting) : r.pick(mine);
@@ -138,13 +141,13 @@ async function runChaos(seed: number) {
       else if (roll < 0.7) await act(who, 'POST', `/api/cards/${c.id}/checklist`, { text: 'Passo' });
       else if (roll < 0.85) await act(who, 'POST', `/api/cards/${c.id}/comments`, { body: 'Andamento' });
       else {
-        const lists = await q(`SELECT l.id FROM lists l JOIN boards b ON b.id = l.board_id WHERE b.owner_id = $1 AND l.archived_at IS NULL`, [idOf(who)]);
+        const lists = await q(`SELECT l.id FROM lists l JOIN boards b ON b.id = l.board_id WHERE b.owner_id = $1 AND l.archived_at IS NULL ORDER BY b.position, l.position, l.id`, [idOf(who)]);
         await act(who, 'POST', `/api/cards/${c.id}/move`, { listId: r.pick(lists).id, ...(r.chance(0.5) ? { place: 'top' } : {}) });
       }
     },
     async arquivar() {
       const who = r.pick(PEOPLE);
-      const cards = await q(`SELECT id, archived_at FROM cards WHERE owner_id = $1 AND completed_at IS NOT NULL`, [idOf(who)]);
+      const cards = await q(`SELECT id, archived_at FROM cards WHERE owner_id = $1 AND completed_at IS NOT NULL ORDER BY seq`, [idOf(who)]);
       if (!cards.length) return;
       const c = r.pick(cards);
       await act(who, 'POST', `/api/cards/${c.id}/${c.archived_at ? 'unarchive' : 'archive'}`);
@@ -182,6 +185,10 @@ async function runChaos(seed: number) {
     // 1. Códigos únicos e toda tarefa com exatamente um detentor ativo.
     const dupCodes = await q(`SELECT code FROM cards GROUP BY code HAVING count(*) > 1`);
     if (dupCodes.length) fail('código repetido', dupCodes);
+    // Item 37: o número de cada tarefa não se repete no mesmo quadro, nem na mesma caixa de entrada.
+    const dupNums = await q(`SELECT l.board_id, c.num FROM cards c JOIN lists l ON l.id = c.list_id GROUP BY 1, 2 HAVING count(*) > 1
+      UNION ALL SELECT c.owner_id, c.num FROM cards c WHERE c.list_id IS NULL AND c.archived_at IS NULL GROUP BY 1, 2 HAVING count(*) > 1`);
+    if (dupNums.length) fail('número repetido no mesmo quadro ou caixa de entrada', dupNums);
     const orphan = await q(`SELECT c.code FROM cards c LEFT JOIN users u ON u.id = c.owner_id WHERE u.id IS NULL OR NOT u.active`);
     if (orphan.length) fail('tarefa sem detentor ativo', orphan);
 

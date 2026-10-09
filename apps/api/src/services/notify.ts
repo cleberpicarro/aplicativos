@@ -1,20 +1,20 @@
 import { config } from '../config.js';
 import { one, type Db } from '../lib/db.js';
 
-/** Aviso no app + e-mail na fila. O código da tarefa vai no assunto. */
+/** Aviso no app + e-mail na fila. O número da tarefa (#12) vai no assunto. */
 export async function notify(
   db: Db,
   userId: string,
   type: string,
   text: string,
-  card?: { id: string; code: string; title: string },
+  card?: { id: string; num: number; title: string },
 ) {
   await db.query(`INSERT INTO notifications (user_id, card_id, type, text) VALUES ($1, $2, $3, $4)`, [userId, card?.id ?? null, type, text]);
   const user = await one(db, 'SELECT email, name, active FROM users WHERE id = $1', [userId]);
   if (!user || !user.active) return;
-  const subject = card ? `[${card.code}] ${text}` : text;
-  const link = card ? `${config.appUrl}/#/tarefa/${card.code}` : config.appUrl;
-  const body = `Olá, ${user.name.split(' ')[0]}.\n\n${text}${card ? `\n\nTarefa ${card.code}: ${card.title}` : ''}\n\nAbrir no SyncTasks: ${link}\n`;
+  const subject = card ? `[#${card.num}] ${text}` : text;
+  const link = card ? `${config.appUrl}/#/tarefa/${card.id}` : config.appUrl;
+  const body = `Olá, ${user.name.split(' ')[0]}.\n\n${text}${card ? `\n\nTarefa #${card.num}: ${card.title}` : ''}\n\nAbrir no SyncTasks: ${link}\n`;
   await queueEmail(db, user.email, subject, body);
 }
 

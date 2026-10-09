@@ -41,9 +41,9 @@ export async function captureWeb(db: Db, actor: Actor, input: { title: string; u
   const description = [url, text ? `“${text}”` : ''].filter(Boolean).join('\n\n');
   const card = await one(
     db,
-    `INSERT INTO cards (owner_id, list_id, title, description, source, created_by) VALUES ($1, NULL, $2, $3, $4, $1) RETURNING id, code, title`,
+    `INSERT INTO cards (owner_id, list_id, title, description, source, created_by) VALUES ($1, NULL, $2, $3, $4, $1) RETURNING id, code, num, title`,
     [actor.id, title, description, email ? 'email' : 'web'],
   );
   await logEvent(db, card.id, actor.id, 'captured', undefined, { url: url || null, ...(email ? { email: true } : {}) });
-  return { id: card.id as string, code: card.code as string };
+  return { id: card.id as string, code: card.code as string, num: card.num as number };
 }

@@ -1,7 +1,7 @@
 import { one, many, type Db } from '../lib/db.js';
 import { badRequest, conflict, forbidden, notFound } from '../lib/errors.js';
 import { isDirectReport, directReports, type Actor } from './actors.js';
-import { loadCard, selectCards, nextPosition, cardRef } from './cards.js';
+import { loadCard, selectCards, nextPosition, cardRef, numOf } from './cards.js';
 import { ownList } from './boards.js';
 import { logEvent } from './events.js';
 import { notify } from './notify.js';
@@ -24,7 +24,7 @@ export async function delegate(db: Db, actor: Actor, cardId: string, input: { to
   const child = await one(
     db,
     `INSERT INTO cards (owner_id, list_id, title, description, due_date, created_by)
-     VALUES ($1, NULL, $2, $3, $4, $5) RETURNING id, code, title`,
+     VALUES ($1, NULL, $2, $3, $4, $5) RETURNING id, code, num, title`,
     [input.toUserId, row.title, row.description, due, actor.id],
   );
   const del = await one(
@@ -34,14 +34,14 @@ export async function delegate(db: Db, actor: Actor, cardId: string, input: { to
     [child.id, row.id, actor.id, due],
   );
   const to = await one(db, 'SELECT name FROM users WHERE id = $1', [input.toUserId]);
-  await logEvent(db, child.id, actor.id, 'delegated', undefined, { from: actor.name, to: to.name, suggestedDue: due, parentCode: row.code });
-  await logEvent(db, row.id, actor.id, 'delegated_down', undefined, { to: to.name, childCode: child.code });
+  await logEvent(db, child.id, actor.id, 'delegated', undefined, { from: actor.name, to: to.name, suggestedDue: due, parentNum: row.num });
+  await logEvent(db, row.id, actor.id, 'delegated_down', undefined, { to: to.name, childNum: child.num });
   if (input.note?.trim()) {
     await db.query('INSERT INTO comments (card_id, author_id, body) VALUES ($1, $2, $3)', [child.id, actor.id, input.note.trim()]);
     await logEvent(db, child.id, actor.id, 'comment_added', undefined, { body: input.note.trim() });
   }
   await notify(db, input.toUserId, 'delegated', `${first(actor.name)} delegou: ${row.title}`, cardRef(child));
-  return { cardId: child.id, code: child.code, delegationId: del.id };
+  return { cardId: child.id, code: child.code, num: child.num, delegationId: del.id };
 }
 
 export async function inbox(db: Db, actor: Actor) {
@@ -62,7 +62,7 @@ export async function accept(db: Db, actor: Actor, cardId: string, listId: strin
   await db.query('UPDATE cards SET list_id = $2, position = $3, updated_at = now() WHERE id = $1', [cardId, listId, pos]);
   if (row.d_id) await db.query(`UPDATE delegations SET status = 'IN_PROGRESS', updated_at = now() WHERE id = $1`, [row.d_id]);
   const board = await one(db, 'SELECT name FROM boards WHERE id = $1', [list.board_id]);
-  await logEvent(db, cardId, actor.id, 'accepted', undefined, { board: board.name, list: list.name });
+  await logEvent(db, cardId, actor.id, 'accepted', undefined, { board: board.name, list: list.name, num: await numOf(db, cardId) });
 }
 
 /** RN-23: devolver exige justificativa; a tarefa volta ao delegador. */
@@ -85,7 +85,7 @@ export async function decline(db: Db, actor: Actor, cardId: string, reason: stri
 async function delegatorDelegation(db: Db, actor: Actor, delegationId: string) {
   const d = await one(db, 'SELECT * FROM delegations WHERE id = $1 FOR UPDATE', [delegationId]);
   if (!d || d.delegator_id !== actor.id) throw notFound('Delegação não encontrada.');
-  const card = await one(db, 'SELECT id, code, title, owner_id, due_date FROM cards WHERE id = $1', [d.card_id]);
+  const card = await one(db, 'SELECT id, code, num, title, owner_id, due_date FROM cards WHERE id = $1', [d.card_id]);
   return { d, card };
 }
 
@@ -116,7 +116,7 @@ export async function cancel(db: Db, actor: Actor, delegationId: string) {
   await db.query(`UPDATE delegations SET status = 'CANCELED', canceled_at = now(), updated_at = now() WHERE id = $1`, [d.id]);
   await db.query('UPDATE cards SET archived_at = now(), list_id = NULL, updated_at = now() WHERE id = $1', [card.id]);
   await logEvent(db, card.id, actor.id, 'canceled');
-  if (d.parent_card_id) await logEvent(db, d.parent_card_id, actor.id, 'child_canceled', undefined, { childCode: card.code });
+  if (d.parent_card_id) await logEvent(db, d.parent_card_id, actor.id, 'child_canceled', undefined, { childNum: card.num });
   await notify(db, card.owner_id, 'canceled', `${first(actor.name)} cancelou a delegação`, cardRef(card));
 }
 
@@ -131,12 +131,12 @@ export async function redelegate(db: Db, actor: Actor, delegationId: string, inp
     [d.id, due],
   );
   await db.query(
-    `UPDATE cards SET owner_id = $2, list_id = NULL, transferred_from_id = NULL, completed_at = NULL, due_date = $3, updated_at = now() WHERE id = $1`,
+    `UPDATE cards SET owner_id = $2, list_id = NULL, transferred_from_id = NULL, completed_at = NULL, due_date = $3, color = NULL, updated_at = now() WHERE id = $1`,
     [card.id, input.toUserId, due],
   );
   const to = await one(db, 'SELECT name FROM users WHERE id = $1', [input.toUserId]);
   await logEvent(db, card.id, actor.id, 'redelegated', undefined, { to: to.name, suggestedDue: due });
-  await notify(db, input.toUserId, 'delegated', `${first(actor.name)} delegou: ${card.title}`, cardRef(card));
+  await notify(db, input.toUserId, 'delegated', `${first(actor.name)} delegou: ${card.title}`, { ...cardRef(card), num: await numOf(db, card.id) });
 }
 
 /** Destinos de transferência: subordinados diretos, colegas do mesmo nível com o mesmo superior e o superior direto. */
@@ -165,7 +165,7 @@ export async function transfer(db: Db, actor: Actor, cardId: string, toUserId: s
     throw forbidden('Você pode transferir apenas para um subordinado direto, um colega do mesmo nível ou seu superior direto.');
   }
   await db.query(
-    'UPDATE cards SET owner_id = $2, list_id = NULL, transferred_from_id = $3, updated_at = now() WHERE id = $1',
+    'UPDATE cards SET owner_id = $2, list_id = NULL, transferred_from_id = $3, color = NULL, updated_at = now() WHERE id = $1',
     [cardId, toUserId, actor.id],
   );
   if (row.d_id && row.d_status === 'IN_PROGRESS') {
@@ -173,7 +173,7 @@ export async function transfer(db: Db, actor: Actor, cardId: string, toUserId: s
   }
   const to = await one(db, 'SELECT name FROM users WHERE id = $1', [toUserId]);
   await logEvent(db, cardId, actor.id, 'transferred', { owner: actor.name }, { owner: to.name });
-  await notify(db, toUserId, 'transferred', `${first(actor.name)} transferiu uma tarefa para você: ${row.title}`, cardRef(row));
+  await notify(db, toUserId, 'transferred', `${first(actor.name)} transferiu uma tarefa para você: ${row.title}`, { ...cardRef(row), num: await numOf(db, cardId) });
 }
 
 /** Tela Tarefas delegadas: o que precisa de ação e um grupo por pessoa, com contadores (RN-34, RN-35). */
