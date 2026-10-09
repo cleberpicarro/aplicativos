@@ -35,7 +35,7 @@ function saveCollapsed(v: Record<string, boolean>) {
 export function DelegatedPage() {
   const route = useRoute();
   const [archived, setArchived] = useState(false);
-  const q = useQuery({ queryKey: ['delegations', archived], queryFn: () => get<Overview>(`/delegations${archived ? '?archived=1' : ''}`) });
+  const q = useQuery({ queryKey: ['delegations', archived], queryFn: () => get<Overview>(`/delegations${archived ? '?archived=1' : ''}`), refetchInterval: 30_000 });
   const [collapsed, setCollapsedState] = useState<Record<string, boolean>>(loadCollapsed);
   const [pending, setPending] = useState<Pending>(null);
   const { run, busy, error } = useAction();

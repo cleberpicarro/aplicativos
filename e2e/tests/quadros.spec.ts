@@ -1,4 +1,4 @@
-import { test, expect, entrar, outraPessoa, criarTarefa, abrirTarefa, dialogo, aviso, unico } from './apoio';
+import { test, expect, entrar, outraPessoa, criarTarefa, abrirTarefa, dialogo, aviso, unico, api } from './apoio';
 
 test.describe('meus quadros', () => {
   test('criar quadro, fase e tarefa; editar descrição, prazo e checklist; concluir, arquivar e desfazer', async ({ page }) => {
@@ -59,6 +59,22 @@ test.describe('meus quadros', () => {
     await expect(card).toHaveCount(0);
     await page.locator('.toast').getByRole('button', { name: 'Desfazer' }).click();
     await expect(page.locator('article.kc', { hasText: titulo })).toBeVisible();
+  });
+
+  test('cor mudada no celular aparece no computador sem recarregar a página (item 38)', async ({ page, browser }) => {
+    await page.clock.install();
+    await entrar(page, 'lucas');
+    const titulo = unico('Pintar no celular');
+    const id = await criarTarefa(page, titulo);
+    const card = page.locator('article.kc', { hasText: titulo });
+    await expect(card).not.toHaveClass(/painted/);
+    // o "celular": outra sessão da mesma pessoa muda a cor
+    const { page: celular, fechar } = await outraPessoa(browser, 'lucas');
+    await api(celular, 'PATCH', `/cards/${id}`, { color: 'rosa' });
+    await fechar();
+    // o computador continua com a página aberta: em até 30 segundos o quadro se atualiza sozinho
+    await page.clock.fastForward(31_000);
+    await expect(card).toHaveClass(/painted bc-rosa/);
   });
 
   test('arrastar tarefa entre fases e reordenar a fase', async ({ page }) => {

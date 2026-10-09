@@ -31,7 +31,7 @@ function loadSort(): { by: SortBy; dir: SortDir } {
 
 /** Item 17: visão geral das tarefas que a pessoa delegou. */
 export function DashboardPage() {
-  const q = useQuery({ queryKey: ['dashboard'], queryFn: () => get<DashboardData>('/dashboard') });
+  const q = useQuery({ queryKey: ['dashboard'], queryFn: () => get<DashboardData>('/dashboard'), refetchInterval: 30_000 });
   const [sort, setSortState] = useState(loadSort);
   const setSort = (v: { by: SortBy; dir: SortDir }) => {
     setSortState(v);

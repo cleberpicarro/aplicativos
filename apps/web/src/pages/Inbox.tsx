@@ -10,7 +10,7 @@ import { AcceptDialog, DeclineDialog } from '../components/dialogs';
 
 export function InboxPage() {
   const me = useMe().data!;
-  const q = useQuery({ queryKey: ['inbox'], queryFn: () => get<Card[]>('/inbox') });
+  const q = useQuery({ queryKey: ['inbox'], queryFn: () => get<Card[]>('/inbox'), refetchInterval: 30_000 });
   const [accepting, setAccepting] = useState<Card | null>(null);
   const [declining, setDeclining] = useState<Card | null>(null);
   return (

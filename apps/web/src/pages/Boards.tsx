@@ -62,7 +62,9 @@ export function BoardsPage() {
     try { localStorage.setItem(ZOOM_KEY, String(next)); } catch { /* sem armazenamento: só não lembra */ }
   };
   const boardId = boards.data?.some((b) => b.id === selected) ? selected! : boards.data?.[0]?.id;
-  const board = useQuery({ queryKey: ['board', boardId], queryFn: () => get<Board>(`/boards/${boardId}`), enabled: !!boardId });
+  // O quadro se atualiza sozinho a cada 30 segundos enquanto está na tela: o que foi mudado em outro
+  // aparelho (cor, número, conclusão, tarefa delegada que chegou) aparece sem precisar recarregar a página.
+  const board = useQuery({ queryKey: ['board', boardId], queryFn: () => get<Board>(`/boards/${boardId}`), enabled: !!boardId, refetchInterval: 30_000 });
 
   const select = (id: string) => {
     setSelected(id);
