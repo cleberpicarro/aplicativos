@@ -215,7 +215,7 @@ function cellView(r: Row, col: Column, today: string) {
     case 'code': return <span className="code">{cardNo(r.num)}</span>;
     case 'title': return (
       <span className="ttl">
-        {r.color && <span className={`dot-color bc-${r.color}`} title={`Cor: ${COLOR_VALUES.find((x) => x.id === r.color)?.label ?? r.color}`} />}
+        {r.color && <span className={`dot-color card-tone bc-${r.color}`} title={`Cor: ${COLOR_VALUES.find((x) => x.id === r.color)?.label ?? r.color}`} />}
         <button className={`cell-link${r.completedAt ? ' done-t' : ''}`} title={r.title} onClick={(e) => { e.stopPropagation(); go(`/tarefa/${r.id}`); }}>{r.title}</button>
         {r.isPrivate && <span className="ico" title="Privada"><Icon name="lock" /></span>}
       </span>

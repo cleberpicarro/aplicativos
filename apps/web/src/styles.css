@@ -425,9 +425,48 @@ table.t tr.off td { color: var(--faint); }
 :root[data-theme='dark'] .bc-amarelo { --bc: #2b2515; } :root[data-theme='dark'] .bc-laranja { --bc: #2d2017; }
 :root[data-theme='dark'] .bc-vermelho { --bc: #2e1b1b; } :root[data-theme='dark'] .bc-roxo { --bc: #231c33; }
 :root[data-theme='dark'] .bc-rosa { --bc: #2e1b27; } :root[data-theme='dark'] .bc-cinza { --bc: #232628; }
-/* Item 38: cartão pintado com a cor que a pessoa escolheu (mesma paleta suave do quadro, com versão escura). */
-.kc.painted { background: var(--bc); border-color: color-mix(in srgb, var(--bc), var(--fg) 14%); }
-.kc.painted:hover { border-color: var(--muted); }
+/* Item 38: cartão pintado com a cor que a pessoa escolheu.
+   Item 40: tons sólidos fortes, só nos cartões (o fundo do quadro continua suave). --ink é a cor do texto de cada cor:
+   branco, menos no amarelo e no laranja (preto), para o contraste ficar acima de 4,5 nos dois temas. */
+:is(.kc.painted, .card-tone).bc-azul { --bc: #1f65c8; --ink: #ffffff; }
+:is(.kc.painted, .card-tone).bc-verde { --bc: #1d7a45; --ink: #ffffff; }
+:is(.kc.painted, .card-tone).bc-amarelo { --bc: #f2c230; --ink: #1b1d1f; }
+:is(.kc.painted, .card-tone).bc-laranja { --bc: #e8772e; --ink: #1b1d1f; }
+:is(.kc.painted, .card-tone).bc-vermelho { --bc: #c63a3a; --ink: #ffffff; }
+:is(.kc.painted, .card-tone).bc-roxo { --bc: #7048c0; --ink: #ffffff; }
+:is(.kc.painted, .card-tone).bc-rosa { --bc: #c23a7c; --ink: #ffffff; }
+:is(.kc.painted, .card-tone).bc-cinza { --bc: #5b636b; --ink: #ffffff; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) :is(.kc.painted, .card-tone).bc-azul { --bc: #1f5bb3; --ink: #ffffff; }
+  :root:not([data-theme='light']) :is(.kc.painted, .card-tone).bc-verde { --bc: #1b6e3f; --ink: #ffffff; }
+  :root:not([data-theme='light']) :is(.kc.painted, .card-tone).bc-amarelo { --bc: #e0b32a; --ink: #1b1d1f; }
+  :root:not([data-theme='light']) :is(.kc.painted, .card-tone).bc-laranja { --bc: #d96c26; --ink: #1b1d1f; }
+  :root:not([data-theme='light']) :is(.kc.painted, .card-tone).bc-vermelho { --bc: #b53434; --ink: #ffffff; }
+  :root:not([data-theme='light']) :is(.kc.painted, .card-tone).bc-roxo { --bc: #6643b0; --ink: #ffffff; }
+  :root:not([data-theme='light']) :is(.kc.painted, .card-tone).bc-rosa { --bc: #b03571; --ink: #ffffff; }
+  :root:not([data-theme='light']) :is(.kc.painted, .card-tone).bc-cinza { --bc: #545b63; --ink: #ffffff; }
+}
+:root[data-theme='dark'] :is(.kc.painted, .card-tone).bc-azul { --bc: #1f5bb3; --ink: #ffffff; }
+:root[data-theme='dark'] :is(.kc.painted, .card-tone).bc-verde { --bc: #1b6e3f; --ink: #ffffff; }
+:root[data-theme='dark'] :is(.kc.painted, .card-tone).bc-amarelo { --bc: #e0b32a; --ink: #1b1d1f; }
+:root[data-theme='dark'] :is(.kc.painted, .card-tone).bc-laranja { --bc: #d96c26; --ink: #1b1d1f; }
+:root[data-theme='dark'] :is(.kc.painted, .card-tone).bc-vermelho { --bc: #b53434; --ink: #ffffff; }
+:root[data-theme='dark'] :is(.kc.painted, .card-tone).bc-roxo { --bc: #6643b0; --ink: #ffffff; }
+:root[data-theme='dark'] :is(.kc.painted, .card-tone).bc-rosa { --bc: #b03571; --ink: #ffffff; }
+:root[data-theme='dark'] :is(.kc.painted, .card-tone).bc-cinza { --bc: #545b63; --ink: #ffffff; }
+.kc.painted { background: var(--bc); border-color: color-mix(in srgb, var(--bc), #000 18%); }
+.kc.painted:hover { border-color: var(--fg); }
+.kc.painted .t { color: var(--ink); font-weight: 500; }
+.kc.painted .code, .kc.painted .due, .kc.painted .cl, .kc.painted .ico, .kc.painted .arch { color: color-mix(in srgb, var(--ink) 80%, transparent); }
+.kc.painted .ck { border-color: color-mix(in srgb, var(--ink) 70%, transparent); color: var(--bc); }
+.kc.painted .ck.on { background: var(--ink); border-color: var(--ink); }
+.kc.painted.done .t { color: color-mix(in srgb, var(--ink) 72%, transparent); }
+/* Sinais que não podem sumir no fundo colorido viram etiqueta com fundo próprio. */
+.kc.painted .due.late, .kc.painted .due.today { background: var(--bg); padding: 0 5px; border-radius: 4px; font-weight: 500; }
+.kc.painted .due.late { color: var(--late); }
+.kc.painted .due.today { color: var(--fg); }
+.kc.painted .ico.late { color: var(--late); }
+.kc.painted .ico.attn, .kc.painted .ico.late { background: var(--bg); border-radius: 4px; }
 .cc-wrap { position: relative; display: inline-flex; flex-direction: column; }
 .cc-wrap > button .swatch { width: 0.85rem; height: 0.85rem; }
 .cc-pop { position: absolute; top: calc(100% + 4px); left: 0; z-index: 30; width: min(20rem, 80vw); padding: 8px; background: var(--bg);

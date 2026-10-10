@@ -323,7 +323,7 @@ function CardColor({ id, color }: { id: string; color: string | null }) {
   return (
     <span className="cc-wrap" ref={ref}>
       <button className="b sm ghost" aria-expanded={open} aria-haspopup="true" onClick={() => setOpen(!open)} data-tip="Cor deste cartão no quadro (só você vê)">
-        {color ? <span className={`swatch bc-${color}`} aria-hidden="true" /> : <Icon name="drop" />}Cor
+        {color ? <span className={`swatch card-tone bc-${color}`} aria-hidden="true" /> : <Icon name="drop" />}Cor
       </button>
       {open && (
         <div className="cc-pop swatches" role="radiogroup" aria-label="Cor do cartão">
@@ -332,7 +332,7 @@ function CardColor({ id, color }: { id: string; color: string | null }) {
           </button>
           {BOARD_COLORS.map((c) => (
             <button key={c.id} role="radio" aria-checked={color === c.id} className="sw-opt" onClick={() => pick(c.id)}>
-              <span className={`swatch big bc-${c.id}`} aria-hidden="true" />{c.label}
+              <span className={`swatch big card-tone bc-${c.id}`} aria-hidden="true" />{c.label}
             </button>
           ))}
         </div>

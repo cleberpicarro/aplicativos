@@ -458,7 +458,7 @@ No topo de cada tela: título, campo de **busca** (texto ou código) e controle 
 
 ### 12.4 Cartão (tarefa aberta)
 
-- Título editável, número (#12), status **com texto**, botão **Cor** (item 38: paleta de 8 cores suaves + Sem cor; o cartão fica todo dessa cor no quadro; só o dono vê e muda, não entra no log) e prazo.
+- Título editável, número (#12), status **com texto**, botão **Cor** (item 38: 8 cores + Sem cor; o cartão fica todo dessa cor no quadro, em tom sólido forte com texto branco, ou preto no amarelo e no laranja, item 40; só o dono vê e muda, não entra no log) e prazo.
 - Descrição.
 - Prazo. Quando é uma delegação, mostra também o prazo sugerido original.
 - Checklist, com progresso.
@@ -514,7 +514,7 @@ A base é a **amostra visual aprovada**.
    - **Vermelho:** atrasado.
    - **Âmbar:** precisa da sua ação (aguardando ciente, devolvida).
    - **Cor de destaque** (verde-petróleo): só o botão principal e o item ativo.
-   - **Exceções escolhidas pela pessoa:** a cor do quadro (item 12), o fundo da área de trabalho (item 24) e a **cor de um cartão** (item 38), sempre em tons suaves, com versão para o tema escuro. Os sinais de atrasado e de ação continuam por cima.
+   - **Exceções escolhidas pela pessoa:** a cor do quadro (item 12), o fundo da área de trabalho (item 24) e a **cor de um cartão** (item 38), com versão para o tema escuro. O quadro e o fundo usam tons suaves; o cartão usa tons **sólidos fortes** (item 40), com texto branco ou preto conforme a cor para o contraste ficar acima de 4,5. Os sinais de atrasado e de ação continuam por cima: no cartão colorido, o prazo atrasado, o “hoje” e o ícone de ação viram uma etiqueta com fundo próprio.
 3. **Status por ícone, com dica** ao passar o mouse ou tocar, em vez de texto longo. Dentro do cartão aberto o status aparece com texto. O botão **Legenda** explica todos os ícones.
 4. **O título da tarefa tem prioridade.** O tamanho e o peso são os mesmos em todo lugar. Nas listas, ocupa uma linha com reticências. No quadro, até 2 linhas. O nome completo aparece na dica. Nada ao lado dele o encolhe: o que encolhe primeiro são a justificativa e a observação.
 5. **Uma só família de fonte** (Geist, com fontes do sistema como alternativa), com dois pesos. Código e datas usam a variante monoespaçada, alinhados em coluna.
@@ -599,7 +599,7 @@ Restrição: `manager.level = level - 1`, validada na aplicação e em trigger.
 | seq | bigint único | da sequência `card_code_seq` |
 | code | text gerado | `'ST-' \|\| lpad(seq::text, 6, '0')`. Código interno: links e códigos antigos |
 | num | int | item 37: número no quadro (ou na caixa de entrada), dado pelo gatilho `cards_num` a partir de `boards.next_num` / `users.inbox_next_num` |
-| color | text null | item 38: cor do cartão (paleta do quadro); só o dono muda |
+| color | text null | item 38: cor do cartão (mesmos nomes da paleta do quadro, tons sólidos fortes no cartão, item 40); só o dono muda |
 | owner_id | uuid FK users | detentor |
 | list_id | uuid FK lists null | nulo = na caixa de entrada |
 | position | float8 | |

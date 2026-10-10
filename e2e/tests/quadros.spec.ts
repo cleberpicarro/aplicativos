@@ -49,6 +49,9 @@ test.describe('meus quadros', () => {
 
     const card = page.locator('article.kc', { hasText: titulo });
     await expect(card).toHaveClass(/painted bc-verde/);
+    // Item 40: tom sólido forte, com título branco para ler bem
+    await expect(card).toHaveCSS('background-color', 'rgb(29, 122, 69)');
+    await expect(card.locator('.t')).toHaveCSS('color', 'rgb(255, 255, 255)');
     await expect(page.locator('article.kc', { hasText: segunda })).not.toHaveClass(/painted/);
     await expect(card.locator('.cl')).toHaveText('1/2');
     await expect(card.locator('.due')).toContainText('20 dez');
