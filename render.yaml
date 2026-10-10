@@ -1,0 +1,46 @@
+# Blueprint do Render: cria o app e o banco PostgreSQL de uma vez.
+# No painel do Render: New > Blueprint > escolha este repositório.
+services:
+  - type: web
+    # O endereço público vem deste nome: https://synctasks.onrender.com (synctask, sem o "s", já é de outra pessoa).
+    name: synctasks
+    runtime: node
+    plan: free
+    # Só publica quando a verificação automática do GitHub (.github/workflows/testes.yml) passar.
+    autoDeployTrigger: checksPass
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: nerus-db
+          property: connectionString
+      # Ambiente de teste: cria a equipe de exemplo (senha nerus2026) se o banco estiver vazio.
+      # Para uso real, mude para "false" e crie o primeiro administrador.
+      - key: SEED_DEMO
+        value: "true"
+      # Item 31: chave do SyncTasks no Trello para "Exportar para o Trello" (preencher no painel do Render; passo a passo na Ajuda).
+      - key: TRELLO_API_KEY
+        sync: false
+
+  # Site comercial (pasta site/): página estática gratuita, sem build.
+  # Endereço: https://synctasks-site.onrender.com
+  - type: web
+    name: synctasks-site
+    runtime: static
+    buildCommand: echo "site estático, sem build"
+    staticPublishPath: ./site
+    buildFilter:
+      paths:
+        - site/**
+
+databases:
+  - name: nerus-db
+    plan: free
+    databaseName: nerus
+    user: nerus
