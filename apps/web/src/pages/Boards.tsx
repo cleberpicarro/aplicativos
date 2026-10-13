@@ -49,7 +49,7 @@ export function BoardsPage() {
   const me = useMe().data!;
   const boards = useQuery({ queryKey: ['boards'], queryFn: () => get<BoardTab[]>('/boards') });
   const [selected, setSelected] = useState<string | null>(rememberedBoard);
-  const [dialog, setDialog] = useState<null | 'newBoard' | 'renameBoard' | 'newList' | 'import' | 'export' | 'color' | 'workspace'>(null);
+  const [dialog, setDialog] = useState<null | 'newBoard' | 'renameBoard' | 'newList' | 'import' | 'export' | 'color' | 'workspace' | 'archiveBoard'>(null);
   const toast = useToast();
   const { run, error } = useAction();
   const qc = useQueryClient();
@@ -153,6 +153,13 @@ export function BoardsPage() {
               // Item 31: importar e exportar ficam juntos no fim do menu.
               { label: 'Importar do Trello', onClick: () => setDialog('import'), separator: !!board.data },
               ...(board.data ? [{ label: 'Exportar para o Trello', onClick: () => setDialog('export') }] : []),
+              // Item 42: arquivar quadro vazio, separado no fim.
+              ...(board.data ? [{ label: 'Arquivar quadro', danger: true, separator: true, onClick: () => {
+                const n = board.data!.cards.length;
+                if (n) toast(`Este quadro ainda tem ${n === 1 ? '1 tarefa' : `${n} tarefas`}: arquive as concluídas ou mova as abertas para outro quadro.`, 'error');
+                else if ((boards.data?.length ?? 0) < 2) toast('Este é o seu único quadro. Crie outro quadro antes de arquivar este.', 'error');
+                else setDialog('archiveBoard');
+              } }] : []),
             ]} />
           )}
         </span>
@@ -183,6 +190,20 @@ export function BoardsPage() {
           onSave={(name) => post(`/boards/${board.data!.id}/lists`, { name })} />
       )}
       {dialog === 'color' && board.data && <ColorDialog board={board.data} onClose={() => setDialog(null)} />}
+      {dialog === 'archiveBoard' && board.data && (
+        <ConfirmDialog title="Arquivar quadro" danger confirm="Arquivar quadro" onClose={() => setDialog(null)}
+          text={`Arquivar o quadro “${board.data.name}”? Ele sai das abas, com as fases. As tarefas arquivadas dele continuam em Arquivadas, e o quadro pode ser desarquivado por lá.`}
+          onConfirm={async () => {
+            const id = board.data!.id;
+            const name = board.data!.name;
+            const r = await post(`/boards/${id}/archive`);
+            toast(`Quadro “${name}” arquivado.`, 'ok', {
+              label: 'Desfazer',
+              onClick: () => post(`/boards/${id}/unarchive`, { back: 'same' }).then(() => { select(id); return qc.invalidateQueries(); }, (e) => toast((e as Error).message, 'error')),
+            });
+            return r;
+          }} />
+      )}
       {dialog === 'workspace' && <WorkspaceDialog current={me.prefs.workspaceBg} onClose={() => setDialog(null)} />}
     </div>
   );
@@ -406,6 +427,8 @@ function Tile({ card, today, dragging, onDragStart, onDragEnd, onDragOver, onDro
         {d && <TipIcon name="into" tip={`Delegada por ${d.delegatorName}`} />}
         {card.child && !['CANCELED'].includes(card.child.status) && <TipIcon name="out" tip={`Repassada para ${card.child.ownerName}`} />}
         {card.isPrivate && <TipIcon name="lock" tip="Privada: nenhum superior vê" />}
+        {d?.noPass && <TipIcon name="self" tip={`Não pode ser repassada: ${firstName(d.delegatorName)} pediu que você mesmo faça`} />}
+        {card.child?.noPass && !['ACKED', 'CANCELED'].includes(card.child.status) && <TipIcon name="self" tip={`Não pode ser repassada por ${firstName(card.child.ownerName)}`} />}
         {showStatus && <CardStatusIcon card={card} />}
         {archivable(card) && (
           <button className="arch" onClick={archive} aria-label={`Arquivar ${card.title}`} data-tip="Arquivar">

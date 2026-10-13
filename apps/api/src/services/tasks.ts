@@ -105,7 +105,10 @@ export async function updateCard(db: Db, actor: Actor, cardId: string, patch: Ca
     await db.query('UPDATE cards SET color = $2 WHERE id = $1', [cardId, patch.color]);
   }
   if (patch.isPrivate !== undefined && patch.isPrivate !== row.is_private) {
-    if (row.d_id && patch.isPrivate) throw conflict('Uma tarefa recebida por delegação não pode ser privada.');
+    // RN-08 e item 43: tarefa que tem ou teve delegação (recebida ou delegada, menos a cancelada) não pode ser privada.
+    if (patch.isPrivate && (row.d_id || (await one(db, `SELECT 1 FROM delegations WHERE parent_card_id = $1 AND status <> 'CANCELED'`, [cardId])))) {
+      throw conflict('Uma tarefa delegada não pode ser privada.');
+    }
     await db.query('UPDATE cards SET is_private = $2, updated_at = now() WHERE id = $1', [cardId, patch.isPrivate]);
     await logEvent(db, cardId, actor.id, 'privacy_changed', { isPrivate: row.is_private }, { isPrivate: patch.isPrivate });
   }

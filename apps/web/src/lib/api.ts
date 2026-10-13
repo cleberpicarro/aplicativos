@@ -56,8 +56,10 @@ export interface Card {
     declineReason: string | null;
     parentCode: string | null;
     parentNum: number | null;
+    /** Item 41: o delegador pediu que a própria pessoa faça a tarefa. */
+    noPass: boolean;
   };
-  child: null | { delegationId: string; cardId: string; code: string; num: number; ownerName: string; status: DelegationStatus; reopened: boolean };
+  child: null | { delegationId: string; cardId: string; code: string; num: number; ownerName: string; status: DelegationStatus; reopened: boolean; noPass: boolean };
   checklist: { done: number; total: number };
   source: 'web' | 'email' | 'trello' | null;
   createdAt: string;

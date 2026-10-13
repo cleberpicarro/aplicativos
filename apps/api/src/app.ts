@@ -146,6 +146,18 @@ export async function buildApp({ pool, logger = false, serveWeb = false }: AppOp
     });
     return { ok: true };
   });
+  app.get('/api/boards/archived', async (req) => boards.listArchivedBoards(pool, need(req)));
+  app.post('/api/boards/:id/archive', async (req) => {
+    const { id } = z.object({ id: uuid }).parse(req.params);
+    await inTx((db) => boards.archiveBoard(db, need(req), id));
+    return { ok: true };
+  });
+  app.post('/api/boards/:id/unarchive', async (req) => {
+    const { id } = z.object({ id: uuid }).parse(req.params);
+    const { back } = z.object({ back: z.enum(['end', 'same']).default('end') }).parse(req.body ?? {});
+    await inTx((db) => boards.unarchiveBoard(db, need(req), id, back));
+    return { ok: true };
+  });
   app.post('/api/boards/:id/lists', async (req) => {
     const { id } = z.object({ id: uuid }).parse(req.params);
     const { name } = z.object({ name: z.string().max(60) }).parse(req.body);
@@ -266,7 +278,7 @@ export async function buildApp({ pool, logger = false, serveWeb = false }: AppOp
   /* ---------------- delegação ---------------- */
   app.post('/api/cards/:id/delegate', async (req) => {
     const { id } = z.object({ id: uuid }).parse(req.params);
-    const body = z.object({ toUserId: uuid, suggestedDue: date.optional(), note: z.string().max(5000).optional() }).parse(req.body);
+    const body = z.object({ toUserId: uuid, suggestedDue: date.optional(), note: z.string().max(5000).optional(), noPass: z.boolean().optional() }).parse(req.body);
     return inTx((db) => deleg.delegate(db, need(req), id, body));
   });
   app.get('/api/inbox', async (req) => deleg.inbox(pool, need(req)));
@@ -287,7 +299,7 @@ export async function buildApp({ pool, logger = false, serveWeb = false }: AppOp
     const a = need(req);
     const { row, role } = await loadCard(pool, a, id);
     if (role !== 'owner') throw forbidden();
-    return deleg.transferTargets(pool, a, row.d_delegator_id ?? null);
+    return deleg.transferTargets(pool, a, row.d_delegator_id ?? null, !!(row.d_id && row.d_no_pass));
   });
   app.post('/api/cards/:id/transfer', async (req) => {
     const { id } = z.object({ id: uuid }).parse(req.params);
@@ -313,8 +325,14 @@ export async function buildApp({ pool, logger = false, serveWeb = false }: AppOp
   });
   app.post('/api/delegations/:id/redelegate', async (req) => {
     const { id } = z.object({ id: uuid }).parse(req.params);
-    const body = z.object({ toUserId: uuid, suggestedDue: date.optional() }).parse(req.body);
+    const body = z.object({ toUserId: uuid, suggestedDue: date.optional(), noPass: z.boolean().optional() }).parse(req.body);
     await inTx((db) => deleg.redelegate(db, need(req), id, body));
+    return { ok: true };
+  });
+  app.post('/api/delegations/:id/no-pass', async (req) => {
+    const { id } = z.object({ id: uuid }).parse(req.params);
+    const { noPass } = z.object({ noPass: z.boolean() }).parse(req.body);
+    await inTx((db) => deleg.setNoPass(db, need(req), id, noPass));
     return { ok: true };
   });
   app.get('/api/delegations', async (req) => {
@@ -451,6 +469,17 @@ export async function buildApp({ pool, logger = false, serveWeb = false }: AppOp
     const { active } = z.object({ active: z.boolean() }).parse(req.body);
     await inTx((db) => admin.setActive(db, a, id, active));
     return { ok: true };
+  });
+  app.get('/api/admin/users/:id/deactivation', async (req) => {
+    needAdmin(req);
+    const { id } = z.object({ id: uuid }).parse(req.params);
+    return admin.deactivationPreview(pool, id);
+  });
+  app.post('/api/admin/users/:id/deactivate', async (req) => {
+    const a = needAdmin(req);
+    const { id } = z.object({ id: uuid }).parse(req.params);
+    const { successorId } = z.object({ successorId: uuid.nullable().optional() }).parse(req.body);
+    return inTx((db) => admin.deactivate(db, a, id, successorId ?? null));
   });
   app.post('/api/admin/users/:id/invite', async (req) => {
     needAdmin(req);

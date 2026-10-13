@@ -68,6 +68,7 @@ export function HelpPage({ isAdmin }: { isAdmin: boolean }) {
         <ul>
           <li><b>Novo quadro:</b> clique em <b>+ Quadro</b>, à direita das abas. Ele começa com as fases A fazer, Fazendo e Feito.</li>
           <li><b>Menu do quadro:</b> no botão <b>…</b> à direita das abas dá para renomear o quadro, escolher a <b>cor do quadro</b>, criar uma nova fase, mover o quadro para a esquerda ou a direita e escolher o <b>fundo da área de trabalho</b> (vale para todas as telas e fica guardado na sua conta).</li>
+          <li><b>Arquivar quadro:</b> no fim do menu <b>…</b> do quadro. Só funciona com o quadro <b>vazio</b>: arquive as tarefas concluídas e mova as abertas para outro quadro antes. O seu último quadro não pode ser arquivado. O aviso traz <b>Desfazer</b>; depois, o quadro fica em <b>Arquivadas</b>, de onde volta com <b>Desarquivar</b> (como a última aba, com fases e cor).</li>
           <li><b>Zoom do quadro:</b> à direita das abas, <b>−</b> e <b>+</b> diminuem ou aumentam as fases e os cartões (de 70% a 130%) para ver mais fases de uma vez. Clique no número (por exemplo, <b>80%</b>) para voltar a 100%. O zoom fica guardado neste computador e vale para todos os quadros.</li>
           <li><b>Ordem dos quadros:</b> arraste a aba de um quadro para a esquerda ou a direita. Uma linha azul mostra onde ela vai entrar.</li>
           <li><b>Fases:</b> no menu <b>…</b> de cada fase dá para renomear, mover para a esquerda ou direita, <b>ordenar por</b> nome, data de criação ou prazo, e arquivar. Ordenar reorganiza a fase uma vez; depois você continua arrastando à vontade. Só é possível arquivar uma fase vazia.</li>
@@ -97,6 +98,7 @@ export function HelpPage({ isAdmin }: { isAdmin: boolean }) {
       <Sec id="arquivadas" title="Arquivadas">
         <p>No menu à esquerda, <b>Arquivadas</b> lista as tarefas que <b>você</b> arquivou, da mais recente para a mais antiga, com o quadro e a fase de onde saíram.</p>
         <ul>
+          <li><b>Quadros arquivados:</b> aparecem no topo, com o botão <b>Desarquivar</b>. O quadro volta como a última aba. A tarefa de um quadro arquivado mostra “(quadro arquivado)” e, ao ser desarquivada, vai para a primeira fase do seu primeiro quadro.</li>
           <li><b>Pesquisar:</b> digite o número (12 ou #12) ou palavras do título e da descrição.</li>
           <li><b>Desarquivar:</b> o botão na linha devolve a tarefa à mesma fase e posição (ou à primeira fase do quadro, se a fase foi arquivada). O aviso traz <b>Desfazer</b>.</li>
           <li><b>Delegadas com ciente:</b> as tarefas que você delegou e em que deu o ciente também aparecem, marcadas <b>Delegada para…</b>. Elas são só para consulta: o ciente não se desfaz.</li>
@@ -161,12 +163,15 @@ export function HelpPage({ isAdmin }: { isAdmin: boolean }) {
       </Sec>
 
       <Sec id="delegar" title="Delegar uma tarefa">
-        <p>Quem tem equipe pode delegar. A delegação vai sempre para um <b>subordinado direto</b>: o gestor delega aos funcionários dele, o diretor aos gestores dele.</p>
+        <p>Quem tem equipe pode delegar. A delegação vai sempre para um <b>subordinado direto</b>: o gestor delega aos funcionários dele, o diretor aos gestores (e aos funcionários) ligados direto a ele.</p>
         <ol>
           <li>Crie a tarefa no seu quadro (ou use uma que você recebeu).</li>
           <li>Abra a tarefa e clique em <b>Delegar</b>.</li>
           <li>Escolha a pessoa, o prazo sugerido e, se quiser, uma observação.</li>
+          <li>Se a própria pessoa precisa fazer, marque <b>Não pode ser repassada</b>: ela não consegue delegar a tarefa nem transferi-la para um subordinado (para um colega ou para o superior dela, pode).</li>
         </ol>
+        <p>Você liga ou desliga <b>Não pode ser repassada</b> depois, dentro da sua tarefa, no bloco “Repassada para”. A pessoa é avisada e a mudança fica no log. Na tabela, o filtro <b>Pode repassar</b> acha essas tarefas.</p>
+        <p>Se a tarefa for <b>privada</b>, ela deixa de ser privada ao delegar: tarefa delegada não pode ser privada.</p>
         <p>A pessoa recebe um <b>cartão ligado ao seu</b>, com o número do quadro dela, e é avisada no app e por e-mail. O seu cartão continua no seu quadro com o ícone de “repassada para”.</p>
         <p className="ex">Exemplo: o diretor delega “Orçamento 2027” ao gestor. O gestor abre essa tarefa e delega parte dela ao funcionário. Cada nível dá o ciente no nível de baixo antes de concluir o seu.</p>
       </Sec>
@@ -229,7 +234,7 @@ export function HelpPage({ isAdmin }: { isAdmin: boolean }) {
       <Sec id="privacidade" title="Privacidade e log">
         <ul>
           <li>Seus quadros são só seus. Quem está acima de você vê <b>apenas as tarefas que delegou a você</b> e quantas tarefas próprias você tem.</li>
-          <li>Marque uma tarefa como <b>Privada</b> (dentro dela) para que nem esse número a conte. Tarefas recebidas por delegação não podem ser privadas.</li>
+          <li>Marque uma tarefa como <b>Privada</b> (dentro dela) para que nem esse número a conte. Tarefas delegadas (recebidas, ou que você delegou para alguém) não podem ser privadas; se a delegação for cancelada, a tarefa volta a poder ser privada.</li>
           <li>O <b>log</b> registra tudo o que acontece com cada tarefa: quem fez, quando e o que mudou. Ninguém consegue alterar ou apagar o log.</li>
           <li>O log é visível para a administração, o CEO e os diretores (das tarefas da própria diretoria). O log de tarefas privadas não é exibido.</li>
         </ul>
@@ -247,6 +252,7 @@ export function HelpPage({ isAdmin }: { isAdmin: boolean }) {
           <dt><TipIcon name="into" tip="Delegada por" /> Seta entrando</dt><dd>Delegada a você por alguém acima</dd>
           <dt><TipIcon name="out" tip="Repassada para" /> Seta saindo</dt><dd>Você delegou para alguém da sua equipe</dd>
           <dt><TipIcon name="lock" tip="Privada" /> Cadeado</dt><dd>Tarefa privada</dd>
+          <dt><TipIcon name="self" tip="Não pode ser repassada" /> Pessoa</dt><dd>Não pode ser repassada: quem recebeu precisa fazer</dd>
           <dt><span className="due late">3 out</span></dt><dd>Prazo em vermelho: atrasada</dd>
         </dl>
         <p>Passe o mouse (ou toque) em qualquer ícone ou botão para ver uma explicação.</p>
@@ -269,7 +275,7 @@ export function HelpPage({ isAdmin }: { isAdmin: boolean }) {
         <ol>
           <li>Em <b>Pessoas</b>, clique em <b>Nova pessoa</b>.</li>
           <li>Preencha nome, e-mail e nível (CEO, Diretor, Gestor ou Funcionário). O cargo exibido é opcional.</li>
-          <li>Escolha o <b>superior direto</b>. Ele precisa estar no nível imediatamente acima: o superior de um funcionário é um gestor, o de um gestor é um diretor, o de um diretor é o CEO. A exceção é o gestor, que também pode responder direto ao CEO (por exemplo, quando o CEO também comanda uma área).</li>
+          <li>Escolha o <b>superior direto</b>. Ele precisa estar num nível acima: o de um diretor é o CEO; o de um gestor é um diretor ou o CEO; o de um funcionário é um gestor, um diretor ou o CEO (por exemplo, a assistente que responde direto ao diretor). A lista mostra o cargo entre parênteses.</li>
           <li>Marque <b>Também é administrador</b> se a pessoa for cuidar do cadastro.</li>
           <li>Clique em <b>Cadastrar</b>. A pessoa recebe um e-mail com o link para definir a senha (válido por 72 horas).</li>
         </ol>
@@ -284,8 +290,20 @@ export function HelpPage({ isAdmin }: { isAdmin: boolean }) {
         </ul>
         <p>O CEO não tem superior direto. O nível (CEO, diretor, gestor, funcionário) é escolhido no cadastro.</p>
         <h3>Desativar ou reativar</h3>
-        <p>No menu <b>…</b>, escolha <b>Desativar</b>. A pessoa deixa de entrar no app, e os registros dela no log são mantidos.</p>
-        <p>Não é possível desativar quem ainda tem subordinados ou tarefas delegadas em aberto. Antes, troque o superior direto dos subordinados em <b>Editar dados</b> e resolva ou transfira as tarefas. O app lista o que falta.</p>
+        <p>Não existe excluir: quem sai é <b>desativado</b>. Nada é apagado, o log continua com o nome da pessoa e ela pode ser reativada depois.</p>
+        <ol>
+          <li>No menu <b>…</b> da pessoa, escolha <b>Desativar</b>. A janela mostra o que está com ela.</li>
+          <li>Se houver pendências, escolha <b>quem recebe</b>: alguém do mesmo nível ou o superior direto dela.</li>
+          <li>Clique em <b>Desativar</b>. Na hora, a pessoa deixa de entrar e:
+            <ul>
+              <li>os <b>subordinados</b> passam a responder a quem recebe, e as tarefas que ela tinha delegado e estão em aberto passam a ser acompanhadas por essa pessoa;</li>
+              <li>as tarefas que ela <b>recebeu e não terminou</b> voltam para quem delegou, como devolvidas, para redelegar ou cancelar;</li>
+              <li>as tarefas <b>próprias abertas</b> vão para a caixa de entrada de quem recebe;</li>
+              <li>as <b>privadas</b>, os quadros, as concluídas e as arquivadas ficam com ela. Todos os envolvidos recebem aviso.</li>
+            </ul>
+          </li>
+        </ol>
+        <p>A pessoa inativa continua na lista com a situação <b>Inativa</b>; marque <b>Esconder inativas</b> para tirá-la da vista. O e-mail continua com ela. Para reativar, use <b>Reativar</b> no mesmo menu: ela volta a entrar e encontra os quadros e as privadas como deixou, mas o que foi passado adiante não volta sozinho.</p>
         <h3>Senhas</h3>
         <p>Quem esquecer a senha usa <b>Esqueci minha senha</b> na tela de login e recebe um link por e-mail, válido por 2 horas. A administração não vê nem define senhas.</p>
         <h3>Ligar a exportação para o Trello</h3>

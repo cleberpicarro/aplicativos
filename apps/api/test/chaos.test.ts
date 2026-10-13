@@ -8,7 +8,7 @@
  * Para rodar mais pesado: CHAOS_STEPS=5000 CHAOS_SEEDS=1,2,3,4,5 npm test -w apps/api -- chaos
  */
 import { describe, it, expect } from 'vitest';
-import { setup, api, firstListOf, day, type Ctx } from './helpers.js';
+import { setup, api, firstListOf, day, login, PASSWORD, type Ctx } from './helpers.js';
 
 const STEPS = Number(process.env.CHAOS_STEPS ?? 400);
 const SEEDS = (process.env.CHAOS_SEEDS ?? '11,22,33').split(',').map(Number);
@@ -67,10 +67,14 @@ async function runChaos(seed: number) {
     );
   const reportsOf = (who: string) => PEOPLE.filter((p) => ctx.users[p] && keyOfManager.get(p) === who);
   const keyOfManager = new Map<string, string>();
-  for (const row of await q('SELECT id, manager_id FROM users')) {
-    const k = keyOf.get(row.id)!;
-    if (row.manager_id) keyOfManager.set(k, keyOf.get(row.manager_id)!);
-  }
+  const loadHierarchy = async () => {
+    keyOfManager.clear();
+    for (const row of await q('SELECT id, manager_id FROM users')) {
+      const k = keyOf.get(row.id)!;
+      if (row.manager_id) keyOfManager.set(k, keyOf.get(row.manager_id)!);
+    }
+  };
+  await loadHierarchy();
 
   const actions: Record<string, () => Promise<void>> = {
     async criar() {
@@ -84,7 +88,9 @@ async function runChaos(seed: number) {
       const cards = (await cardsOf(who)).filter((c) => c.list_id && !c.archived_at && (r.chance(0.9) ? !c.completed_at && !c.child_open : true));
       if (!cards.length) return;
       const to = r.chance(0.9) ? r.pick(reportsOf(who)) : r.pick(PEOPLE); // às vezes, destino errado de propósito
-      await act(who, 'POST', `/api/cards/${r.pick(cards).id}/delegate`, { toUserId: idOf(to), ...(r.chance(0.3) ? { suggestedDue: day(5), note: 'Veja isso' } : {}) });
+      await act(who, 'POST', `/api/cards/${r.pick(cards).id}/delegate`, {
+        toUserId: idOf(to), ...(r.chance(0.3) ? { suggestedDue: day(5), note: 'Veja isso' } : {}), ...(r.chance(0.25) ? { noPass: true } : {}),
+      });
     },
     async aceitar() {
       const who = r.pick(PEOPLE);
@@ -119,6 +125,7 @@ async function runChaos(seed: number) {
       else if (d.status === 'AWAITING_ACK') await act(who, 'POST', `/api/delegations/${d.id}/reopen`, { comment: 'Refazer a parte final' });
       else if (d.status === 'DECLINED' && roll < 0.5) await act(who, 'POST', `/api/delegations/${d.id}/redelegate`, { toUserId: idOf(r.pick(reportsOf(who))) });
       else if (roll < 0.12) await act(who, 'POST', `/api/delegations/${d.id}/cancel`);
+      else if (roll < 0.25) await act(who, 'POST', `/api/delegations/${d.id}/no-pass`, { noPass: r.chance(0.5) }); // item 41
       else await act(who, 'POST', `/api/delegations/${d.id}/ack`); // muitas vezes inválido de propósito
     },
     async transferir() {
@@ -152,6 +159,27 @@ async function runChaos(seed: number) {
       const c = r.pick(cards);
       await act(who, 'POST', `/api/cards/${c.id}/${c.archived_at ? 'unarchive' : 'archive'}`);
     },
+    async quadros() {
+      // item 42: arquivar quadro (às vezes com tarefas, de propósito) ou desarquivar
+      const who = r.pick(PEOPLE);
+      const boards = await q(`SELECT id, archived_at FROM boards WHERE owner_id = $1 ORDER BY position, id`, [idOf(who)]);
+      const b = r.pick(boards);
+      if (b.archived_at) await act(who, 'POST', `/api/boards/${b.id}/unarchive`);
+      else if (boards.length < 3 && r.chance(0.5)) await act(who, 'POST', '/api/boards', { name: 'Outro' });
+      else await act(who, 'POST', `/api/boards/${b.id}/archive`);
+    },
+    async desativar() {
+      // item 44: o administrador desativa alguém (passando as pendências a um sucessor) e logo reativa
+      const who = r.pick(PEOPLE.filter((p) => p !== 'ceo'));
+      const prev = (await act('admin', 'GET', `/api/admin/users/${idOf(who)}/deactivation`)).body;
+      const succ = prev.successors?.length ? r.pick(prev.successors as any[]).id : null;
+      const res = await act('admin', 'POST', `/api/admin/users/${idOf(who)}/deactivate`, { successorId: succ });
+      if (res.status !== 200) return;
+      await loadHierarchy();
+      await checkInvariants(-1);
+      await act('admin', 'POST', `/api/admin/users/${idOf(who)}/active`, { active: true });
+      ctx.users[who].cookie = await login(ctx.app, ctx.users[who].email, PASSWORD);
+    },
     async intrometer() {
       // alguém tenta mexer na tarefa de outra pessoa: precisa sempre ser recusado
       const who = r.pick(PEOPLE);
@@ -166,7 +194,7 @@ async function runChaos(seed: number) {
   };
   const weights: [string, number][] = [
     ['criar', 14], ['delegar', 14], ['aceitar', 12], ['devolver', 5], ['concluir', 12], ['responder', 12],
-    ['transferir', 6], ['editar', 14], ['arquivar', 5], ['intrometer', 6],
+    ['transferir', 6], ['editar', 14], ['arquivar', 5], ['intrometer', 6], ['quadros', 2], ['desativar', 1],
   ];
   const total = weights.reduce((s, [, w]) => s + w, 0);
   const pickAction = () => {
@@ -181,6 +209,8 @@ async function runChaos(seed: number) {
       throw new Error(`Semente ${seed}, passo ${step}: ${msg}${rows ? `\n${JSON.stringify(rows, null, 1).slice(0, 1500)}` : ''}\nÚltimas ações:\n${history.join('\n')}`);
     };
     if (serverErrors.length) fail(`erro interno do servidor (500): ${serverErrors.join('; ')}`);
+    const activeIds = new Set((await q('SELECT id FROM users WHERE active')).map((x) => x.id));
+    const live = PEOPLE.filter((p) => activeIds.has(idOf(p)));
 
     // 1. Códigos únicos e toda tarefa com exatamente um detentor ativo.
     const dupCodes = await q(`SELECT code FROM cards GROUP BY code HAVING count(*) > 1`);
@@ -189,8 +219,15 @@ async function runChaos(seed: number) {
     const dupNums = await q(`SELECT l.board_id, c.num FROM cards c JOIN lists l ON l.id = c.list_id GROUP BY 1, 2 HAVING count(*) > 1
       UNION ALL SELECT c.owner_id, c.num FROM cards c WHERE c.list_id IS NULL AND c.archived_at IS NULL GROUP BY 1, 2 HAVING count(*) > 1`);
     if (dupNums.length) fail('número repetido no mesmo quadro ou caixa de entrada', dupNums);
-    const orphan = await q(`SELECT c.code FROM cards c LEFT JOIN users u ON u.id = c.owner_id WHERE u.id IS NULL OR NOT u.active`);
-    if (orphan.length) fail('tarefa sem detentor ativo', orphan);
+    // Item 44: com pessoa inativa só ficam as privadas, as concluídas, as arquivadas e as devolvidas a quem delegou.
+    const orphan = await q(`SELECT c.code FROM cards c LEFT JOIN users u ON u.id = c.owner_id LEFT JOIN delegations d ON d.card_id = c.id
+      WHERE u.id IS NULL OR (NOT u.active AND c.archived_at IS NULL AND c.completed_at IS NULL AND NOT c.is_private AND (d.id IS NULL OR d.status <> 'DECLINED'))`);
+    if (orphan.length) fail('tarefa aberta parada com pessoa inativa', orphan);
+    const inactiveDeleg = await q(`SELECT d.id FROM delegations d JOIN users g ON g.id = d.delegator_id
+      WHERE NOT g.active AND d.status IN ('PENDING_ACCEPT','IN_PROGRESS','AWAITING_ACK','DECLINED')`);
+    if (inactiveDeleg.length) fail('delegação em aberto acompanhada por pessoa inativa', inactiveDeleg);
+    const inactiveBoss = await q(`SELECT u.email FROM users u JOIN users m ON m.id = u.manager_id WHERE u.active AND NOT m.active`);
+    if (inactiveBoss.length) fail('pessoa ativa respondendo a superior inativo', inactiveBoss);
 
     // 2. Estado da delegação coerente com o cartão.
     const incoherent = await q(`
@@ -207,9 +244,19 @@ async function runChaos(seed: number) {
     const multi = await q(`SELECT parent_card_id, count(*) FROM delegations WHERE status NOT IN ('ACKED','CANCELED') GROUP BY parent_card_id HAVING count(*) > 1`);
     if (multi.length) fail('mais de uma delegação ativa na mesma tarefa', multi);
 
-    // 4. Tarefa recebida por delegação nunca é privada (RN-08).
-    const privDeleg = await q(`SELECT c.code FROM cards c JOIN delegations d ON d.card_id = c.id WHERE c.is_private AND d.status NOT IN ('CANCELED','DECLINED','ACKED')`);
+    // 4. Tarefa que tem ou teve delegação (recebida, ou delegada e não cancelada) nunca é privada (RN-08, item 43).
+    const privDeleg = await q(`SELECT c.code FROM cards c WHERE c.is_private
+      AND (EXISTS (SELECT 1 FROM delegations d WHERE d.card_id = c.id) OR EXISTS (SELECT 1 FROM delegations d WHERE d.parent_card_id = c.id AND d.status <> 'CANCELED'))`);
     if (privDeleg.length) fail('tarefa delegada marcada como privada', privDeleg);
+
+    // 4b. Item 41: nenhuma delegação para baixo nasceu depois que a tarefa recebida foi marcada como "não pode ser repassada".
+    const passed = await q(`
+      WITH marks AS (
+        SELECT d.card_id, max(e.created_at) AS marked_at FROM delegations d JOIN card_events e ON e.card_id = d.card_id
+         WHERE d.no_pass AND ((e.type = 'no_pass_changed' AND e.after->>'noPass' = 'true') OR (e.type IN ('delegated','redelegated') AND e.after->>'noPass' = 'true'))
+         GROUP BY d.card_id)
+      SELECT x.id FROM marks m JOIN delegations x ON x.parent_card_id = m.card_id WHERE x.created_at > m.marked_at`);
+    if (passed.length) fail('tarefa marcada como "não pode ser repassada" foi delegada para baixo', passed);
 
     // 5. Tarefa na fase de um quadro que não é do detentor.
     const wrongBoard = await q(`SELECT c.code FROM cards c JOIN lists l ON l.id = c.list_id JOIN boards b ON b.id = l.board_id WHERE b.owner_id <> c.owner_id`);
@@ -225,14 +272,14 @@ async function runChaos(seed: number) {
     // 7. Tarefas privadas não aparecem para mais ninguém, em lugar nenhum.
     const privs = await q(`SELECT id, code, owner_id, title FROM cards WHERE is_private`);
     for (const p of privs.slice(0, 5)) {
-      for (const who of PEOPLE.filter((x) => idOf(x) !== p.owner_id)) {
+      for (const who of live.filter((x) => idOf(x) !== p.owner_id)) {
         const res = await call(who, 'GET', `/api/cards/${p.id}`);
         if (res.status !== 404) fail(`${who} vê a tarefa privada ${p.code} (status ${res.status})`);
       }
     }
     const privCodes = new Set(privs.map((p) => p.code));
 
-    for (const who of PEOPLE) {
+    for (const who of live) {
       const me = (await call(who, 'GET', '/api/me')).body;
       const inbox = (await call(who, 'GET', '/api/inbox')).body;
       // 8. Contador da caixa de entrada bate com a lista.
@@ -292,6 +339,7 @@ describe('uso caótico (frente 4)', () => {
   for (const seed of SEEDS) {
     it(`semente ${seed}: ${STEPS} ações sorteadas sem quebrar nenhuma regra`, async () => {
       const { stats, counts } = await runChaos(seed);
+      if (process.env.CHAOS_DEBUG) console.log(counts, JSON.stringify(stats));
       const ok = Object.entries(stats).filter(([k]) => k.endsWith(' ok')).reduce((s, [, n]) => s + n, 0);
       // O sorteio precisa exercitar o fluxo de verdade, não só tentativas recusadas.
       expect(ok).toBeGreaterThan(STEPS / 4);

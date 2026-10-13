@@ -598,6 +598,15 @@ main.ws .tabs button.tab[aria-selected='true'] { color: var(--fg); }
 .faint { color: var(--faint); }
 .arch-bar { margin-bottom: 12px; }
 .arch-bar .input { max-width: 26rem; }
+/* Item 44: pendências na janela Desativar pessoa. */
+.pend { margin: 0; padding-left: 1.1rem; display: grid; gap: 4px; font-size: 0.9rem; }
+
+/* Item 42: quadros arquivados, no topo da tela Arquivadas. */
+.arch-boards { margin-bottom: 16px; }
+.arch-boards h2 { margin: 0 0 6px; font-size: inherit; }
+.arch-boards ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.arch-boards li { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); }
+.arch-boards li .b { margin-left: auto; }
 .more { display: flex; justify-content: center; margin-top: 12px; }
 .cell-link { border: 0; background: none; padding: 0; cursor: pointer; text-align: left; color: var(--fg); font: inherit; font-weight: 450;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 26rem; }

@@ -2,7 +2,7 @@
 
 export type Field =
   | 'code' | 'title' | 'description' | 'board' | 'list' | 'status' | 'due' | 'created' | 'completed'
-  | 'delegatedTo' | 'receivedFrom' | 'private' | 'archived' | 'source' | 'color';
+  | 'delegatedTo' | 'receivedFrom' | 'private' | 'archived' | 'canPass' | 'source' | 'color';
 export type Op = 'contains' | 'not_contains' | 'eq' | 'neq' | 'empty' | 'not_empty' | 'before' | 'after' | 'between' | 'last_days' | 'next_days';
 export type Value = string | number | boolean | [string, string] | null;
 export interface Condition { field: Field; op: Op; value?: Value }
@@ -24,6 +24,7 @@ export const FIELDS: { id: Field; label: string; kind: Kind }[] = [
   { id: 'receivedFrom', label: 'Recebida de', kind: 'person' },
   { id: 'private', label: 'Privada', kind: 'bool' },
   { id: 'archived', label: 'Arquivada', kind: 'bool' },
+  { id: 'canPass', label: 'Pode repassar', kind: 'bool' },
   { id: 'source', label: 'Origem', kind: 'source' },
   { id: 'color', label: 'Cor', kind: 'color' },
 ];

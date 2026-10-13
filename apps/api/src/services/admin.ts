@@ -9,13 +9,17 @@ import { notify, queueEmail } from './notify.js';
 
 export const LEVEL_TITLES = ['CEO', 'Diretor', 'Gestor', 'Funcionário'];
 
-/** RN-38: o superior está no nível logo acima; o gestor também pode responder direto ao CEO (item 29). */
+/**
+ * RN-38: o superior está num nível acima. O gestor pode responder a um diretor ou direto ao CEO (item 29);
+ * o funcionário, a um gestor, a um diretor ou direto ao CEO (item 32).
+ */
 export function managerLevelsFor(level: number): number[] {
-  return level === 2 ? [1, 0] : [level - 1];
+  return level === 3 ? [2, 1, 0] : level === 2 ? [1, 0] : [level - 1];
 }
 
 function managerLabel(level: number) {
-  return managerLevelsFor(level).map((l) => LEVEL_TITLES[l]).join(' ou o ');
+  const t = managerLevelsFor(level).map((l) => LEVEL_TITLES[l]);
+  return t.length > 1 ? `${t.slice(0, -1).join(', ')} ou ${t[t.length - 1]}` : t[0];
 }
 
 export async function listUsers(db: Db) {
@@ -167,4 +171,113 @@ export async function setActive(db: Db, admin: Actor, userId: string, active: bo
     await db.query('DELETE FROM sessions WHERE user_id = $1', [userId]);
   }
   await db.query('UPDATE users SET active = $2, updated_at = now() WHERE id = $1', [userId, active]);
+}
+
+/* ---------- desativar resolvendo as pendências (item 44) ---------- */
+
+const OPEN_MADE = `('PENDING_ACCEPT','IN_PROGRESS','AWAITING_ACK','DECLINED')`;
+
+/** Tarefas próprias abertas que passam ao sucessor: não concluídas, não arquivadas, não privadas e não recebidas por delegação. */
+const OWN_OPEN = `SELECT c.id FROM cards c
+  WHERE c.owner_id = $1 AND c.archived_at IS NULL AND c.completed_at IS NULL AND NOT c.is_private
+    AND NOT EXISTS (SELECT 1 FROM delegations d WHERE d.card_id = c.id)`;
+
+/** O que está pendente com a pessoa e quem pode ser o sucessor (alguém do mesmo nível ou o superior dela). */
+export async function deactivationPreview(db: Db, userId: string) {
+  const u = await one(db, 'SELECT id, name, level, manager_id, active FROM users WHERE id = $1', [userId]);
+  if (!u) throw notFound('Pessoa não encontrada.');
+  const counts = await one(
+    db,
+    `SELECT
+       (SELECT count(*)::int FROM users WHERE manager_id = $1 AND active) AS reports,
+       (SELECT count(*)::int FROM delegations d WHERE d.delegator_id = $1 AND d.status IN ${OPEN_MADE}) AS delegated,
+       (SELECT count(*)::int FROM delegations d JOIN cards c ON c.id = d.card_id WHERE c.owner_id = $1 AND d.status IN ('PENDING_ACCEPT','IN_PROGRESS')) AS received,
+       (SELECT count(*)::int FROM delegations d JOIN cards c ON c.id = d.card_id WHERE c.owner_id = $1 AND d.status = 'AWAITING_ACK') AS awaiting,
+       (SELECT count(*)::int FROM (${OWN_OPEN}) x) AS own,
+       (SELECT count(*)::int FROM cards c WHERE c.owner_id = $1 AND c.archived_at IS NULL AND c.completed_at IS NULL AND c.is_private) AS private`,
+    [userId],
+  );
+  const successors = u.level === null
+    ? []
+    : await many(
+        db,
+        `SELECT id, name, role_title, level, CASE WHEN id = $2 THEN 'manager' ELSE 'peer' END AS relation
+           FROM users WHERE active AND id <> $1 AND (level = $3 OR id = $2)
+          ORDER BY (id = $2) DESC, name`,
+        [userId, u.manager_id, u.level],
+      );
+  const needsSuccessor = counts.reports + counts.delegated + counts.own > 0;
+  return { ...counts, needsSuccessor, successors };
+}
+
+/**
+ * Item 44: desativa a pessoa numa transação só, resolvendo o que está com ela. Nada é apagado e ela pode ser reativada.
+ * (a) subordinados passam ao sucessor (como a troca de superior, RN-38 a RN-41); (b) as delegações que ela fez e estão
+ * em aberto passam ao sucessor; (c) as tarefas que ela recebeu e não terminou voltam a quem delegou, como devolvidas;
+ * (d) as tarefas próprias abertas vão para a caixa de entrada do sucessor; privadas, quadros, concluídas e o log ficam com ela.
+ */
+export async function deactivate(db: Db, admin: Actor, userId: string, successorId: string | null) {
+  const u = await one(db, 'SELECT * FROM users WHERE id = $1 FOR UPDATE', [userId]);
+  if (!u) throw notFound('Pessoa não encontrada.');
+  if (u.id === admin.id) throw conflict('Você não pode desativar a si mesmo.');
+  if (!u.active) throw conflict('Esta pessoa já está inativa.');
+  const p = await deactivationPreview(db, userId);
+  let succ: { id: string; name: string } | null = null;
+  if (p.needsSuccessor) {
+    if (!p.successors.length) throw conflict('Não há quem possa receber as pendências desta pessoa. Cadastre antes alguém do mesmo nível.');
+    if (!successorId) throw badRequest('Escolha quem recebe as pendências.');
+    succ = p.successors.find((s: { id: string; name: string }) => s.id === successorId) ?? null;
+    if (!succ) throw badRequest('O sucessor deve ser alguém ativo do mesmo nível ou o superior direto da pessoa.');
+  }
+  const name = u.name as string;
+  const result = { reports: 0, delegated: 0, returned: 0, own: 0 };
+
+  // (a) subordinados: cada um troca de superior, levando junto as delegações em aberto.
+  if (succ) {
+    const reports = await many(db, 'SELECT id FROM users WHERE manager_id = $1 AND active ORDER BY name', [userId]);
+    for (const r of reports) {
+      result.delegated += (await transferManagement(db, admin, r.id, succ.id)).moved;
+      result.reports++;
+    }
+    // (b) as demais delegações feitas por ela e ainda em aberto.
+    const moved = await many(
+      db,
+      `UPDATE delegations SET delegator_id = $2, updated_at = now() WHERE delegator_id = $1 AND status IN ${OPEN_MADE} RETURNING card_id`,
+      [userId, succ.id],
+    );
+    for (const r of moved) await logEvent(db, r.card_id, admin.id, 'management_transferred', { delegator: name }, { delegator: succ.name, reason: 'deactivated' });
+    result.delegated += moved.length;
+  }
+
+  // (c) tarefas recebidas e não terminadas voltam a quem delegou, como devolvidas.
+  const reason = `Devolvida porque ${name} foi desativado(a).`;
+  const received = await many(
+    db,
+    `SELECT c.id, c.num, c.title, d.id AS d_id, d.delegator_id FROM delegations d JOIN cards c ON c.id = d.card_id
+      WHERE c.owner_id = $1 AND d.status IN ('PENDING_ACCEPT','IN_PROGRESS') FOR UPDATE OF d`,
+    [userId],
+  );
+  for (const r of received) {
+    await db.query(`UPDATE delegations SET status = 'DECLINED', decline_reason = $2, updated_at = now() WHERE id = $1`, [r.d_id, reason]);
+    await db.query('UPDATE cards SET list_id = NULL, completed_at = NULL, updated_at = now() WHERE id = $1', [r.id]);
+    await logEvent(db, r.id, admin.id, 'declined', undefined, { reason, deactivated: name });
+    await notify(db, r.delegator_id, 'declined', `Tarefa devolvida: ${name} foi desativado(a). Redelegue ou cancele.`, { id: r.id, num: r.num, title: r.title });
+    result.returned++;
+  }
+
+  // (d) tarefas próprias abertas vão para a caixa de entrada do sucessor.
+  if (succ) {
+    const own = await many(db, `${OWN_OPEN} ORDER BY c.seq FOR UPDATE`, [userId]);
+    for (const r of own) {
+      await db.query('UPDATE cards SET owner_id = $2, list_id = NULL, transferred_from_id = $1, color = NULL, updated_at = now() WHERE id = $3', [userId, succ.id, r.id]);
+      await logEvent(db, r.id, admin.id, 'transferred', { owner: name }, { owner: succ.name, reason: 'deactivated' });
+    }
+    result.own = own.length;
+    if (result.own) await notify(db, succ.id, 'transferred', `${name} foi desativado(a): ${result.own} tarefa(s) dele(a) estão na sua caixa de entrada`);
+    if (result.delegated && !result.reports) await notify(db, succ.id, 'management', `${name} foi desativado(a): ${result.delegated} delegação(ões) em aberto passaram para você`);
+  }
+
+  await db.query('DELETE FROM sessions WHERE user_id = $1', [userId]);
+  await db.query('UPDATE users SET active = false, updated_at = now() WHERE id = $1', [userId]);
+  return result;
 }

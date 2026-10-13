@@ -12,27 +12,39 @@ interface Person {
 }
 
 const LEVELS = ['CEO', 'Diretor', 'Gestor', 'Funcionário'];
-/** Níveis que podem ser superior direto: o nível logo acima; o gestor também pode responder ao CEO. */
-const managerLevels = (level: number) => (level === 2 ? [1, 0] : [level - 1]);
-const managerLabel = (level: number) => managerLevels(level).map((l) => LEVELS[l]).join(' ou ');
+/** Níveis que podem ser superior direto: o gestor responde a diretor ou CEO; o funcionário, a gestor, diretor ou CEO (item 32). */
+const managerLevels = (level: number) => (level === 3 ? [2, 1, 0] : level === 2 ? [1, 0] : [level - 1]);
+const managerLabel = (level: number) => {
+  const t = managerLevels(level).map((l) => LEVELS[l]);
+  return t.length > 1 ? `${t.slice(0, -1).join(', ')} ou ${t[t.length - 1]}` : t[0];
+};
 /** Possíveis superiores, primeiro os do nível logo acima. */
 const managerOptions = (people: Person[], level: number) =>
   people.filter((p) => p.active && p.level !== null && managerLevels(level).includes(p.level)).sort((a, b) => b.level! - a.level!);
-const managerName = (p: Person) => (p.level === 0 ? `${p.name} (CEO)` : p.name);
+/** Item 32: com o cargo entre parênteses, porque a lista mistura níveis. */
+const managerName = (p: Person) => `${p.name} (${LEVELS[p.level!]})`;
 
 export function PeoplePage() {
   const me = useMe().data!;
   const q = useQuery({ queryKey: ['people'], queryFn: () => get<Person[]>('/admin/users') });
-  const [dlg, setDlg] = useState<null | { kind: 'new' } | { kind: 'edit' | 'toggle'; person: Person }>(null);
+  const [dlg, setDlg] = useState<null | { kind: 'new' } | { kind: 'edit' | 'toggle' | 'deactivate'; person: Person }>(null);
+  const [hideInactive, setHideInactive] = useState(false);
   const { run, error } = useAction();
   const toast = useToast();
   if (!me.user.isAdmin) return <div className="page"><div className="empty">Somente a administração acessa esta tela.</div></div>;
   const people = q.data ?? [];
+  const shown = hideInactive ? people.filter((p) => p.active) : people;
+  const inactive = people.filter((p) => !p.active).length;
   return (
     <div className="page">
       <div className="page-actions" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
         <span className="hint">Cadastro, edição dos dados e do superior direto. Veja o passo a passo em Ajuda → Manual do administrador.</span>
-        <button className="b pri" onClick={() => setDlg({ kind: 'new' })}><Icon name="plus" />Nova pessoa</button>
+        <span style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+          {inactive > 0 && (
+            <label className="check"><input type="checkbox" checked={hideInactive} onChange={(e) => setHideInactive(e.target.checked)} />Esconder inativas ({inactive})</label>
+          )}
+          <button className="b pri" onClick={() => setDlg({ kind: 'new' })}><Icon name="plus" />Nova pessoa</button>
+        </span>
       </div>
       <ErrorText error={error} />
       {q.isLoading && <p className="loading">Carregando…</p>}
@@ -40,7 +52,7 @@ export function PeoplePage() {
         <table className="t">
           <thead><tr><th>Pessoa</th><th>Cargo</th><th>Superior direto</th><th>Subordinados</th><th>Situação</th><th aria-label="Ações" /></tr></thead>
           <tbody>
-            {people.map((p) => (
+            {shown.map((p) => (
               <tr key={p.id} className={p.active ? '' : 'off'}>
                 <td>
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -56,7 +68,7 @@ export function PeoplePage() {
                   <Menu label={`Ações para ${p.name}`} items={[
                     { label: 'Editar dados', onClick: () => setDlg({ kind: 'edit', person: p }) },
                     { label: 'Reenviar convite', onClick: () => run(() => post(`/admin/users/${p.id}/invite`), `Convite reenviado para ${p.email}.`), disabled: !p.active },
-                    { label: p.active ? 'Desativar' : 'Reativar', onClick: () => setDlg({ kind: 'toggle', person: p }), danger: p.active, disabled: p.id === me.user.id },
+                    { label: p.active ? 'Desativar' : 'Reativar', onClick: () => setDlg({ kind: p.active ? 'deactivate' : 'toggle', person: p }), danger: p.active, disabled: p.id === me.user.id },
                   ]} />
                 </td>
               </tr>
@@ -68,15 +80,11 @@ export function PeoplePage() {
 
       {dlg?.kind === 'new' && <NewPersonDialog people={people} onClose={() => setDlg(null)} />}
       {dlg?.kind === 'edit' && <EditPersonDialog person={dlg.person} people={people} self={dlg.person.id === me.user.id} onClose={() => setDlg(null)} />}
+      {dlg?.kind === 'deactivate' && <DeactivateDialog person={dlg.person} onClose={() => setDlg(null)} />}
       {dlg?.kind === 'toggle' && (
-        <ConfirmDialog
-          title={dlg.person.active ? 'Desativar pessoa' : 'Reativar pessoa'}
-          confirm={dlg.person.active ? 'Desativar' : 'Reativar'}
-          danger={dlg.person.active}
-          text={dlg.person.active
-            ? `${dlg.person.name} deixa de acessar o app. Os registros no log são mantidos.`
-            : `${dlg.person.name} volta a acessar o app.`}
-          onConfirm={async () => { const r = await post(`/admin/users/${dlg.person.id}/active`, { active: !dlg.person.active }); toast(dlg.person.active ? 'Pessoa desativada.' : 'Pessoa reativada.'); return r; }}
+        <ConfirmDialog title="Reativar pessoa" confirm="Reativar"
+          text={`${dlg.person.name} volta a acessar o app e encontra os quadros e as tarefas privadas como deixou. O que foi passado adiante na desativação (subordinados, delegações e tarefas abertas) não volta sozinho.`}
+          onConfirm={async () => { const r = await post(`/admin/users/${dlg.person.id}/active`, { active: true }); toast('Pessoa reativada.'); return r; }}
           onClose={() => setDlg(null)} />
       )}
     </div>
@@ -196,7 +204,6 @@ function EditPersonDialog({ person, people, self, onClose }: { person: Person; p
             <label htmlFor="ep-m">Superior direto ({managerLabel(person.level!)})</label>
             <select id="ep-m" className="select input" value={managerId} onChange={(e) => setManagerId(e.target.value)} disabled={!person.active}>
               {person.manager_id && !managers.some((m) => m.id === person.manager_id) && <option value={person.manager_id}>{person.manager_name}</option>}
-              {person.manager_id && !managers.some((m) => m.id === person.manager_id) && <option value={person.manager_id}>{person.manager_name}</option>}
               {managers.map((m) => <option key={m.id} value={m.id}>{managerName(m)}</option>)}
             </select>
             {!person.active && <span className="hint">Reative a pessoa para trocar o superior.</span>}
@@ -214,6 +221,70 @@ function EditPersonDialog({ person, people, self, onClose }: { person: Person; p
           </label>
         )}
         {self && person.is_admin && <p className="hint">Você não pode tirar o seu próprio acesso de administrador.</p>}
+        <ErrorText error={error} />
+      </form>
+    </Dialog>
+  );
+}
+
+interface Preview {
+  reports: number; delegated: number; received: number; awaiting: number; own: number; private: number;
+  needsSuccessor: boolean;
+  successors: { id: string; name: string; role_title: string; level: number; relation: 'peer' | 'manager' }[];
+}
+
+/** Item 44: desativar mostra as pendências e resolve tudo numa vez só; nada é apagado e a pessoa pode ser reativada. */
+function DeactivateDialog({ person, onClose }: { person: Person; onClose: () => void }) {
+  const { run, busy, error } = useAction();
+  const toast = useToast();
+  const q = useQuery({ queryKey: ['deactivation', person.id], queryFn: () => get<Preview>(`/admin/users/${person.id}/deactivation`) });
+  const [successorId, setSuccessorId] = useState('');
+  const p = q.data;
+  const first = firstName(person.name);
+  const sId = p?.successors.some((x) => x.id === successorId) ? successorId : p?.successors[0]?.id ?? '';
+  const succName = p?.successors.find((x) => x.id === sId)?.name ?? 'o sucessor';
+  const blocked = !!p && p.needsSuccessor && !p.successors.length;
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    const r = await run(() => post<{ reports: number; delegated: number; returned: number; own: number }>(`/admin/users/${person.id}/deactivate`, { successorId: p?.needsSuccessor ? sId : null }));
+    if (!r) return;
+    toast(`${first} foi desativado(a).${p?.needsSuccessor ? ` As pendências foram para ${firstName(succName)}.` : ''}`);
+    onClose();
+  };
+  const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+  const v = (n: number, one: string, many: string) => (n === 1 ? one : many);
+  return (
+    <Dialog title="Desativar pessoa" onClose={onClose} footer={<>
+      <button className="b" onClick={onClose}>Cancelar</button>
+      <button className="b danger" type="submit" form="dp" disabled={busy || !p || blocked}>{busy ? 'Aguarde…' : 'Desativar'}</button>
+    </>}>
+      <form id="dp" onSubmit={submit} className="dialog-b" style={{ padding: 0 }}>
+        <p style={{ margin: 0 }}>{person.name} deixa de entrar no app na hora. Nada é apagado: o log continua com o nome dela e ela pode ser reativada depois.</p>
+        {q.isLoading && <p className="loading">Conferindo as pendências…</p>}
+        <ErrorText error={q.error} />
+        {p && p.needsSuccessor && (
+          <div className="field">
+            <label htmlFor="dp-s">Quem recebe as pendências</label>
+            {blocked
+              ? <p className="err" style={{ margin: 0 }}>Não há ninguém do mesmo nível nem superior direto para receber as pendências. Cadastre antes quem vai assumir.</p>
+              : (
+                <select id="dp-s" className="select input" value={sId} onChange={(e) => setSuccessorId(e.target.value)}>
+                  {p.successors.map((x) => <option key={x.id} value={x.id}>{x.name} ({x.relation === 'manager' ? 'superior direto' : x.role_title})</option>)}
+                </select>
+              )}
+          </div>
+        )}
+        {p && (
+          <ul className="pend">
+            {p.reports > 0 && <li><b>{plural(p.reports, 'subordinado direto', 'subordinados diretos')}</b> {v(p.reports, 'passa', 'passam')} a responder a {succName}.</li>}
+            {p.delegated > 0 && <li><b>{plural(p.delegated, 'delegação feita por ' + first + ' e em aberto', 'delegações feitas por ' + first + ' e em aberto')}</b> {v(p.delegated, 'passa a ser acompanhada', 'passam a ser acompanhadas')} por {succName}.</li>}
+            {p.own > 0 && <li><b>{plural(p.own, 'tarefa própria aberta', 'tarefas próprias abertas')}</b> {v(p.own, 'vai', 'vão')} para a caixa de entrada de {succName}.</li>}
+            {p.received > 0 && <li><b>{plural(p.received, 'tarefa recebida e não terminada', 'tarefas recebidas e não terminadas')}</b> {v(p.received, 'volta para quem delegou, como devolvida', 'voltam para quem delegou, como devolvidas')}.</li>}
+            {p.awaiting > 0 && <li><b>{plural(p.awaiting, 'tarefa concluída aguardando ciente', 'tarefas concluídas aguardando ciente')}</b> {v(p.awaiting, 'fica', 'ficam')} para o ciente de quem delegou.</li>}
+            {p.private > 0 && <li><b>{plural(p.private, 'tarefa privada', 'tarefas privadas')}</b> {v(p.private, 'fica', 'ficam')} com {first}, sem passar para ninguém.</li>}
+            <li>Os quadros, as tarefas concluídas, as arquivadas e o log ficam com {first}. Todos os envolvidos recebem aviso.</li>
+          </ul>
+        )}
         <ErrorText error={error} />
       </form>
     </Dialog>

@@ -50,7 +50,7 @@ export async function listArchived(db: Db, actor: Actor, q: string, offset: numb
     db,
     `SELECT c.id, c.code, ${NUM} AS num, c.color, c.title, c.due_date, c.completed_at, c.archived_at, c.created_at,
             CASE WHEN d.id IS NULL THEN 'own' ELSE 'delegated' END AS kind,
-            b.name AS board_name, l.name AS list_name, o.name AS delegated_to
+            b.name AS board_name, (b.archived_at IS NOT NULL) AS board_archived, l.name AS list_name, o.name AS delegated_to
        FROM cards c
        LEFT JOIN delegations d ON d.card_id = c.id
        LEFT JOIN cards pc ON pc.id = d.parent_card_id
@@ -75,6 +75,8 @@ export async function listArchived(db: Db, actor: Actor, q: string, offset: numb
       createdAt: r.created_at,
       kind: r.kind as 'own' | 'delegated',
       boardName: r.board_name ?? null,
+      /** Item 42: o quadro onde a tarefa estava foi arquivado. */
+      boardArchived: !!r.board_archived,
       listName: r.list_name ?? null,
       delegatedTo: r.kind === 'delegated' ? (r.delegated_to as string) : null,
     })),

@@ -282,7 +282,7 @@ describe('busca (RN-36, RN-37)', () => {
 describe('administração (seção 4.2 e 7.9)', () => {
   it('só administrador acessa; valida o nível do superior', async () => {
     expect((await call('gest', 'GET', '/api/admin/users')).status).toBe(403);
-    const bad = await call('admin', 'POST', '/api/admin/users', { name: 'Novo', email: 'novo@teste.com', level: 3, managerId: ctx.users.dir.id });
+    const bad = await call('admin', 'POST', '/api/admin/users', { name: 'Novo', email: 'novo@teste.com', level: 3, managerId: ctx.users.func2.id });
     expect(bad.status).toBe(422);
     const ok = await call('admin', 'POST', '/api/admin/users', { name: 'Novo Func', email: 'novo@teste.com', level: 3, managerId: ctx.users.gest.id });
     expect(ok.status).toBe(200);
@@ -295,10 +295,8 @@ describe('administração (seção 4.2 e 7.9)', () => {
     expect((await ctx.app.inject({ method: 'POST', url: '/api/auth/password/set', headers: { 'x-synctasks': '1' }, payload: { token, password: 'outra-senha-boa' } })).statusCode).toBe(422);
   });
 
-  it('gestor pode responder direto ao CEO; funcionário não (item 29)', async () => {
-    expect((await call('admin', 'POST', '/api/admin/users', { name: 'Func CEO', email: 'fceo@teste.com', level: 3, managerId: ctx.users.ceo.id })).status).toBe(422);
+  it('gestor pode responder direto ao CEO (item 29)', async () => {
     expect((await call('admin', 'POST', '/api/admin/users', { name: 'Gest CEO', email: 'gceo@teste.com', level: 2, managerId: ctx.users.ceo.id })).status).toBe(200);
-    expect((await call('admin', 'POST', `/api/admin/users/${ctx.users.func3.id}/transfer-management`, { managerId: ctx.users.ceo.id })).status).toBe(422);
     expect((await call('admin', 'POST', `/api/admin/users/${ctx.users.gest3.id}/transfer-management`, { managerId: ctx.users.ceo.id })).status).toBe(200);
     // o CEO delega direto ao gestor, que dá conta e recebe o ciente
     const t = await newTask(ctx, 'ceo', 'Plano da área comercial');
@@ -318,7 +316,7 @@ describe('administração (seção 4.2 e 7.9)', () => {
     const t = await newTask(ctx, 'gest', 'Em aberto');
     await delegateTask(ctx, 'gest', t.id, 'func');
     // superior inválido: nada é salvo, nem o cargo
-    expect((await call('admin', 'PATCH', `/api/admin/users/${ctx.users.func.id}`, { roleTitle: 'Analista', managerId: ctx.users.dir.id })).status).toBe(422);
+    expect((await call('admin', 'PATCH', `/api/admin/users/${ctx.users.func.id}`, { roleTitle: 'Analista', managerId: ctx.users.func2.id })).status).toBe(422);
     let p = (await call('admin', 'GET', '/api/admin/users')).body.find((u: any) => u.id === ctx.users.func.id);
     expect(p.role_title).not.toBe('Analista');
     expect(p.manager_id).toBe(ctx.users.gest.id);
@@ -725,3 +723,238 @@ describe('sexta rodada', () => {
     expect((await call('func2', 'GET', `/api/cards/${u.id}`)).body.card.color).toBe(null);
   });
 });
+
+describe('sétima rodada', () => {
+  it('funcionário pode responder a um gestor, a um diretor ou direto ao CEO (item 32)', async () => {
+    // continua valendo: superior de outro nível que não está acima é recusado
+    expect((await call('admin', 'POST', '/api/admin/users', { name: 'Func Func', email: 'ff@teste.com', level: 3, managerId: ctx.users.func.id })).status).toBe(422);
+    expect((await call('admin', 'POST', '/api/admin/users', { name: 'Dir Gest', email: 'dg@teste.com', level: 1, managerId: ctx.users.gest.id })).status).toBe(422);
+    const bad = await call('admin', 'POST', '/api/admin/users', { name: 'Func Func', email: 'ff@teste.com', level: 3, managerId: ctx.users.func.id });
+    expect(bad.body.error).toContain('Gestor, Diretor ou CEO');
+    expect((await call('admin', 'POST', '/api/admin/users', { name: 'Func CEO', email: 'fceo@teste.com', level: 3, managerId: ctx.users.ceo.id })).status).toBe(200);
+    expect((await call('admin', 'POST', '/api/admin/users', { name: 'Func Dir', email: 'fdir@teste.com', level: 3, managerId: ctx.users.dir.id })).status).toBe(200);
+    // func3 passa a responder ao diretor; a delegação em aberto do gestor antigo passa ao diretor
+    const t = await newTask(ctx, 'gest2', 'Relatório');
+    const d = await delegateTask(ctx, 'gest2', t.id, 'func3');
+    await acceptTask(ctx, 'func3', d.cardId);
+    const r = await call('admin', 'POST', `/api/admin/users/${ctx.users.func3.id}/transfer-management`, { managerId: ctx.users.dir.id });
+    expect(r.status).toBe(200);
+    expect(r.body.moved).toBe(1);
+    // o diretor delega direto ao funcionário e dá o ciente
+    const t2 = await newTask(ctx, 'dir', 'Levantamento');
+    const d2 = await delegateTask(ctx, 'dir', t2.id, 'func3');
+    await acceptTask(ctx, 'func3', d2.cardId);
+    // colegas: só funcionários do mesmo diretor; os gestores do diretor ficam de fora; o diretor é o superior
+    const targets = (await call('func3', 'GET', `/api/cards/${d.cardId}/transfer-targets`)).body;
+    const ids = targets.map((x: any) => x.id);
+    expect(ids).not.toContain(ctx.users.gest.id);
+    expect(ids).not.toContain(ctx.users.gest2.id);
+    const fdir = (await ctx.pool.query(`SELECT id FROM users WHERE email = 'fdir@teste.com'`)).rows[0].id;
+    expect(targets.find((x: any) => x.id === fdir)?.relation).toBe('peer');
+    expect((await call('func3', 'POST', `/api/cards/${d2.cardId}/complete`)).status).toBe(200);
+    expect((await call('dir', 'POST', `/api/delegations/${d2.delegationId}/ack`)).status).toBe(200);
+    // o CEO também passa a ter o funcionário como subordinado direto
+    expect((await call('admin', 'POST', `/api/admin/users/${ctx.users.func3.id}/transfer-management`, { managerId: ctx.users.ceo.id })).status).toBe(200);
+    const me = (await call('ceo', 'GET', '/api/me')).body;
+    expect(me.directReports.map((x: any) => x.id)).toContain(ctx.users.func3.id);
+  });
+
+  it('tarefa marcada como “não pode ser repassada” não é delegada nem transferida para subordinado (item 41)', async () => {
+    const t = await newTask(ctx, 'dir', 'Fazer pessoalmente');
+    const d = await delegateTask(ctx, 'dir', t.id, 'gest', { noPass: true });
+    await acceptTask(ctx, 'gest', d.cardId);
+    const card = (await call('gest', 'GET', `/api/cards/${d.cardId}`)).body.card;
+    expect(card.delegation.noPass).toBe(true);
+    expect((await call('dir', 'GET', `/api/cards/${t.id}`)).body.card.child.noPass).toBe(true);
+    const no = await call('gest', 'POST', `/api/cards/${d.cardId}/delegate`, { toUserId: ctx.users.func.id });
+    expect(no.status).toBe(409);
+    expect(no.body.error).toContain('pediu que você mesmo faça');
+    // transferir: subordinado não aparece nem é aceito; colega continua liberado
+    const targets = (await call('gest', 'GET', `/api/cards/${d.cardId}/transfer-targets`)).body;
+    expect(targets.some((x: any) => x.relation === 'subordinate')).toBe(false);
+    expect((await call('gest', 'POST', `/api/cards/${d.cardId}/transfer`, { toUserId: ctx.users.func.id })).status).toBe(409);
+    // só o delegador liga e desliga; cada mudança vai para o log
+    expect((await call('gest', 'POST', `/api/delegations/${d.delegationId}/no-pass`, { noPass: false })).status).toBe(404);
+    expect((await call('dir2', 'POST', `/api/delegations/${d.delegationId}/no-pass`, { noPass: false })).status).toBe(404);
+    expect((await call('dir', 'POST', `/api/delegations/${d.delegationId}/no-pass`, { noPass: false })).status).toBe(200);
+    const down = await delegateTask(ctx, 'gest', d.cardId, 'func');
+    // ligar de novo não desfaz a delegação que já existe, só impede novas
+    expect((await call('dir', 'POST', `/api/delegations/${d.delegationId}/no-pass`, { noPass: true })).status).toBe(200);
+    expect((await call('func', 'GET', `/api/cards/${down.cardId}`)).status).toBe(200);
+    expect((await call('gest', 'POST', `/api/delegations/${down.delegationId}/cancel`)).status).toBe(200);
+    expect((await call('gest', 'POST', `/api/cards/${d.cardId}/delegate`, { toUserId: ctx.users.func.id })).status).toBe(409);
+    const ev = (await ctx.pool.query(`SELECT after FROM card_events WHERE card_id = $1 AND type = 'no_pass_changed' ORDER BY id`, [d.cardId])).rows;
+    expect(ev.map((e) => e.after.noPass)).toEqual([false, true]);
+    const notes = (await call('gest', 'GET', '/api/notifications')).body;
+    expect(JSON.stringify(notes)).toContain('liberou repassar');
+    // a marca acompanha a tarefa na transferência para um colega
+    expect((await call('gest', 'POST', `/api/cards/${d.cardId}/transfer`, { toUserId: ctx.users.gest2.id })).status).toBe(200);
+    await acceptTask(ctx, 'gest2', d.cardId);
+    expect((await call('gest2', 'POST', `/api/cards/${d.cardId}/delegate`, { toUserId: ctx.users.func3.id })).status).toBe(409);
+    // filtro "Pode repassar" na tabela: acha a marcada do lado de quem recebeu e de quem delegou
+    const f = (v: boolean) => encodeURIComponent(JSON.stringify({ all: [{ field: 'canPass', op: 'eq', value: v }] }));
+    expect((await call('gest2', 'GET', `/api/table?filter=${f(false)}`)).body.rows.map((x: any) => x.id)).toEqual([d.cardId]);
+    expect((await call('dir', 'GET', `/api/table?filter=${f(false)}`)).body.rows.map((x: any) => x.id)).toEqual([t.id]);
+    // sem a marca, delegar para baixo continua liberado; redelegar pode ligar a marca
+    const t2 = await newTask(ctx, 'gest', 'Pode repassar');
+    const d2 = await delegateTask(ctx, 'gest', t2.id, 'func');
+    expect((await call('func', 'GET', `/api/cards/${d2.cardId}`)).body.card.delegation.noPass).toBe(false);
+    await call('func', 'POST', `/api/cards/${d2.cardId}/decline`, { reason: 'Sem tempo' });
+    expect((await call('gest', 'POST', `/api/delegations/${d2.delegationId}/redelegate`, { toUserId: ctx.users.func2.id, noPass: true })).status).toBe(200);
+    expect((await call('func2', 'GET', `/api/cards/${d2.cardId}`)).body.card.delegation.noPass).toBe(true);
+    // delegação encerrada não muda mais
+    await acceptTask(ctx, 'func2', d2.cardId);
+    await call('func2', 'POST', `/api/cards/${d2.cardId}/complete`);
+    await call('gest', 'POST', `/api/delegations/${d2.delegationId}/ack`);
+    expect((await call('gest', 'POST', `/api/delegations/${d2.delegationId}/no-pass`, { noPass: false })).status).toBe(409);
+  });
+
+  it('arquivar quadro vazio, nunca o último; desarquivar pela lista de quadros arquivados (item 42)', async () => {
+    const boards = (await call('gest', 'GET', '/api/boards')).body;
+    expect((await call('gest', 'POST', `/api/boards/${boards[0].id}/archive`)).status).toBe(409); // único quadro
+    const b2 = (await call('gest', 'POST', '/api/boards', { name: 'Projeto X' })).body;
+    await call('gest', 'PATCH', `/api/boards/${b2.id}`, { color: 'verde' });
+    const lists = (await call('gest', 'GET', `/api/boards/${b2.id}`)).body.lists;
+    const c = (await call('gest', 'POST', '/api/cards', { listId: lists[1].id, title: 'Entrega' })).body;
+    const full = await call('gest', 'POST', `/api/boards/${b2.id}/archive`);
+    expect(full.status).toBe(409);
+    expect(full.body.error).toContain('1 tarefa');
+    // concluída ainda não arquivada conta; arquivada não
+    await call('gest', 'POST', `/api/cards/${c.id}/complete`);
+    expect((await call('gest', 'POST', `/api/boards/${b2.id}/archive`)).status).toBe(409);
+    await call('gest', 'POST', `/api/cards/${c.id}/archive`);
+    expect((await call('gest', 'POST', `/api/boards/${b2.id}/archive`)).status).toBe(200);
+    expect((await call('gest', 'GET', '/api/boards')).body.map((b: any) => b.id)).not.toContain(b2.id);
+    expect((await call('gest', 'GET', `/api/boards/${b2.id}`)).status).toBe(404);
+    expect((await call('gest', 'POST', '/api/cards', { listId: lists[0].id, title: 'No quadro arquivado' })).status).toBe(404);
+    // outra pessoa não vê nem mexe
+    expect((await call('func', 'GET', '/api/boards/archived')).body).toEqual([]);
+    expect((await call('func', 'POST', `/api/boards/${b2.id}/unarchive`)).status).toBe(404);
+    const arch = (await call('gest', 'GET', '/api/boards/archived')).body;
+    expect(arch.map((b: any) => [b.name, b.archivedCards])).toEqual([['Projeto X', 1]]);
+    // a tarefa arquivada mostra que o quadro foi arquivado; desarquivá-la leva para o primeiro quadro
+    const items = (await call('gest', 'GET', '/api/archived')).body.items;
+    expect(items.find((x: any) => x.id === c.id).boardArchived).toBe(true);
+    expect((await call('gest', 'POST', `/api/cards/${c.id}/unarchive`)).status).toBe(200);
+    expect((await call('gest', 'GET', `/api/cards/${c.id}`)).body.card.boardId).toBe(boards[0].id);
+    // volta como a última aba, com cor e fases; a numeração continua de onde parou
+    expect((await call('gest', 'POST', `/api/boards/${b2.id}/unarchive`)).status).toBe(200);
+    expect((await call('gest', 'POST', `/api/boards/${b2.id}/unarchive`)).status).toBe(409);
+    const after = (await call('gest', 'GET', '/api/boards')).body;
+    expect(after[after.length - 1]).toMatchObject({ id: b2.id, color: 'verde' });
+    expect((await call('gest', 'GET', `/api/boards/${b2.id}`)).body.lists).toHaveLength(3);
+    const c2 = (await call('gest', 'POST', '/api/cards', { listId: lists[0].id, title: 'Depois' })).body;
+    expect(c2.num).toBe(2);
+    // "Desfazer" devolve o quadro ao mesmo lugar
+    const b3 = (await call('gest', 'POST', '/api/boards', { name: 'Vazio' })).body;
+    await call('gest', 'PATCH', `/api/boards/${b3.id}`, { position: -10 });
+    await call('gest', 'POST', `/api/boards/${b3.id}/archive`);
+    await call('gest', 'POST', `/api/boards/${b3.id}/unarchive`, { back: 'same' });
+    expect((await call('gest', 'GET', '/api/boards')).body[0].id).toBe(b3.id);
+  });
+
+  it('tarefa delegada não pode ser privada; ao delegar uma privada, ela fica visível (item 43)', async () => {
+    const t = await newTask(ctx, 'gest', 'Era segredo');
+    await call('gest', 'PATCH', `/api/cards/${t.id}`, { isPrivate: true });
+    const d = await delegateTask(ctx, 'gest', t.id, 'func');
+    expect((await call('gest', 'GET', `/api/cards/${t.id}`)).body.card.isPrivate).toBe(false);
+    const ev = (await ctx.pool.query(`SELECT after FROM card_events WHERE card_id = $1 AND type = 'privacy_changed' ORDER BY id DESC LIMIT 1`, [t.id])).rows[0];
+    expect(ev.after).toEqual({ isPrivate: false, reason: 'delegated' });
+    // o log volta a aparecer para a diretoria
+    expect((await call('dir', 'GET', `/api/cards/${t.id}/events`)).status).toBe(200);
+    // nem quem delegou nem quem recebeu tornam privada
+    const no = await call('gest', 'PATCH', `/api/cards/${t.id}`, { isPrivate: true });
+    expect(no.status).toBe(409);
+    expect(no.body.error).toBe('Uma tarefa delegada não pode ser privada.');
+    expect((await call('func', 'PATCH', `/api/cards/${d.cardId}`, { isPrivate: true })).status).toBe(409);
+    // depois do ciente, continua não podendo (teve delegação)
+    await acceptTask(ctx, 'func', d.cardId);
+    await call('func', 'POST', `/api/cards/${d.cardId}/complete`);
+    await call('gest', 'POST', `/api/delegations/${d.delegationId}/ack`);
+    expect((await call('gest', 'PATCH', `/api/cards/${t.id}`, { isPrivate: true })).status).toBe(409);
+    // delegação cancelada libera
+    const t2 = await newTask(ctx, 'gest', 'Cancelada');
+    const d2 = await delegateTask(ctx, 'gest', t2.id, 'func');
+    await call('gest', 'POST', `/api/delegations/${d2.delegationId}/cancel`);
+    expect((await call('gest', 'PATCH', `/api/cards/${t2.id}`, { isPrivate: true })).status).toBe(200);
+  });
+
+  it('desativar resolve as pendências: subordinados, delegações, recebidas e próprias (item 44)', async () => {
+    // gest delega para func; recebeu de dir uma em andamento e uma aguardando ciente; tem própria aberta, privada e concluída
+    const made = await newTask(ctx, 'gest', 'Delegada pelo gestor');
+    const dm = await delegateTask(ctx, 'gest', made.id, 'func');
+    await acceptTask(ctx, 'func', dm.cardId);
+    const r1 = await newTask(ctx, 'dir', 'Recebida em andamento');
+    const dr1 = await delegateTask(ctx, 'dir', r1.id, 'gest');
+    await acceptTask(ctx, 'gest', dr1.cardId);
+    const r2 = await newTask(ctx, 'dir', 'Recebida concluída');
+    const dr2 = await delegateTask(ctx, 'dir', r2.id, 'gest');
+    await acceptTask(ctx, 'gest', dr2.cardId);
+    await call('gest', 'POST', `/api/cards/${dr2.cardId}/complete`);
+    const own = await newTask(ctx, 'gest', 'Própria aberta');
+    const priv = await newTask(ctx, 'gest', 'Própria privada');
+    await call('gest', 'PATCH', `/api/cards/${priv.id}`, { isPrivate: true });
+    const done = await newTask(ctx, 'gest', 'Própria concluída');
+    await call('gest', 'POST', `/api/cards/${done.id}/complete`);
+
+    expect((await call('dir', 'GET', `/api/admin/users/${ctx.users.gest.id}/deactivation`)).status).toBe(403);
+    const prev = (await call('admin', 'GET', `/api/admin/users/${ctx.users.gest.id}/deactivation`)).body;
+    expect(prev).toMatchObject({ reports: 2, delegated: 1, received: 1, awaiting: 1, needsSuccessor: true });
+    expect(prev.own).toBeGreaterThanOrEqual(2); // a de origem da delegação também é própria aberta
+    expect(prev.private).toBe(1);
+    expect(prev.successors.map((x: any) => x.id).sort()).toEqual([ctx.users.dir.id, ctx.users.gest2.id, ctx.users.gest3.id].sort());
+    // sem sucessor, ou com sucessor inválido, nada acontece
+    expect((await call('admin', 'POST', `/api/admin/users/${ctx.users.gest.id}/deactivate`, {})).status).toBe(422);
+    expect((await call('admin', 'POST', `/api/admin/users/${ctx.users.gest.id}/deactivate`, { successorId: ctx.users.func.id })).status).toBe(422);
+    expect((await call('admin', 'POST', `/api/admin/users/${ctx.users.admin.id}/deactivate`, {})).status).toBe(409);
+
+    const r = await call('admin', 'POST', `/api/admin/users/${ctx.users.gest.id}/deactivate`, { successorId: ctx.users.gest2.id });
+    expect(r.status).toBe(200);
+    expect(r.body).toMatchObject({ reports: 2, delegated: 1, returned: 1 });
+    // não entra mais e a sessão caiu
+    expect((await call('gest', 'GET', '/api/me')).status).toBe(401);
+    // (a) subordinados passaram a responder a gest2, (b) que agora acompanha a delegação
+    const people = (await call('admin', 'GET', '/api/admin/users')).body;
+    expect(people.find((x: any) => x.id === ctx.users.func.id).manager_id).toBe(ctx.users.gest2.id);
+    expect(people.find((x: any) => x.id === ctx.users.gest.id).active).toBe(false);
+    await call('func', 'POST', `/api/cards/${dm.cardId}/complete`);
+    expect((await call('gest2', 'POST', `/api/delegations/${dm.delegationId}/ack`)).status).toBe(200);
+    // (c) a recebida em andamento voltou ao diretor como devolvida
+    const back = (await call('dir', 'GET', `/api/cards/${dr1.cardId}`)).body.card;
+    expect(back.delegation.status).toBe('DECLINED');
+    expect(back.delegation.declineReason).toContain('foi desativado(a)');
+    expect((await call('dir', 'POST', `/api/delegations/${dr1.delegationId}/redelegate`, { toUserId: ctx.users.gest2.id })).status).toBe(200);
+    // a concluída aguardando ciente fica para o ciente; reabrir não volta para quem está inativo
+    expect((await call('dir', 'POST', `/api/delegations/${dr2.delegationId}/reopen`, { comment: 'Refazer' })).status).toBe(409);
+    expect((await call('dir', 'POST', `/api/delegations/${dr2.delegationId}/ack`)).status).toBe(200);
+    // (d) a própria aberta foi para a caixa de entrada de gest2, com registro no log
+    const inbox = (await call('gest2', 'GET', '/api/inbox')).body.map((x: any) => x.id);
+    expect(inbox).toContain(own.id);
+    expect(inbox).toContain(made.id);
+    const ev = (await ctx.pool.query(`SELECT after FROM card_events WHERE card_id = $1 AND type = 'transferred'`, [own.id])).rows[0];
+    expect(ev.after).toMatchObject({ owner: 'Gest2 Teste', reason: 'deactivated' });
+    expect((await call('gest2', 'POST', `/api/cards/${own.id}/accept`, { listId: (await firstList('gest2')) })).status).toBe(200);
+    // (e, g) privada e concluída ficam com ela
+    const kept = (await ctx.pool.query(`SELECT id FROM cards WHERE owner_id = $1 AND id = ANY($2::uuid[])`, [ctx.users.gest.id, [priv.id, done.id]])).rows;
+    expect(kept).toHaveLength(2);
+    expect((await call('gest2', 'GET', `/api/cards/${priv.id}`)).status).toBe(404);
+    // nenhuma delegação aberta com pessoa inativa
+    const open = (await ctx.pool.query(`SELECT d.id FROM delegations d JOIN cards c ON c.id = d.card_id JOIN users o ON o.id = c.owner_id JOIN users g ON g.id = d.delegator_id
+      WHERE d.status IN ('PENDING_ACCEPT','IN_PROGRESS','AWAITING_ACK','DECLINED') AND (NOT o.active AND d.status <> 'DECLINED' OR NOT g.active)`)).rows;
+    expect(open).toEqual([]);
+    // o e-mail continua com ela; reativar a devolve com os quadros e a privada
+    expect((await call('admin', 'POST', '/api/admin/users', { name: 'Outro', email: 'gest@teste.com', level: 3, managerId: ctx.users.gest2.id })).status).toBe(409);
+    expect((await call('admin', 'POST', `/api/admin/users/${ctx.users.gest.id}/active`, { active: true })).status).toBe(200);
+    ctx.users.gest.cookie = await login(ctx.app, 'gest@teste.com', PASSWORD);
+    expect((await call('gest', 'GET', `/api/cards/${priv.id}`)).status).toBe(200);
+    // sem pendências, não precisa de sucessor
+    const f3 = (await call('admin', 'GET', `/api/admin/users/${ctx.users.func3.id}/deactivation`)).body;
+    expect(f3.needsSuccessor).toBe(false);
+    expect((await call('admin', 'POST', `/api/admin/users/${ctx.users.func3.id}/deactivate`, {})).status).toBe(200);
+  });
+});
+
+async function firstList(who: string) {
+  const boards = (await call(who, 'GET', '/api/boards')).body;
+  return (await call(who, 'GET', `/api/boards/${boards[0].id}`)).body.lists[0].id as string;
+}

@@ -124,7 +124,7 @@ test.describe('delegação de ponta a ponta', () => {
     await expect(linha.getByText('“Estou de férias”')).toBeVisible();
     await linha.getByRole('button', { name: 'Redelegar' }).click();
     const rd = dialogo(page, 'Redelegar tarefa');
-    await rd.getByLabel('Para').selectOption({ label: 'Beatriz Lima' });
+    await rd.getByLabel('Para', { exact: true }).selectOption({ label: 'Beatriz Lima' });
     await rd.getByRole('button', { name: 'Redelegar' }).click();
     await expect(precisa.getByText(titulo)).toHaveCount(0);
 
@@ -167,5 +167,53 @@ test.describe('delegação de ponta a ponta', () => {
     for (const nome of ['João Alves', 'Beatriz Lima']) await expect(page.locator('.ghead', { hasText: nome })).toBeVisible();
     await expect(page.locator('.ghead', { hasText: 'Lucas Prado' })).toHaveCount(0); // não é da equipe dela
   });
-});
 
+  test('tarefa privada fica visível ao delegar; “não pode ser repassada” tira o Delegar de quem recebe (itens 41 e 43)', async ({ page, browser }) => {
+    const titulo = unico('Fazer pessoalmente');
+    await entrar(page, 'carlos');
+    await irPara(page, 'Tarefas');
+    const origem = await criarTarefa(page, titulo);
+    const dlg = await abrirTarefa(page, origem);
+    await dlg.getByRole('checkbox', { name: 'Privada' }).click();
+    await aviso(page, 'Tarefa privada: nenhum superior vê.');
+    await dlg.getByRole('button', { name: 'Delegar' }).click();
+    const d = dialogo(page, 'Delegar tarefa');
+    await expect(d.getByText('Esta tarefa é privada; ao delegar, ela deixa de ser privada.')).toBeVisible();
+    await d.getByLabel('Para (subordinado direto)').selectOption({ label: (await d.locator('#d-to option').allInnerTexts()).find((t) => /Marina/.test(t))! });
+    await d.getByRole('checkbox', { name: /Não pode ser repassada/ }).check();
+    await d.getByRole('button', { name: 'Delegar' }).click();
+    await expect(d).toHaveCount(0);
+    // item 43: deixou de ser privada e a opção sumiu
+    await expect(dlg.getByText('Privada', { exact: true })).toHaveCount(0);
+    await expect(dlg.getByRole('checkbox', { name: 'Privada' })).toHaveCount(0);
+    const repasse = dlg.getByRole('checkbox', { name: 'Não pode ser repassada' });
+    await expect(repasse).toBeChecked();
+    const filho = (await api(page, 'GET', `/cards/${origem}`)).card.child.cardId as string;
+
+    const marina = await outraPessoa(browser, 'marina');
+    try {
+      await aceitarDaCaixa(marina.page, titulo);
+      const dm = await abrirTarefa(marina.page, filho);
+      await expect(dm.getByText(/pediu que você mesmo faça esta tarefa/)).toBeVisible();
+      await expect(dm.getByRole('button', { name: 'Delegar' })).toHaveCount(0);
+      await expect(dm.getByRole('checkbox', { name: 'Privada' })).toHaveCount(0);
+      await dm.getByRole('button', { name: 'Transferir' }).click();
+      const t = dialogo(marina.page, 'Transferir tarefa');
+      await expect(t.getByText(/os subordinados não aparecem na lista/)).toBeVisible();
+      await expect(t.locator('#t-to option', { hasText: 'subordinado' })).toHaveCount(0);
+      await t.getByRole('button', { name: 'Cancelar' }).click(); // fecha também a tarefa
+      await expect(dm).toHaveCount(0);
+
+      // Carlos libera; Marina volta a ver o Delegar
+      await repasse.click(); // a caixinha reflete o servidor: muda depois da resposta
+      await aviso(page, /a tarefa pode ser repassada/);
+      await expect(repasse).not.toBeChecked();
+      await marina.page.reload(); // ao voltar para a janela, os dados se atualizam
+      const dm2 = await abrirTarefa(marina.page, filho);
+      await expect(dm2.getByRole('button', { name: 'Delegar' })).toBeVisible();
+      await expect(dm2.getByText(/pediu que você mesmo faça esta tarefa/)).toHaveCount(0);
+    } finally {
+      await marina.fechar();
+    }
+  });
+});

@@ -69,6 +69,10 @@ beforeAll(async () => {
   const p4 = await newTask(ctx, 'gest', 'Na caixa de entrada');
   const d4 = await delegateTask(ctx, 'gest', p4.id, 'func2');
   s.inboxCard = d4.cardId;
+  // Item 42: um quadro vazio (pode ser arquivado pelo dono) e um arquivado (pode ser desarquivado pelo dono).
+  s.board2 = (await call('gest', 'POST', '/api/boards', { name: 'Vazio do gestor' })).body.id;
+  s.board3 = (await call('gest', 'POST', '/api/boards', { name: 'Arquivado do gestor' })).body.id;
+  await call('gest', 'POST', `/api/boards/${s.board3}/archive`);
   // Filtro salvo da tabela (item 36).
   s.filter = (await call('gest', 'POST', '/api/filters', { name: 'Do gestor', filter: { all: [{ field: 'status', op: 'eq', value: 'open' }] } })).body.id;
 });
@@ -105,6 +109,7 @@ async function attemptsAgainstGest(who: string): Promise<Attempt[]> {
     { method: 'POST', url: `/api/delegations/${id}/reopen`, body: { comment: 'refazer tudo' }, route: 'POST /api/delegations/:id/reopen' },
     { method: 'POST', url: `/api/delegations/${id}/cancel`, route: 'POST /api/delegations/:id/cancel' },
     { method: 'POST', url: `/api/delegations/${id}/redelegate`, body: { toUserId: someone }, route: 'POST /api/delegations/:id/redelegate' },
+    { method: 'POST', url: `/api/delegations/${id}/no-pass`, body: { noPass: true }, route: 'POST /api/delegations/:id/no-pass' },
   ];
   return [
     { method: 'GET', url: `/api/boards/${s.board}`, route: 'GET /api/boards/:id' },
@@ -112,6 +117,8 @@ async function attemptsAgainstGest(who: string): Promise<Attempt[]> {
     { method: 'PATCH', url: `/api/boards/${s.board}`, body: { color: 'roxo' }, route: 'PATCH /api/boards/:id' },
     { method: 'PATCH', url: `/api/boards/${s.board}`, body: { position: -5 }, route: 'PATCH /api/boards/:id' },
     { method: 'POST', url: `/api/boards/${s.board}/lists`, body: { name: 'invasão' }, route: 'POST /api/boards/:id/lists' },
+    { method: 'POST', url: `/api/boards/${s.board2}/archive`, route: 'POST /api/boards/:id/archive' },
+    { method: 'POST', url: `/api/boards/${s.board3}/unarchive`, route: 'POST /api/boards/:id/unarchive' },
     { method: 'PATCH', url: `/api/lists/${s.list}`, body: { name: 'invadida', position: 99 }, route: 'PATCH /api/lists/:id' },
     { method: 'POST', url: `/api/lists/${s.list}/sort`, body: { by: 'title' }, route: 'POST /api/lists/:id/sort' },
     { method: 'POST', url: `/api/lists/${s.list}/archive-done`, route: 'POST /api/lists/:id/archive-done' },
@@ -164,6 +171,7 @@ describe('permissões em massa (frente 2)', () => {
       { method: 'POST', url: `/api/cards/${s.child}/transfer`, body: { toUserId: ctx.users.gest.id }, route: '' }, // o delegador não é destino (RN-32)
       { method: 'POST', url: `/api/cards/${s.child}/move`, body: { listId: s.list }, route: '' }, // fase do gestor
       { method: 'PATCH', url: `/api/cards/${s.child}`, body: { isPrivate: true }, route: '' }, // RN-08
+      { method: 'POST', url: `/api/delegations/${s.deleg}/no-pass`, body: { noPass: false }, route: '' }, // item 41: só o delegador
     ];
     for (const t of tries) {
       const r = await call('func', t.method, t.url, t.body);
@@ -234,6 +242,8 @@ describe('permissões em massa (frente 2)', () => {
       { method: 'POST', url: `/api/admin/users/${target}/transfer-management`, body: { managerId: ctx.users.gest.id }, route: 'POST /api/admin/users/:id/transfer-management' },
       { method: 'POST', url: `/api/admin/users/${target}/active`, body: { active: false }, route: 'POST /api/admin/users/:id/active' },
       { method: 'POST', url: `/api/admin/users/${target}/invite`, route: 'POST /api/admin/users/:id/invite' },
+      { method: 'GET', url: `/api/admin/users/${target}/deactivation`, route: 'GET /api/admin/users/:id/deactivation' },
+      { method: 'POST', url: `/api/admin/users/${target}/deactivate`, body: { successorId: null }, route: 'POST /api/admin/users/:id/deactivate' },
     ];
     for (const who of ['ceo', 'dir', 'gest', 'func']) {
       for (const r of routes) expect((await call(who, r.method, r.url, r.body)).status, `${who} ${r.method} ${r.url}`).toBe(403);
@@ -287,12 +297,14 @@ describe('permissões em massa (frente 2)', () => {
       'DELETE /api/cards/:id/checklist/:itemId', 'POST /api/cards/:id/comments', 'GET /api/cards/:id/events', 'POST /api/cards/:id/delegate',
       'POST /api/cards/:id/accept', 'POST /api/cards/:id/decline', 'GET /api/cards/:id/transfer-targets', 'POST /api/cards/:id/transfer',
       'POST /api/delegations/:id/ack', 'POST /api/delegations/:id/reopen', 'POST /api/delegations/:id/cancel', 'POST /api/delegations/:id/redelegate',
+      'POST /api/delegations/:id/no-pass', 'POST /api/boards/:id/archive', 'POST /api/boards/:id/unarchive',
+      'GET /api/admin/users/:id/deactivation', 'POST /api/admin/users/:id/deactivate',
       'GET /api/admin/users', 'POST /api/admin/users', 'PATCH /api/admin/users/:id', 'POST /api/admin/users/:id/transfer-management',
       'POST /api/admin/users/:id/active', 'POST /api/admin/users/:id/invite', 'PATCH /api/filters/:id', 'DELETE /api/filters/:id',
       // só leem ou alteram os dados da própria pessoa (não recebem identificador de outra)
       'GET /api/me', 'PATCH /api/me/prefs', 'GET /api/boards', 'POST /api/boards', 'GET /api/inbox', 'GET /api/delegations', 'GET /api/dashboard',
       'GET /api/search', 'GET /api/notifications', 'POST /api/notifications/read', 'POST /api/capture', 'POST /api/import/trello',
-      'GET /api/archived', 'GET /api/table', 'GET /api/table/options', 'GET /api/filters', 'POST /api/filters',
+      'GET /api/archived', 'GET /api/boards/archived', 'GET /api/table', 'GET /api/table/options', 'GET /api/filters', 'POST /api/filters',
       // públicas por natureza
       'POST /api/auth/login', 'POST /api/auth/logout', 'POST /api/auth/password/forgot', 'POST /api/auth/password/set', 'GET /api/health', 'GET /compartilhar',
     ]);

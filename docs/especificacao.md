@@ -113,12 +113,12 @@ Anexos e integração com o Google Drive, trabalho entre times, vários respons�
 |---|---|---|
 | 0 | CEO | nenhum |
 | 1 | Diretor | CEO |
-| 2 | Gestor | Diretor |
-| 3 | Funcionário | Gestor |
+| 2 | Gestor | Diretor ou CEO |
+| 3 | Funcionário | Gestor, Diretor ou CEO (item 32) |
 | (fora da árvore) | Administrador | não se aplica |
 
 - Cada pessoa tem **exatamente um** superior direto, exceto o CEO.
-- O superior de uma pessoa está **no nível imediatamente acima**. Exceção: o **gestor** também pode responder **direto ao CEO** (por exemplo, quando o CEO também comanda uma área). Assim uma pessoa pode ser CEO, fazer o papel de diretor de uma área e ser administradora com uma conta só.
+- O superior de uma pessoa está **num nível acima** dela. O **diretor** responde ao CEO; o **gestor** responde a um diretor ou **direto ao CEO** (item 29); o **funcionário** responde a um gestor, a um diretor ou **direto ao CEO** (item 32). Assim uma pessoa pode ser CEO, fazer o papel de diretor de uma área e ser administradora com uma conta só, sem criar níveis novos.
 - A hierarquia é uma árvore de pessoas. Não existe o conceito de "time" como entidade.
 - **Subordinados diretos** são as pessoas cujo superior direto é você.
 - O **administrador** é um papel de sistema, fora da árvore. Ele não delega nem recebe tarefas. A mesma pessoa pode ter as duas coisas: um cargo na árvore e a permissão de administrador.
@@ -127,7 +127,7 @@ Anexos e integração com o Google Drive, trabalho entre times, vários respons�
 
 Só o administrador:
 - cadastra pessoas (nome, e-mail, cargo, superior direto);
-- ativa e desativa pessoas;
+- desativa pessoas, resolvendo as pendências delas numa vez só, e as reativa (seção 7.10, item 44);
 - executa a **transferência de gestão** (seção 7.9).
 
 ---
@@ -192,12 +192,13 @@ Só o administrador:
 2. O gestor abre esse cartão e usa **Delegar** para repassar ao funcionário. O funcionário recebe um **novo** cartão, com código próprio, ligado ao cartão do gestor.
 3. O cartão do gestor ganha o ícone **repassada para [funcionário]**. O diretor também vê esse ícone, só para conhecimento.
 4. O funcionário conclui, o gestor dá o ciente e depois conclui o próprio cartão. Então o diretor dá o ciente.
+5. Se o diretor marcar **“Não pode ser repassada”** ao delegar (item 41, RN-20a), o gestor não consegue repassar: precisa fazer a tarefa ele mesmo.
 
 ### 6.4 Administrador
 
 1. Cadastra uma pessoa com nome, e-mail, cargo e superior direto. A pessoa recebe o link para definir a senha.
 2. Quando alguém muda de gestor, troca o **Superior direto** em **Editar dados**. As delegações em aberto passam ao novo gestor e o histórico fica com o antigo.
-3. Ativa ou desativa pessoas.
+3. Desativa pessoas pela janela de pendências (seção 7.10) ou as reativa.
 
 ---
 
@@ -210,13 +211,14 @@ Só o administrador:
 - **RN-03** Uma fase **só pode ser arquivada se estiver vazia**. Se houver tarefas, o app bloqueia e pede para movê-las antes.
 - **RN-04** A fase em que a tarefa está não define se ela está concluída. A conclusão é um ato explícito (RN-12).
 - **RN-05** Todo usuário novo recebe automaticamente um quadro "Meu trabalho".
+- **RN-03a** (item 42) Um **quadro só pode ser arquivado se estiver vazio**: nenhuma tarefa ativa em nenhuma fase (concluídas ainda não arquivadas e tarefas repassadas contam). As fases vão junto. O **último quadro** da pessoa não pode ser arquivado. Não existe apagar quadro. O quadro arquivado aparece em **Arquivadas** e pode ser desarquivado: volta como a última aba, com fases, cor e fundo, e a numeração das tarefas continua de onde parou (RN-45).
 - **RN-05a** O detentor pode **arquivar uma tarefa própria concluída** e desarquivá-la depois. Não pode arquivar tarefa recebida por delegação (quem arquiva é o delegador, ao dar o ciente, RN-25) nem tarefa com delegação para baixo em aberto.
 
 ### 7.2 Tarefas
 
 - **RN-06** Campos: título (obrigatório, até 200 caracteres), descrição (texto, opcional), prazo (data, opcional), checklist, comentários, privacidade e código (seção 8).
 - **RN-07** Toda tarefa tem **um único detentor**.
-- **RN-08** Uma **tarefa privada** nunca aparece para superiores, nem nos contadores de tarefas próprias. Uma tarefa recebida por delegação **não pode** ser privada.
+- **RN-08** Uma **tarefa privada** nunca aparece para superiores, nem nos contadores de tarefas próprias. Uma tarefa que **tem ou teve delegação** (recebida, ou delegada para alguém, menos a delegação cancelada) **não pode** ser privada (item 43): a opção some e o servidor recusa. Ao delegar uma tarefa privada, ela passa a ser visível, com aviso antes de confirmar e registro no log.
 - **RN-09** O **checklist** é uma lista de itens com texto e marcação. Mostra o progresso (por exemplo, 3/5) no cartão e na tela Tarefas delegadas. Quem edita o checklist é o detentor.
 - **RN-10** Comentários são permitidos ao detentor e, em tarefas delegadas, ao delegador. Comentários não podem ser editados nem apagados, porque fazem parte do log.
 - **RN-11** Uma tarefa é ordenada dentro da fase por posição fracionária, para que reordenar não exija regravar as demais.
@@ -231,6 +233,7 @@ Só o administrador:
 - **RN-17** Cada cartão pode ter **uma delegação ativa** por vez. Para delegar de novo, a anterior precisa estar cancelada ou ter recebido o ciente.
 - **RN-18** A delegação vai para **uma pessoa**. Para três pessoas, são três tarefas.
 - **RN-19** O cartão delegado chega na **caixa de entrada** do subordinado.
+- **RN-20a** (item 41) Ao delegar ou redelegar, o delegador pode marcar **“Não pode ser repassada”**. Quem recebe vê o aviso na tarefa e não pode **delegá-la** nem **transferi-la para um subordinado** (o servidor recusa); transferir para colega ou para o superior direto continua liberado, e a marca acompanha a tarefa. Só o delegador liga ou desliga a marca, enquanto a delegação está em aberto; cada mudança vai para o log e avisa quem recebeu. A marca não desfaz uma delegação para baixo que já existia: só impede novas.
 - **RN-20** O **prazo** sugerido pode ser alterado livremente pelo subordinado. Cada alteração avisa o delegador por e-mail e fica registrada no log, com o valor anterior e o novo.
 
 ### 7.4 Caixa de entrada
@@ -267,15 +270,16 @@ Só o administrador:
 
 ### 7.9 Transferência de gestão
 
-- **RN-38** O administrador abre **Editar dados** da pessoa e escolhe o novo superior no campo **Superior direto** (item 33; antes era a ação separada “Transferir gestão”). O novo superior deve estar no nível imediatamente acima (para gestor: um diretor ou o CEO).
+- **RN-38** O administrador abre **Editar dados** da pessoa e escolhe o novo superior no campo **Superior direto** (item 33; antes era a ação separada “Transferir gestão”). O novo superior deve estar num nível acima (para gestor: um diretor ou o CEO; para funcionário: um gestor, um diretor ou o CEO).
 - **RN-39** **Todas as delegações em aberto** que o superior antigo fez a essa pessoa passam a ter o novo superior como delegador. Isso inclui as aguardando aceite, em andamento, concluídas aguardando ciente e devolvidas.
 - **RN-40** O histórico e as tarefas já arquivadas continuam com o superior antigo.
 - **RN-41** Os três envolvidos são avisados: a pessoa, o novo superior e o antigo. A mudança fica registrada em `ManagerChange` e no log de cada tarefa afetada.
 
 ### 7.10 Pessoas desativadas
 
-- **RN-42** Uma pessoa desativada não faz login, não aparece como destino de delegação nem de transferência, e mantém seus registros no log.
-- **RN-43** Antes de desativar alguém com subordinados ou delegações em aberto, o administrador precisa transferir a gestão e as tarefas. O sistema bloqueia e lista as pendências.
+- **RN-42** Uma pessoa desativada não faz login (as sessões abertas caem na hora), não aparece como destino de delegação nem de transferência, e mantém seus registros no log. Não existe excluir pessoa. O e-mail continua com ela: para usá-lo de novo, reative a pessoa.
+- **RN-43** (item 44) **Desativar** abre uma janela com as pendências da pessoa e as resolve numa transação só, passando para um **sucessor** escolhido pelo administrador (alguém ativo do mesmo nível ou o superior direto dela): (a) os **subordinados diretos** passam a responder ao sucessor, como na troca de superior (RN-38 a RN-41); (b) as **delegações que ela fez e estão em aberto** passam a ter o sucessor como delegador; (c) as **tarefas que ela recebeu e não terminou** voltam a quem delegou como **devolvidas** (“Devolvida porque [nome] foi desativado(a).”); as concluídas aguardando ciente ficam para o ciente (reabrir é recusado); (d) as **tarefas próprias abertas e não privadas** vão para a **caixa de entrada do sucessor**, com registro no log; (e) privadas, quadros, concluídas, arquivadas e o log ficam com ela. Sem pendências, não precisa de sucessor. Todos os envolvidos recebem aviso.
+- **RN-43a** **Reativar** devolve o acesso: a pessoa encontra os quadros e as privadas como deixou; o que foi passado adiante não volta sozinho.
 
 ---
 
@@ -417,7 +421,7 @@ No topo de cada tela: título, campo de **busca** (texto ou código) e controle 
 
 - No topo, à direita, a chave **Quadro / Tabela** (item 36) troca entre os quadros (kanban, descritos abaixo) e a tabela (12.2a). A escolha fica guardada no navegador.
 
-- Abas com os quadros da pessoa à esquerda; à direita, discretos, **+ Quadro** e o menu **…** do quadro (renomear, **cor do quadro**, nova fase, mover o quadro para a esquerda/direita, **fundo da área de trabalho** e, separados no fim, **Importar do Trello** e **Exportar para o Trello**).
+- Abas com os quadros da pessoa à esquerda; à direita, discretos, **+ Quadro** e o menu **…** do quadro (renomear, **cor do quadro**, nova fase, mover o quadro para a esquerda/direita, **fundo da área de trabalho**, separados **Importar do Trello** e **Exportar para o Trello** e, por último, **Arquivar quadro** (item 42, RN-03a), com confirmação e **Desfazer** no aviso).
 - **Exportar para o Trello** (item 31): cria no Trello um quadro novo com as fases (listas, na mesma ordem) e as tarefas não arquivadas do quadro aberto: título, descrição com o número da tarefa, situação e delegação no topo, prazo, marca de concluída, checklist e comentários (autor e data no texto). Privadas só se a pessoa marcar. A pessoa autoriza no Trello (permissão de 1 dia, só no navegador); o envio sai do navegador direto para o Trello, sem passar o código de acesso pelo servidor. Precisa da variável `TRELLO_API_KEY` no servidor; sem ela, o diálogo avisa. Nada muda no SyncTasks.
 - **Zoom do quadro** (item 34): à direita das abas, botões **−**, **porcentagem** e **+**; de 70% a 130%, de 10 em 10; clicar na porcentagem volta a 100%. Muda só o tamanho das fases e dos cartões (menu, abas e a janela da tarefa ficam iguais). Fica guardado no navegador (vale para todos os quadros naquele computador).
 - **Ordem dos quadros:** arrastando a aba (uma linha mostra onde vai entrar) ou pelo menu do quadro. Fica gravada no servidor.
@@ -427,7 +431,7 @@ No topo de cada tela: título, campo de **busca** (texto ou código) e controle 
 - Arrastar funciona entre fases e **dentro da mesma fase**: uma linha mostra onde a tarefa vai cair (acima ou abaixo do cartão, conforme a metade em que o ponteiro está).
 - No cartão aberto, **Mover para** escolhe quadro e fase, ou leva a tarefa **para o topo / para o fim** da fase. Mudar de quadro fica no log com o quadro e a fase de origem.
 - **+ Fase** ao final.
-- **Cartão no quadro:** botão de concluir (círculo), título (até 2 linhas), número (#12), prazo, progresso do checklist e ícones (delegada por, repassada para, privada, aguardando ciente, reaberta).
+- **Cartão no quadro:** botão de concluir (círculo), título (até 2 linhas), número (#12), prazo, progresso do checklist e ícones (delegada por, repassada para, privada, **não pode ser repassada** (item 41), aguardando ciente, reaberta).
 - Arrastar e soltar entre fases. No celular, usar "Mover para" dentro do cartão.
 - **Arquivar tarefa concluída:** ícone de arquivo no cartão concluído (só em tarefa própria), **Arquivar** dentro da tarefa e **Arquivar as concluídas** no menu da fase, sempre com **Desfazer** no aviso. A arquivada continua na busca e pode ser **desarquivada** (volta à mesma fase, ou à primeira fase do quadro se a fase foi arquivada). Arquivar e desarquivar entram no log.
 - **Estado vazio:** "Você ainda não tem quadros…", com o botão de criar.
@@ -452,6 +456,7 @@ No topo de cada tela: título, campo de **busca** (texto ou código) e controle 
 ### 12.3a Arquivadas (item 35)
 
 - Lista as tarefas arquivadas **pela própria pessoa**, da mais recente para a mais antiga, 50 por vez com **Carregar mais**: código, título, quadro e fase de onde saiu, data de conclusão e data de arquivamento.
+- No topo, **Quadros arquivados** (item 42): nome, cor, data e quantas tarefas arquivadas o quadro tem, com o botão **Desarquivar** (o quadro volta como a última aba). Na lista de tarefas, a de um quadro arquivado mostra “(quadro arquivado)”; desarquivá-la leva a tarefa para a primeira fase do primeiro quadro.
 - Entram: as tarefas **próprias** que ela arquivou (botão **Desarquivar** na linha, com **Desfazer** no aviso; volta à mesma fase e posição, ou à primeira fase do quadro se a fase foi arquivada) e as tarefas que ela **delegou e em que deu o ciente**, marcadas **“Delegada para X”**, só para consulta (o ciente não se desfaz; o quadro do subordinado não aparece).
 - Não entram: tarefas recebidas por delegação (quem arquivou foi o superior), delegações canceladas e as tarefas apagadas pelo “Desfazer” da criação (item 30).
 - **Pesquisa** pelo número (12 ou #12; na delegada, o número do cartão de quem delegou), pelo código antigo (ST-, NT-) ou por texto do título e da descrição.
@@ -463,7 +468,8 @@ No topo de cada tela: título, campo de **busca** (texto ou código) e controle 
 - Prazo. Quando é uma delegação, mostra também o prazo sugerido original.
 - Checklist, com progresso.
 - Mover para outra fase.
-- Privacidade, só em tarefa própria.
+- Privacidade, só em tarefa própria que não tem nem teve delegação (item 43).
+- **Não pode ser repassada** (item 41): quem recebeu vê o aviso “[delegador] pediu que você mesmo faça esta tarefa” e não vê **Delegar**; quem delegou tem a caixinha para ligar ou desligar a marca no bloco “Repassada para” (ou ao abrir a tarefa delegada).
 - Bloco **Desdobramento**: "Repassada para X #3 (status)" ou "Desdobramento da tarefa #7 de Carlos".
 - Comentários.
 - **Log:** só para administrador, CEO e diretores.
@@ -490,7 +496,9 @@ Visual de referência: a amostra aprovada.
 ### 12.7 Pessoas (administrador)
 
 - Tabela: pessoa, e-mail, cargo, superior direto, número de subordinados, situação (ativa ou inativa).
-- Ações: **Novo usuário**, **Editar dados** (nome, e-mail, cargo exibido, administrador e superior direto; ninguém tira o próprio acesso de administrador), **Reenviar convite**, **Desativar ou ativar**.
+- Ações: **Novo usuário**, **Editar dados** (nome, e-mail, cargo exibido, administrador e superior direto; ninguém tira o próprio acesso de administrador), **Reenviar convite**, **Desativar** (janela de pendências com o sucessor, RN-43) ou **Reativar**.
+- Caixinha **Esconder inativas** acima da tabela (só aparece quando há pessoa inativa).
+- O campo **Superior direto** mostra o cargo entre parênteses depois de cada nome (item 32), porque a lista mistura níveis.
 - Ao trocar o superior direto, a janela avisa antes de salvar que as delegações em aberto passam ao novo superior e, depois, informa quantas foram movidas. Nome, cargo e superior são salvos juntos: ou tudo, ou nada.
 
 ### 12.8 Login
@@ -625,6 +633,7 @@ Restrição: `manager.level = level - 1`, validada na aplicação e em trigger.
 | status | enum | `PENDING_ACCEPT`, `IN_PROGRESS`, `AWAITING_ACK`, `DECLINED`, `ACKED`, `CANCELED` |
 | reopened | boolean | |
 | decline_reason | text null | |
+| no_pass | boolean | item 41: não pode ser repassada |
 | suggested_due | date null | prazo original |
 | created_at, updated_at, acked_at, canceled_at | timestamptz | |
 
@@ -670,16 +679,17 @@ REST com JSON, sob `/api`. A autenticação usa cookie httpOnly de sessão. Toda
 |---|---|
 | `POST /auth/login` · `POST /auth/logout` · `POST /auth/password/forgot` · `POST /auth/password/set` | autenticação |
 | `GET /me` | usuário logado, subordinados diretos, contadores do menu |
-| `GET/POST /boards` · `PATCH/DELETE /boards/:id` | quadros |
+| `GET/POST /boards` · `PATCH /boards/:id` | quadros |
+| `POST /boards/:id/archive` · `POST /boards/:id/unarchive` `{back?}` · `GET /boards/archived` | arquivar quadro vazio e desarquivar (item 42) |
 | `POST /boards/:id/lists` · `PATCH /lists/:id` · `POST /lists/:id/archive` | fases (archive retorna 409 se não estiver vazia) |
 | `POST /cards` · `GET/PATCH /cards/:id` · `POST /cards/:id/move` | tarefas |
 | `GET /cards/by-code/:code` | abrir pelo código |
 | `POST /cards/:id/complete` · `POST /cards/:id/uncomplete` | concluir e desfazer |
 | `POST/PATCH/DELETE /cards/:id/checklist[/:itemId]` | checklist |
 | `GET/POST /cards/:id/comments` | comentários |
-| `POST /cards/:id/delegate` | delegar `{toUserId, suggestedDue?, note?}` |
+| `POST /cards/:id/delegate` | delegar `{toUserId, suggestedDue?, note?, noPass?}` |
 | `GET /inbox` · `POST /cards/:id/accept` `{listId}` · `POST /cards/:id/decline` `{reason}` | caixa de entrada |
-| `POST /delegations/:id/ack` · `POST /delegations/:id/reopen` `{comment}` · `POST /delegations/:id/cancel` · `POST /delegations/:id/redelegate` `{toUserId, suggestedDue?}` | ações do delegador |
+| `POST /delegations/:id/ack` · `POST /delegations/:id/reopen` `{comment}` · `POST /delegations/:id/cancel` · `POST /delegations/:id/redelegate` `{toUserId, suggestedDue?, noPass?}` · `POST /delegations/:id/no-pass` `{noPass}` | ações do delegador |
 | `POST /cards/:id/transfer` `{toUserId}` | transferir |
 | `GET /delegations?scope=mine` | dados da tela Tarefas delegadas (agrupados por subordinado, com contadores) |
 | `GET /cards/:id/events` | log (admin, CEO e diretor) |
@@ -688,7 +698,8 @@ REST com JSON, sob `/api`. A autenticação usa cookie httpOnly de sessão. Toda
 | `GET /table?filter=&sort=&dir=&offset=&limit=` · `GET /table/options` | tabela com filtro por condições (item 36) |
 | `GET/POST /filters` · `PATCH/DELETE /filters/:id` | filtros salvos da tabela (só os da própria pessoa) |
 | `GET /notifications` · `POST /notifications/read` | avisos |
-| `GET/POST/PATCH /admin/users` · `POST /admin/users/:id/transfer-management` · `POST /admin/users/:id/deactivate` | administração |
+| `GET/POST/PATCH /admin/users` · `POST /admin/users/:id/transfer-management` · `POST /admin/users/:id/active` `{active}` | administração |
+| `GET /admin/users/:id/deactivation` · `POST /admin/users/:id/deactivate` `{successorId?}` | pendências e desativação com sucessor (item 44) |
 
 **Erros:** 401 (não autenticado), 403 (sem permissão), 404 (não existe ou não visível; não revela que a tarefa existe), 409 (transição inválida ou fase não vazia), 422 (validação).
 

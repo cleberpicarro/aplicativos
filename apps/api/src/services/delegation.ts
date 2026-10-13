@@ -8,11 +8,15 @@ import { notify } from './notify.js';
 
 const first = (name: string) => name.split(' ')[0];
 
+/** Item 41: recusa ao tentar repassar uma tarefa marcada como "não pode ser repassada". */
+const noPassMessage = (delegatorName: string) => `${first(delegatorName)} pediu que você mesmo faça esta tarefa: ela não pode ser repassada.`;
+
 /** RN-14 a RN-19: delega a partir de uma tarefa existente, criando um cartão ligado para o subordinado direto. */
-export async function delegate(db: Db, actor: Actor, cardId: string, input: { toUserId: string; suggestedDue?: string | null; note?: string }) {
+export async function delegate(db: Db, actor: Actor, cardId: string, input: { toUserId: string; suggestedDue?: string | null; note?: string; noPass?: boolean }) {
   const { row, role } = await loadCard(db, actor, cardId, { lock: true });
   if (role !== 'owner') throw forbidden('Só quem tem a tarefa pode delegá-la.');
   if (row.archived_at || row.completed_at) throw conflict('Tarefa concluída ou arquivada não pode ser delegada.');
+  if (row.d_id && row.d_no_pass) throw conflict(noPassMessage(row.d_delegator_name));
   if (!row.list_id) throw conflict('Organize a tarefa pela caixa de entrada antes de delegá-la.');
   if (row.child_delegation_id && !['ACKED', 'CANCELED'].includes(row.child_status)) {
     throw conflict('Esta tarefa já tem uma delegação em aberto.');
@@ -27,14 +31,20 @@ export async function delegate(db: Db, actor: Actor, cardId: string, input: { to
      VALUES ($1, NULL, $2, $3, $4, $5) RETURNING id, code, num, title`,
     [input.toUserId, row.title, row.description, due, actor.id],
   );
+  const noPass = !!input.noPass;
   const del = await one(
     db,
-    `INSERT INTO delegations (card_id, parent_card_id, delegator_id, status, suggested_due)
-     VALUES ($1, $2, $3, 'PENDING_ACCEPT', $4) RETURNING id`,
-    [child.id, row.id, actor.id, due],
+    `INSERT INTO delegations (card_id, parent_card_id, delegator_id, status, suggested_due, no_pass)
+     VALUES ($1, $2, $3, 'PENDING_ACCEPT', $4, $5) RETURNING id`,
+    [child.id, row.id, actor.id, due, noPass],
   );
+  // Item 43: tarefa delegada não pode ser privada; ao delegar uma privada, ela passa a ser visível.
+  if (row.is_private) {
+    await db.query('UPDATE cards SET is_private = false, updated_at = now() WHERE id = $1', [row.id]);
+    await logEvent(db, row.id, actor.id, 'privacy_changed', { isPrivate: true }, { isPrivate: false, reason: 'delegated' });
+  }
   const to = await one(db, 'SELECT name FROM users WHERE id = $1', [input.toUserId]);
-  await logEvent(db, child.id, actor.id, 'delegated', undefined, { from: actor.name, to: to.name, suggestedDue: due, parentNum: row.num });
+  await logEvent(db, child.id, actor.id, 'delegated', undefined, { from: actor.name, to: to.name, suggestedDue: due, parentNum: row.num, ...(noPass ? { noPass } : {}) });
   await logEvent(db, row.id, actor.id, 'delegated_down', undefined, { to: to.name, childNum: child.num });
   if (input.note?.trim()) {
     await db.query('INSERT INTO comments (card_id, author_id, body) VALUES ($1, $2, $3)', [child.id, actor.id, input.note.trim()]);
@@ -101,6 +111,8 @@ export async function ack(db: Db, actor: Actor, delegationId: string) {
 export async function reopen(db: Db, actor: Actor, delegationId: string, comment: string) {
   const { d, card } = await delegatorDelegation(db, actor, delegationId);
   if (d.status !== 'AWAITING_ACK') throw conflict('Só é possível reabrir tarefa concluída aguardando ciente.');
+  const owner = await one(db, 'SELECT name, active FROM users WHERE id = $1', [card.owner_id]);
+  if (!owner.active) throw conflict(`${owner.name} foi desativado(a): dê o ciente e, se precisar refazer, crie uma nova tarefa.`);
   const c = (comment ?? '').trim();
   if (c.length < 3) throw badRequest('Explique o motivo da reabertura.');
   await db.query(`UPDATE delegations SET status = 'IN_PROGRESS', reopened = true, updated_at = now() WHERE id = $1`, [d.id]);
@@ -121,26 +133,40 @@ export async function cancel(db: Db, actor: Actor, delegationId: string) {
 }
 
 /** RN-29: redelegar tarefa devolvida mantém o código. */
-export async function redelegate(db: Db, actor: Actor, delegationId: string, input: { toUserId: string; suggestedDue?: string | null }) {
+export async function redelegate(db: Db, actor: Actor, delegationId: string, input: { toUserId: string; suggestedDue?: string | null; noPass?: boolean }) {
   const { d, card } = await delegatorDelegation(db, actor, delegationId);
   if (d.status !== 'DECLINED') throw conflict('Só é possível redelegar uma tarefa devolvida.');
   if (!(await isDirectReport(db, actor.id, input.toUserId))) throw forbidden('Você só pode delegar para um subordinado direto.');
   const due = input.suggestedDue === undefined ? card.due_date : input.suggestedDue;
+  const noPass = input.noPass ?? d.no_pass;
   await db.query(
-    `UPDATE delegations SET status = 'PENDING_ACCEPT', decline_reason = NULL, reopened = false, suggested_due = $2, updated_at = now() WHERE id = $1`,
-    [d.id, due],
+    `UPDATE delegations SET status = 'PENDING_ACCEPT', decline_reason = NULL, reopened = false, suggested_due = $2, no_pass = $3, updated_at = now() WHERE id = $1`,
+    [d.id, due, noPass],
   );
   await db.query(
     `UPDATE cards SET owner_id = $2, list_id = NULL, transferred_from_id = NULL, completed_at = NULL, due_date = $3, color = NULL, updated_at = now() WHERE id = $1`,
     [card.id, input.toUserId, due],
   );
   const to = await one(db, 'SELECT name FROM users WHERE id = $1', [input.toUserId]);
-  await logEvent(db, card.id, actor.id, 'redelegated', undefined, { to: to.name, suggestedDue: due });
+  await logEvent(db, card.id, actor.id, 'redelegated', undefined, { to: to.name, suggestedDue: due, ...(noPass ? { noPass } : {}) });
   await notify(db, input.toUserId, 'delegated', `${first(actor.name)} delegou: ${card.title}`, { ...cardRef(card), num: await numOf(db, card.id) });
 }
 
+/** Item 41: só o delegador liga ou desliga a marca "não pode ser repassada", enquanto a delegação está em aberto. */
+export async function setNoPass(db: Db, actor: Actor, delegationId: string, noPass: boolean) {
+  const { d, card } = await delegatorDelegation(db, actor, delegationId);
+  if (['ACKED', 'CANCELED'].includes(d.status)) throw conflict('Esta delegação já foi encerrada.');
+  if (d.no_pass === noPass) return;
+  await db.query('UPDATE delegations SET no_pass = $2, updated_at = now() WHERE id = $1', [d.id, noPass]);
+  await logEvent(db, card.id, actor.id, 'no_pass_changed', { noPass: d.no_pass }, { noPass });
+  if (d.status !== 'DECLINED') {
+    await notify(db, card.owner_id, 'no_pass',
+      noPass ? `${first(actor.name)} pediu que você mesmo faça a tarefa: ela não pode ser repassada` : `${first(actor.name)} liberou repassar a tarefa`, cardRef(card));
+  }
+}
+
 /** Destinos de transferência: subordinados diretos, colegas do mesmo nível com o mesmo superior e o superior direto. */
-export async function transferTargets(db: Db, actor: Actor, delegatorId: string | null) {
+export async function transferTargets(db: Db, actor: Actor, delegatorId: string | null, noPass = false) {
   const rows = await many(
     db,
     `SELECT id, name, role_title, 'subordinate' AS relation FROM users WHERE manager_id = $1 AND active
@@ -150,7 +176,8 @@ export async function transferTargets(db: Db, actor: Actor, delegatorId: string 
      SELECT id, name, role_title, 'manager' FROM users WHERE id = $2 AND active`,
     [actor.id, actor.managerId, actor.level],
   );
-  return rows.filter((r) => r.id !== delegatorId);
+  // Item 41: tarefa que não pode ser repassada não vai para subordinado (seria outro jeito de delegar).
+  return rows.filter((r) => r.id !== delegatorId && !(noPass && r.relation === 'subordinate'));
 }
 
 export async function transfer(db: Db, actor: Actor, cardId: string, toUserId: string) {
@@ -160,7 +187,9 @@ export async function transfer(db: Db, actor: Actor, cardId: string, toUserId: s
   if (row.child_delegation_id && !['ACKED', 'CANCELED'].includes(row.child_status)) {
     throw conflict('Esta tarefa tem uma delegação em aberto. Cancele a delegação ou aguarde o ciente antes de transferir.');
   }
-  const targets = await transferTargets(db, actor, row.d_delegator_id ?? null);
+  const noPass = !!(row.d_id && row.d_no_pass);
+  if (noPass && (await isDirectReport(db, actor.id, toUserId))) throw conflict(noPassMessage(row.d_delegator_name));
+  const targets = await transferTargets(db, actor, row.d_delegator_id ?? null, noPass);
   if (!targets.some((t) => t.id === toUserId)) {
     throw forbidden('Você pode transferir apenas para um subordinado direto, um colega do mesmo nível ou seu superior direto.');
   }

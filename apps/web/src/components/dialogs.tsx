@@ -45,10 +45,11 @@ export function DelegateDialog({ card, onClose }: { card: Card; onClose: Close }
   const [to, setTo] = useState(me.directReports[0]?.id ?? '');
   const [due, setDue] = useState(card.dueDate ?? '');
   const [note, setNote] = useState('');
+  const [noPass, setNoPass] = useState(false);
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     const name = me.directReports.find((r) => r.id === to)?.name ?? '';
-    const r = await run(() => post(`/cards/${card.id}/delegate`, { toUserId: to, suggestedDue: due || null, note }), `Delegada para ${firstName(name)}. Aviso enviado por e-mail.`);
+    const r = await run(() => post(`/cards/${card.id}/delegate`, { toUserId: to, suggestedDue: due || null, note, noPass }), `Delegada para ${firstName(name)}. Aviso enviado por e-mail.`);
     if (r) onClose();
   };
   return (
@@ -71,9 +72,21 @@ export function DelegateDialog({ card, onClose }: { card: Card; onClose: Close }
           <label htmlFor="d-note">Observação (opcional)</label>
           <textarea id="d-note" className="textarea" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Contexto ou instruções para quem vai executar" />
         </div>
+        <NoPassField value={noPass} onChange={setNoPass} />
+        {card.isPrivate && <p className="box attn" style={{ margin: 0 }}>Esta tarefa é privada; ao delegar, ela deixa de ser privada.</p>}
         <ErrorText error={error} />
       </form>
     </Dialog>
+  );
+}
+
+/** Item 41: caixinha da janela Delegar e Redelegar. */
+function NoPassField({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <label className="check">
+      <input type="checkbox" checked={value} onChange={(e) => onChange(e.target.checked)} />
+      <span>Não pode ser repassada <span className="hint">(a pessoa precisa fazer: não pode delegar nem transferir para um subordinado)</span></span>
+    </label>
   );
 }
 
@@ -82,9 +95,10 @@ export function RedelegateDialog({ card, onClose }: { card: Card; onClose: Close
   const { run, busy, error } = useAction();
   const [to, setTo] = useState(me.directReports.find((r) => r.id !== card.ownerId)?.id ?? me.directReports[0]?.id ?? '');
   const [due, setDue] = useState(card.dueDate ?? '');
+  const [noPass, setNoPass] = useState(card.delegation?.noPass ?? false);
   const submit = async (e: FormEvent) => {
     e.preventDefault();
-    if (await run(() => post(`/delegations/${card.delegation!.id}/redelegate`, { toUserId: to, suggestedDue: due || null }), 'Tarefa redelegada.')) onClose();
+    if (await run(() => post(`/delegations/${card.delegation!.id}/redelegate`, { toUserId: to, suggestedDue: due || null, noPass }), 'Tarefa redelegada.')) onClose();
   };
   return (
     <Dialog title="Redelegar tarefa" onClose={onClose} footer={<Footer busy={busy} onClose={onClose} label="Redelegar" />}>
@@ -102,6 +116,7 @@ export function RedelegateDialog({ card, onClose }: { card: Card; onClose: Close
           <label htmlFor="r-due">Prazo sugerido</label>
           <input id="r-due" type="date" className="input" value={due} onChange={(e) => setDue(e.target.value)} />
         </div>
+        <NoPassField value={noPass} onChange={setNoPass} />
         <p className="hint">É o mesmo cartão: a nova pessoa o recebe na caixa de entrada, com o número de lá.</p>
         <ErrorText error={error} />
       </form>
@@ -175,6 +190,7 @@ export function TransferDialog({ card, onClose }: { card: Card; onClose: Close }
           {card.delegation
             ? `Esta tarefa foi delegada por ${card.delegation.delegatorName}, que continua acompanhando e verá “delegada para …”.`
             : 'Ao transferir, você deixa de acompanhar a tarefa.'}
+          {card.delegation?.noPass && ' Esta tarefa não pode ser repassada: os subordinados não aparecem na lista.'}
         </p>
         {targets.data && targets.data.length === 0 && <p className="err">Não há para quem transferir.</p>}
         {targets.data && targets.data.length > 0 && (

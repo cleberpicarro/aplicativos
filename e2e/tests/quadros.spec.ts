@@ -1,4 +1,4 @@
-import { test, expect, entrar, outraPessoa, criarTarefa, abrirTarefa, dialogo, aviso, unico, api } from './apoio';
+import { test, expect, entrar, outraPessoa, irPara, criarTarefa, abrirTarefa, dialogo, aviso, unico, api } from './apoio';
 
 test.describe('meus quadros', () => {
   test('criar quadro, fase e tarefa; editar descrição, prazo e checklist; concluir, arquivar e desfazer', async ({ page }) => {
@@ -200,5 +200,49 @@ test.describe('meus quadros', () => {
     await gestora.getByLabel('Buscar tarefa ou número').fill(titulo);
     await expect(gestora.getByText('Nada encontrado entre as tarefas que você pode ver.')).toBeVisible();
     await fechar();
+  });
+
+  test('arquivar quadro vazio, com Desfazer; desarquivar pela tela Arquivadas (item 42)', async ({ page }) => {
+    await entrar(page, 'joao');
+    await irPara(page, 'Tarefas');
+    const nome = unico('Projeto curto');
+    await page.getByRole('button', { name: 'Quadro', exact: true }).click();
+    await dialogo(page, 'Novo quadro').getByLabel('Nome do quadro').fill(nome);
+    await dialogo(page, 'Novo quadro').getByRole('button', { name: 'Criar' }).click();
+    const aba = page.getByRole('tab', { name: nome });
+    await expect(aba).toHaveAttribute('aria-selected', 'true');
+    const titulo = unico('Única tarefa');
+    await criarTarefa(page, titulo);
+    // com tarefa, não arquiva
+    await page.getByRole('button', { name: 'Opções do quadro' }).click();
+    await page.getByRole('menuitem', { name: 'Arquivar quadro' }).click();
+    await aviso(page, /Este quadro ainda tem 1 tarefa/);
+    const card = page.locator('article.kc', { hasText: titulo });
+    await card.getByRole('button', { name: `Concluir ${titulo}` }).click();
+    await card.getByRole('button', { name: `Arquivar ${titulo}` }).click();
+    await expect(card).toHaveCount(0);
+    // vazio: arquiva, e o Desfazer traz de volta
+    await page.getByRole('button', { name: 'Opções do quadro' }).click();
+    await page.getByRole('menuitem', { name: 'Arquivar quadro' }).click();
+    await dialogo(page, 'Arquivar quadro').getByRole('button', { name: 'Arquivar quadro' }).click();
+    await expect(aba).toHaveCount(0);
+    await page.locator('.toast', { hasText: 'arquivado' }).getByRole('button', { name: 'Desfazer' }).click();
+    await expect(aba).toBeVisible();
+    // arquiva de novo e desarquiva pela tela Arquivadas
+    await aba.click();
+    await page.getByRole('button', { name: 'Opções do quadro' }).click();
+    await page.getByRole('menuitem', { name: 'Arquivar quadro' }).click();
+    await dialogo(page, 'Arquivar quadro').getByRole('button', { name: 'Arquivar quadro' }).click();
+    await expect(aba).toHaveCount(0);
+    await irPara(page, 'Arquivadas');
+    const bloco = page.getByRole('region', { name: 'Quadros arquivados' });
+    const linha = bloco.locator('li', { hasText: nome });
+    await expect(linha).toContainText('1 tarefa(s) arquivada(s)');
+    await expect(page.locator('tr', { hasText: titulo })).toContainText('(quadro arquivado)');
+    await linha.getByRole('button', { name: 'Desarquivar' }).click();
+    await aviso(page, /voltou como a última aba/);
+    await expect(linha).toHaveCount(0);
+    await irPara(page, 'Tarefas');
+    await expect(page.getByRole('tab').last()).toHaveText(nome);
   });
 });

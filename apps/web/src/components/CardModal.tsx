@@ -52,7 +52,7 @@ export function CardModal({ code, onClose }: { code: string; onClose: () => void
           <button className={`b ${card.completedAt ? '' : 'pri'}`} title={card.completedAt ? TIPS.uncomplete : TIPS.complete} onClick={toggleDone} disabled={busy}>
             <Icon name="check" />{card.completedAt ? 'Desfazer conclusão' : 'Concluir'}
           </button>
-          {reports && !childOpen && !card.completedAt && (
+          {reports && !childOpen && !card.completedAt && !d?.noPass && (
             <button className="b" title={TIPS.delegate} onClick={() => setSub('delegate')}><Icon name="out" />Delegar</button>
           )}
           {!card.completedAt && <button className="b" title={TIPS.transfer} onClick={() => setSub('transfer')}><Icon name="move" />Transferir</button>}
@@ -128,6 +128,9 @@ export function CardModal({ code, onClose }: { code: string; onClose: () => void
                 {d?.parentNum != null && <span>· Desdobramento da tarefa <span className="code">{cardNo(d.parentNum)}</span> de {d.delegatorId === me.user.id ? 'você' : firstName(d.delegatorName)}</span>}
               </div>
 
+              {owner && d?.noPass && !archived && (
+                <div className="box attn"><Icon name="self" /> {d.delegatorId === me.user.id ? 'Você' : firstName(d.delegatorName)} pediu que você mesmo faça esta tarefa: ela não pode ser repassada (nem delegada, nem transferida para um subordinado).</div>
+              )}
               {d?.status === 'DECLINED' && (
                 <div className="box attn"><b style={{ fontWeight: 500 }}>Justificativa da devolução:</b> “{d.declineReason}”</div>
               )}
@@ -140,6 +143,9 @@ export function CardModal({ code, onClose }: { code: string; onClose: () => void
                     <StatusPill status={delegationKey(card.child.status, card.child.reopened)} />
                   </div>
                   {owner && <button className="link" style={{ marginTop: 6 }} onClick={() => go(`/tarefa/${card.child!.cardId}`)}>Abrir a tarefa repassada</button>}
+                  {owner && !archived && !['ACKED', 'CANCELED'].includes(card.child.status) && (
+                    <NoPassToggle delegationId={card.child.delegationId} value={card.child.noPass} who={card.child.ownerName} />
+                  )}
                 </div>
               )}
 
@@ -156,12 +162,16 @@ export function CardModal({ code, onClose }: { code: string; onClose: () => void
                 {owner && d && <span className="hint">Ao mudar, {firstName(d.delegatorName)} é avisado(a).</span>}
               </div>
               {owner && board && !archived && card.listId && <MoveTo cardId={card.id} boardId={board.id} listId={card.listId} />}
-              {owner && !d && !archived && (
+              {/* RN-08 e item 43: tarefa que tem ou teve delegação (menos a cancelada) não pode ser privada. */}
+              {owner && !d && !card.child && !archived && (
                 <label className="check">
                   <input type="checkbox" checked={card.isPrivate}
                     onChange={(e) => run(() => patch(`/cards/${card.id}`, { isPrivate: e.target.checked }), e.target.checked ? 'Tarefa privada: nenhum superior vê.' : 'Tarefa visível.')} />
                   Privada
                 </label>
+              )}
+              {role === 'delegator' && d && !archived && !['ACKED', 'CANCELED'].includes(d.status) && (
+                <NoPassToggle delegationId={d.id} value={d.noPass} who={card.ownerName} />
               )}
               {(ownerActions || delegatorActions) && <div style={{ display: 'grid', gap: 6 }}>{ownerActions}{delegatorActions}</div>}
               {role === 'auditor' && <p className="hint">Você está vendo esta tarefa pelo acesso de auditoria.</p>}
@@ -303,6 +313,22 @@ function Comments({ cardId, comments, canPost }: { cardId: string; comments: Car
   );
 }
 
+/** Item 41: só quem delegou liga ou desliga a marca; cada mudança vai para o log. */
+function NoPassToggle({ delegationId, value, who }: { delegationId: string; value: boolean; who: string }) {
+  const { run, busy, error } = useAction();
+  return (
+    <div style={{ marginTop: 6 }}>
+      <label className="check" data-tip={`Se marcada, ${firstName(who)} precisa fazer a tarefa: não pode delegá-la nem transferi-la para um subordinado.`}>
+        <input type="checkbox" checked={value} disabled={busy}
+          onChange={(e) => run(() => post(`/delegations/${delegationId}/no-pass`, { noPass: e.target.checked }),
+            e.target.checked ? `${firstName(who)} foi avisado(a): a tarefa não pode ser repassada.` : `${firstName(who)} foi avisado(a): a tarefa pode ser repassada.`)} />
+        Não pode ser repassada
+      </label>
+      <ErrorText error={error} />
+    </div>
+  );
+}
+
 /* ---------- cor do cartão (item 38) ---------- */
 function CardColor({ id, color }: { id: string; color: string | null }) {
   const [open, setOpen] = useState(false);
@@ -356,7 +382,8 @@ function describe(e: Ev): { text: string; change?: string } {
     case 'title_changed': return { text: 'alterou o título', change: `“${b.title}” → “${a.title}”` };
     case 'description_changed': return { text: 'alterou a descrição', change: `“${cut(b.description || '')}” → “${cut(a.description || '')}”` };
     case 'due_changed': return { text: 'alterou o prazo', change: `${df(b.dueDate)} → ${df(a.dueDate)}` };
-    case 'privacy_changed': return { text: a.isPrivate ? 'tornou a tarefa privada' : 'tornou a tarefa visível' };
+    case 'privacy_changed': return { text: a.isPrivate ? 'tornou a tarefa privada' : a.reason === 'delegated' ? 'tornou a tarefa visível (tarefa delegada não pode ser privada)' : 'tornou a tarefa visível' };
+    case 'no_pass_changed': return { text: a.noPass ? 'marcou que a tarefa não pode ser repassada' : 'liberou repassar a tarefa' };
     case 'moved': return a.board ? { text: `moveu para outro quadro`, change: `“${b.board} · ${b.list}”${b.num ? ` (#${b.num})` : ''} → “${a.board} · ${a.list}”${a.num ? ` (#${a.num})` : ''}` } : { text: `moveu de “${b.list}” para “${a.list}”` };
     case 'captured': return { text: a.email ? 'capturou do e-mail' : 'capturou da web', change: a.url ?? undefined };
     case 'accepted': return { text: `aceitou e colocou em “${a.board} · ${a.list}”${a.num ? ` (#${a.num})` : ''}` };
@@ -366,7 +393,7 @@ function describe(e: Ev): { text: string; change?: string } {
     case 'checklist_unchecked': return { text: 'desmarcou item do checklist', change: `“${a.text}”` };
     case 'checklist_removed': return { text: 'removeu item do checklist', change: `“${b.text}”` };
     case 'comment_added': return { text: 'comentou', change: `“${cut(a.body)}”` };
-    case 'delegated': return { text: `delegou para ${a.to}`, change: `Prazo sugerido: ${df(a.suggestedDue)}${a.parentNum ? ` · origem #${a.parentNum}` : a.parentCode ? ` · origem ${a.parentCode}` : ''}` };
+    case 'delegated': return { text: `delegou para ${a.to}`, change: `Prazo sugerido: ${df(a.suggestedDue)}${a.parentNum ? ` · origem #${a.parentNum}` : a.parentCode ? ` · origem ${a.parentCode}` : ''}${a.noPass ? ' · não pode ser repassada' : ''}` };
     case 'delegated_down': return { text: `delegou para baixo: ${a.to}`, change: a.childNum ? `#${a.childNum}` : a.childCode };
     case 'declined': return { text: 'devolveu a tarefa', change: `“${a.reason}”` };
     case 'completed': return { text: 'concluiu a tarefa' };
@@ -377,8 +404,8 @@ function describe(e: Ev): { text: string; change?: string } {
     case 'reopened': return { text: 'reabriu a tarefa', change: `“${a.reason}”` };
     case 'canceled': return { text: 'cancelou a delegação' };
     case 'child_canceled': return { text: 'cancelou a delegação para baixo', change: a.childNum ? `#${a.childNum}` : a.childCode };
-    case 'redelegated': return { text: `redelegou para ${a.to}`, change: `Prazo sugerido: ${df(a.suggestedDue)}` };
-    case 'transferred': return { text: `transferiu de ${b.owner} para ${a.owner}` };
+    case 'redelegated': return { text: `redelegou para ${a.to}`, change: `Prazo sugerido: ${df(a.suggestedDue)}${a.noPass ? ' · não pode ser repassada' : ''}` };
+    case 'transferred': return { text: `transferiu de ${b.owner} para ${a.owner}`, change: a.reason === 'deactivated' ? `${b.owner} foi desativado(a); a tarefa foi para a caixa de entrada de ${a.owner}` : undefined };
     case 'management_transferred': return { text: 'transferência de gestão', change: `Acompanhamento passou de ${b.delegator ?? '—'} para ${a.delegator}` };
     default: return { text: e.type };
   }

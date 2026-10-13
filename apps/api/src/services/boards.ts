@@ -109,3 +109,47 @@ export async function archiveList(db: Db, actor: Actor, listId: string) {
   if (r!.n > 0) throw conflict('Esta fase ainda tem tarefas. Mova as tarefas para outra fase antes de arquivá-la.');
   await db.query('UPDATE lists SET archived_at = now() WHERE id = $1', [listId]);
 }
+
+/* ---------- arquivar quadro vazio (item 42) ---------- */
+
+/**
+ * Só arquiva quadro vazio: nenhuma tarefa ativa (não arquivada) em nenhuma fase, inclusive concluídas e repassadas.
+ * As fases vão junto. O último quadro da pessoa não pode ser arquivado (aceitar e desarquivar precisam de um quadro).
+ * Não existe apagar quadro: o log e os números das tarefas não podem sumir.
+ */
+export async function archiveBoard(db: Db, actor: Actor, boardId: string) {
+  await ownBoard(db, actor, boardId);
+  await db.query('SELECT 1 FROM boards WHERE owner_id = $1 FOR UPDATE', [actor.id]);
+  const r = await one<{ n: number }>(
+    db,
+    'SELECT count(*)::int AS n FROM cards c JOIN lists l ON l.id = c.list_id WHERE l.board_id = $1 AND c.archived_at IS NULL',
+    [boardId],
+  );
+  if (r!.n > 0) {
+    throw conflict(`Este quadro ainda tem ${r!.n === 1 ? '1 tarefa' : `${r!.n} tarefas`}: arquive as concluídas ou mova as abertas para outro quadro.`);
+  }
+  const others = await one<{ n: number }>(db, 'SELECT count(*)::int AS n FROM boards WHERE owner_id = $1 AND archived_at IS NULL AND id <> $2', [actor.id, boardId]);
+  if (!others!.n) throw conflict('Este é o seu único quadro. Crie outro quadro antes de arquivar este.');
+  await db.query('UPDATE boards SET archived_at = now() WHERE id = $1', [boardId]);
+}
+
+/** Desarquivar: o quadro volta com fases, cor e fundo. `back: 'end'` põe como última aba; `'same'` (Desfazer) volta ao lugar. */
+export async function unarchiveBoard(db: Db, actor: Actor, boardId: string, back: 'end' | 'same' = 'end') {
+  const b = await one(db, 'SELECT * FROM boards WHERE id = $1 AND owner_id = $2', [boardId, actor.id]);
+  if (!b) throw notFound('Quadro não encontrado.');
+  if (!b.archived_at) throw conflict('O quadro não está arquivado.');
+  const position = back === 'same'
+    ? b.position
+    : await nextPosition(db, 'SELECT max(position) AS max FROM boards WHERE owner_id = $1 AND archived_at IS NULL', [actor.id]);
+  await db.query('UPDATE boards SET archived_at = NULL, position = $2 WHERE id = $1', [boardId, position]);
+}
+
+export async function listArchivedBoards(db: Db, actor: Actor) {
+  return many(
+    db,
+    `SELECT b.id, b.name, b.color, b.archived_at AS "archivedAt",
+            (SELECT count(*)::int FROM cards c JOIN lists l ON l.id = c.list_id WHERE l.board_id = b.id) AS "archivedCards"
+       FROM boards b WHERE b.owner_id = $1 AND b.archived_at IS NOT NULL ORDER BY b.archived_at DESC`,
+    [actor.id],
+  );
+}
