@@ -36,7 +36,7 @@ App de tarefas da **Nerus** (~90–99 pessoas): quadros pessoais no estilo Trell
 
 - Render, Blueprint em `render.yaml`: serviço **synctasks** → https://synctasks.onrender.com. Publica a partir da branch `claude/tender-volta-yd7999`.
 - Site comercial: pasta `site/` (HTML e CSS estáticos), serviço estático **synctasks-site** no mesmo `render.yaml` → https://synctasks-site.onrender.com. Plano Equipe: R$ 20,00 por usuário/mês; limite do plano Grátis e contato ainda em `[colchetes]`; os botões “Começar” levam ao app por enquanto.
-- Banco no Render: `nerus-db` (nome mantido de propósito; trocar o nome no `render.yaml` cria um banco novo e vazio). Item 45 (16/10/2026): o mesmo banco, com os dados reais do Cleber e do Daniel, passa para o plano pago `basic-256mb`, e o serviço para o Starter. Depois de publicado, desativar as pessoas de exemplo.
+- Banco no Render: `nerus-db` (nome mantido de propósito; trocar o nome no `render.yaml` cria um banco novo e vazio). Item 45 (16/10/2026): **em produção**. O banco, com os dados reais do Cleber e do Daniel, está no plano pago `basic-256mb` (não expira) e o serviço no Starter. As pessoas de exemplo foram desativadas.
 - `SEED_DEMO=true` cria a equipe de exemplo (senha `nerus2026`: marina, joao, carlos, helena, renata `@nerus.com.br`) só num banco vazio. Em produção fica `false`; a senha está no README, que é público.
 - E-mail: SMTP do Google Workspace ainda não configurado (sem `SMTP_HOST` os e-mails só vão para o log).
 
