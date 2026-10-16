@@ -5,7 +5,8 @@ services:
     # O endereço público vem deste nome: https://synctasks.onrender.com (synctask, sem o "s", já é de outra pessoa).
     name: synctasks
     runtime: node
-    plan: free
+    # Item 45 (implantação): plano pago Starter. Não dorme, libera o envio de e-mail (SMTP) e a tela Shell.
+    plan: starter
     # Só publica quando a verificação automática do GitHub (.github/workflows/testes.yml) passar.
     autoDeployTrigger: checksPass
     buildCommand: npm ci --include=dev && npm run build
@@ -20,10 +21,9 @@ services:
         fromDatabase:
           name: nerus-db
           property: connectionString
-      # Ambiente de teste: cria a equipe de exemplo (senha nerus2026) se o banco estiver vazio.
-      # Para uso real, mude para "false" e crie o primeiro administrador.
+      # Uso real: nunca cria a equipe de exemplo (senha nerus2026). Com "true", ela só seria criada num banco vazio.
       - key: SEED_DEMO
-        value: "true"
+        value: "false"
       # Item 31: chave do SyncTasks no Trello para "Exportar para o Trello" (preencher no painel do Render; passo a passo na Ajuda).
       - key: TRELLO_API_KEY
         sync: false
@@ -40,7 +40,9 @@ services:
         - site/**
 
 databases:
+  # Item 45: o mesmo banco, com os dados do Cleber e do Daniel, passa para o plano pago (não expira, tem cópia de segurança).
+  # O nome nerus-db fica, de propósito: trocar o nome criaria um banco novo e vazio.
   - name: nerus-db
-    plan: free
+    plan: basic-256mb
     databaseName: nerus
     user: nerus
