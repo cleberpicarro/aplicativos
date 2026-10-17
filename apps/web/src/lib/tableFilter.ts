@@ -6,7 +6,9 @@ export type Field =
 export type Op = 'contains' | 'not_contains' | 'eq' | 'neq' | 'empty' | 'not_empty' | 'before' | 'after' | 'between' | 'last_days' | 'next_days';
 export type Value = string | number | boolean | [string, string] | null;
 export interface Condition { field: Field; op: Op; value?: Value }
-export interface Filter { all: Condition[]; any: Condition[] }
+/** Item 47: atalhos de um clique, somados ao filtro escolhido (com os dois ligados, vale qualquer um). */
+export interface Quick { toMe: boolean; byMe: boolean }
+export interface Filter { all: Condition[]; any: Condition[]; quick?: Quick }
 
 type Kind = 'code' | 'text' | 'board' | 'list' | 'status' | 'date' | 'person' | 'bool' | 'source' | 'color';
 
@@ -62,6 +64,9 @@ export const SOURCE_VALUES = [
   { id: 'email', label: 'Capturada do e-mail' },
   { id: 'trello', label: 'Importada do Trello' },
 ];
+
+/** Item 47: condições que não fazem sentido dentro de um quadro aberto (o servidor as ignora no quadro). */
+export const BOARD_IGNORED: Field[] = ['board', 'archived'];
 
 export const fieldOf = (id: Field) => FIELDS.find((f) => f.id === id)!;
 export const opsFor = (id: Field) => OPS[fieldOf(id).kind];

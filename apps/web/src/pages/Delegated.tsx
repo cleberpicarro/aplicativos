@@ -5,7 +5,7 @@ import { go, useRoute } from '../lib/router';
 import { TIPS, cardNo, daysBetween, firstName, plural } from '../lib/format';
 import { Avatar, CardStatusIcon, Due, TipIcon, ErrorText } from '../components/ui';
 import { Icon } from '../components/Icons';
-import { ConfirmDialog, RedelegateDialog, ReopenDialog, useAction } from '../components/dialogs';
+import { ConfirmDialog, RedelegateDialog, ReopenDialog, useAction, useCancelDelegation } from '../components/dialogs';
 
 type Pending = null | { kind: 'reopen' | 'redelegate' | 'cancel'; card: Card };
 
@@ -39,6 +39,7 @@ export function DelegatedPage() {
   const [collapsed, setCollapsedState] = useState<Record<string, boolean>>(loadCollapsed);
   const [pending, setPending] = useState<Pending>(null);
   const { run, busy, error } = useAction();
+  const cancelDelegation = useCancelDelegation();
   const setCollapsed = (v: Record<string, boolean>) => { setCollapsedState(v); saveCollapsed(v); };
 
   const filterKey = route.params.get('filtro') ?? '';
@@ -177,7 +178,7 @@ export function DelegatedPage() {
       {pending?.kind === 'cancel' && (
         <ConfirmDialog title="Cancelar delegação" danger confirm="Cancelar delegação"
           text={`Cancelar “${pending.card.title}”? ${firstName(pending.card.ownerName)} é avisado(a).`}
-          onConfirm={() => post(`/delegations/${pending.card.delegation!.id}/cancel`)} onClose={() => setPending(null)} />
+          onConfirm={() => cancelDelegation(pending.card.delegation!.id, pending.card.ownerName)} onClose={() => setPending(null)} />
       )}
     </div>
   );

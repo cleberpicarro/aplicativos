@@ -72,7 +72,12 @@ export async function accept(db: Db, actor: Actor, cardId: string, listId: strin
   await db.query('UPDATE cards SET list_id = $2, position = $3, updated_at = now() WHERE id = $1', [cardId, listId, pos]);
   if (row.d_id) await db.query(`UPDATE delegations SET status = 'IN_PROGRESS', updated_at = now() WHERE id = $1`, [row.d_id]);
   const board = await one(db, 'SELECT name FROM boards WHERE id = $1', [list.board_id]);
-  await logEvent(db, cardId, actor.id, 'accepted', undefined, { board: board.name, list: list.name, num: await numOf(db, cardId) });
+  const num = await numOf(db, cardId);
+  await logEvent(db, cardId, actor.id, 'accepted', undefined, { board: board.name, list: list.name, num });
+  // Item 46: quem delegou fica sabendo do aceite (no sininho e por e-mail). Transferência aceita não avisa: o delegador não mudou de ideia.
+  if (row.d_id && row.d_status === 'PENDING_ACCEPT' && !row.transferred_from_id) {
+    await notify(db, row.d_delegator_id, 'accepted', `${first(actor.name)} aceitou a tarefa`, { ...cardRef(row), num });
+  }
 }
 
 /** RN-23: devolver exige justificativa; a tarefa volta ao delegador. */
@@ -125,11 +130,62 @@ export async function reopen(db: Db, actor: Actor, delegationId: string, comment
 export async function cancel(db: Db, actor: Actor, delegationId: string) {
   const { d, card } = await delegatorDelegation(db, actor, delegationId);
   if (!['PENDING_ACCEPT', 'IN_PROGRESS', 'DECLINED'].includes(d.status)) throw conflict('Esta delegação não pode ser cancelada.');
-  await db.query(`UPDATE delegations SET status = 'CANCELED', canceled_at = now(), updated_at = now() WHERE id = $1`, [d.id]);
+  // Item 48: guarda onde a tarefa estava, para o "Desfazer" devolvê-la ao mesmo lugar.
+  const where = await one(db, 'SELECT list_id, position FROM cards WHERE id = $1', [card.id]);
+  await db.query(
+    `UPDATE delegations SET status = 'CANCELED', canceled_at = now(), updated_at = now(),
+       cancel_prev_status = $2, cancel_prev_list_id = $3, cancel_prev_position = $4 WHERE id = $1`,
+    [d.id, d.status, where.list_id, where.position],
+  );
   await db.query('UPDATE cards SET archived_at = now(), list_id = NULL, updated_at = now() WHERE id = $1', [card.id]);
   await logEvent(db, card.id, actor.id, 'canceled');
   if (d.parent_card_id) await logEvent(db, d.parent_card_id, actor.id, 'child_canceled', undefined, { childNum: card.num });
   await notify(db, card.owner_id, 'canceled', `${first(actor.name)} cancelou a delegação`, cardRef(card));
+}
+
+/** Item 48: por quanto tempo, depois de cancelar, o "Desfazer" ainda funciona. */
+export const UNDO_CANCEL_MINUTES = 10;
+
+/**
+ * Item 48: desfaz o cancelamento logo depois de cancelar. A delegação volta à situação anterior e a tarefa
+ * volta ao mesmo quadro, fase e número da pessoa, com o que ela tinha escrito.
+ */
+export async function undoCancel(db: Db, actor: Actor, delegationId: string) {
+  const { d, card } = await delegatorDelegation(db, actor, delegationId);
+  if (d.status !== 'CANCELED' || !d.cancel_prev_status) throw conflict('Esta delegação não está cancelada.');
+  const recent = await one(db, `SELECT $1::timestamptz > now() - make_interval(mins => $2) AS ok`, [d.canceled_at, UNDO_CANCEL_MINUTES]);
+  if (!recent.ok) throw conflict('Já passou o tempo para desfazer o cancelamento. Se precisar, delegue a tarefa de novo.');
+  if (d.parent_card_id) {
+    const parent = await one(db, 'SELECT archived_at FROM cards WHERE id = $1 FOR UPDATE', [d.parent_card_id]);
+    if (parent?.archived_at) throw conflict('A tarefa de origem foi arquivada: não dá para desfazer o cancelamento.');
+    const again = await one(db, `SELECT 1 FROM delegations WHERE parent_card_id = $1 AND id <> $2 AND status <> 'CANCELED'`, [d.parent_card_id, d.id]);
+    if (again) throw conflict('A tarefa já foi delegada de novo: não dá para desfazer o cancelamento.');
+  }
+  const owner = await one(db, 'SELECT name, active FROM users WHERE id = $1', [card.owner_id]);
+  if (!owner.active) throw conflict(`${owner.name} foi desativado(a): não dá para desfazer o cancelamento.`);
+  if (d.cancel_prev_list_id) {
+    const list = await one(
+      db,
+      `SELECT 1 FROM lists l JOIN boards b ON b.id = l.board_id
+        WHERE l.id = $1 AND l.archived_at IS NULL AND b.archived_at IS NULL AND b.owner_id = $2`,
+      [d.cancel_prev_list_id, card.owner_id],
+    );
+    if (!list) throw conflict(`A fase onde a tarefa estava no quadro de ${first(owner.name)} não existe mais: delegue a tarefa de novo.`);
+  }
+  // Duas etapas para manter o número: primeiro volta à fase ainda arquivada, depois sai do arquivo (cards_num não renumera).
+  await db.query('UPDATE cards SET list_id = $2, position = coalesce($3, position), updated_at = now() WHERE id = $1', [card.id, d.cancel_prev_list_id, d.cancel_prev_position]);
+  await db.query('UPDATE cards SET archived_at = NULL, updated_at = now() WHERE id = $1', [card.id]);
+  await db.query(
+    `UPDATE delegations SET status = $2, canceled_at = NULL, updated_at = now(),
+       cancel_prev_status = NULL, cancel_prev_list_id = NULL, cancel_prev_position = NULL WHERE id = $1`,
+    [d.id, d.cancel_prev_status],
+  );
+  await logEvent(db, card.id, actor.id, 'cancel_undone', undefined, { status: d.cancel_prev_status });
+  if (d.parent_card_id) await logEvent(db, d.parent_card_id, actor.id, 'child_cancel_undone', undefined, { childNum: card.num });
+  // A devolvida já tinha saído da pessoa: o cancelamento desfeito não muda nada para ela.
+  if (d.cancel_prev_status !== 'DECLINED') {
+    await notify(db, card.owner_id, 'cancel_undone', `${first(actor.name)} desfez o cancelamento: a tarefa voltou para você`, cardRef(card));
+  }
 }
 
 /** RN-29: redelegar tarefa devolvida mantém o código. */

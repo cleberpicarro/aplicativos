@@ -17,7 +17,7 @@ export function NotificationsPage() {
   }, [q.data]); // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <div className="page">
-      <p className="hint" style={{ margin: '0 0 8px' }}>Cada aviso também é enviado por e-mail para {me.user.email}.</p>
+      <p className="hint" style={{ margin: '0 0 8px' }}>Cada aviso também é enviado por e-mail para {me.user.email}. O resumo diário e os avisos de prazo podem ser desligados em Meus dados.</p>
       {q.isLoading && <p className="loading">Carregando…</p>}
       {q.data && q.data.length === 0 && <div className="empty"><b>Sem avisos.</b>Delegações, devoluções, conclusões e mudanças de prazo aparecem aqui.</div>}
       {q.data && q.data.length > 0 && (

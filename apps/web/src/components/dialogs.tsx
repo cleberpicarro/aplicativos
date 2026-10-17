@@ -28,6 +28,26 @@ export function useAction() {
   return { run, busy, error, setError };
 }
 
+/**
+ * Item 48: aviso "Delegação cancelada" com o botão Desfazer. Desfazer devolve a tarefa à pessoa, no mesmo quadro,
+ * fase e número, e ela é avisada. Funciona logo depois de cancelar.
+ */
+export function useCancelDelegation() {
+  const qc = useQueryClient();
+  const toast = useToast();
+  return async (delegationId: string, ownerName: string) => {
+    await post(`/delegations/${delegationId}/cancel`);
+    toast(`Delegação cancelada. ${firstName(ownerName)} foi avisado(a).`, 'ok', {
+      label: 'Desfazer',
+      onClick: () => post(`/delegations/${delegationId}/undo-cancel`).then(
+        async () => { await qc.invalidateQueries(); toast(`Cancelamento desfeito: a tarefa voltou para ${firstName(ownerName)}.`); },
+        (e) => toast((e as Error).message, 'error'),
+      ),
+    });
+    return true;
+  };
+}
+
 type Close = () => void;
 
 function Footer({ busy, onClose, label, danger }: { busy: boolean; onClose: Close; label: string; danger?: boolean }) {

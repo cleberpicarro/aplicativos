@@ -216,4 +216,39 @@ test.describe('delegação de ponta a ponta', () => {
       await marina.fechar();
     }
   });
+  test('cancelar a delegação de dentro da tarefa original, com Desfazer; aceite avisa quem delegou (itens 46 e 48)', async ({ page, browser }) => {
+    const titulo = unico('Levantar custos');
+    await entrar(page, 'paulo');
+    await irPara(page, 'Tarefas');
+    const origem = await criarTarefa(page, titulo);
+    const filho = await delegar(page, origem, /Lucas/);
+    // Opção A do ícone: a tarefa de quem delegou mostra a etiqueta com o nome de quem recebeu.
+    await expect(page.locator('article.kc', { hasText: titulo }).locator('.dtag.to')).toHaveText('Para Lucas');
+
+    const dlg = await abrirTarefa(page, origem);
+    const box = dlg.locator('.box', { hasText: 'Repassada para' });
+    await box.getByRole('button', { name: 'Cancelar delegação' }).click();
+    await dialogo(page, 'Cancelar delegação').getByRole('button', { name: 'Cancelar delegação' }).click();
+    await aviso(page, 'Delegação cancelada. Lucas foi avisado(a).');
+    await expect(box).toHaveCount(0);
+    await page.locator('.toast').getByRole('button', { name: 'Desfazer' }).click();
+    await aviso(page, 'Cancelamento desfeito: a tarefa voltou para Lucas.');
+    await expect(box).toBeVisible();
+    await dlg.getByRole('button', { name: 'Fechar' }).click();
+
+    const lucas = await outraPessoa(browser, 'lucas');
+    try {
+      await irPara(lucas.page, 'Caixa de entrada');
+      await expect(lucas.page.locator('.row.inbox', { hasText: titulo })).toBeVisible();
+      await aceitarDaCaixa(lucas.page, titulo);
+      // Quem recebeu vê a etiqueta roxa com o nome de quem delegou.
+      await irPara(lucas.page, 'Tarefas');
+      await expect(lucas.page.locator('article.kc', { hasText: titulo }).locator('.dtag.from')).toHaveText('De Paulo');
+    } finally {
+      await lucas.fechar();
+    }
+    await irPara(page, 'Avisos');
+    await expect(page.getByRole('button', { name: 'Lucas aceitou a tarefa' }).first()).toBeVisible();
+    expect(filho).toBeTruthy();
+  });
 });

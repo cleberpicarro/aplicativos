@@ -4,11 +4,11 @@ import { del, get, patch, post, type CardDetail } from '../lib/api';
 import { TIPS, cardNo, dateTime, delegationKey, firstName, fullDate, relative, statusOf } from '../lib/format';
 import { Avatar, Dialog, ErrorText, StatusPill, useMe, useToast } from './ui';
 import { Icon } from './Icons';
-import { AcceptDialog, ConfirmDialog, DeclineDialog, DelegateDialog, RedelegateDialog, ReopenDialog, TransferDialog, useAction } from './dialogs';
+import { AcceptDialog, ConfirmDialog, DeclineDialog, DelegateDialog, RedelegateDialog, ReopenDialog, TransferDialog, useAction, useCancelDelegation } from './dialogs';
 import { go } from '../lib/router';
 import { BOARD_COLORS } from '../pages/Boards';
 
-type Sub = null | 'delegate' | 'transfer' | 'decline' | 'reopen' | 'redelegate' | 'accept' | 'cancel';
+type Sub = null | 'delegate' | 'transfer' | 'decline' | 'reopen' | 'redelegate' | 'accept' | 'cancel' | 'cancelChild';
 
 export function CardModal({ code, onClose }: { code: string; onClose: () => void }) {
   const me = useMe().data!;
@@ -17,6 +17,7 @@ export function CardModal({ code, onClose }: { code: string; onClose: () => void
   const [sub, setSub] = useState<Sub>(null);
   const { run, busy, error } = useAction();
   const toast = useToast();
+  const cancelDelegation = useCancelDelegation();
 
   if (q.isLoading) return <Dialog title="Carregando…" onClose={onClose} wide><p className="loading">Carregando a tarefa…</p></Dialog>;
   if (q.error || !q.data) {
@@ -146,6 +147,10 @@ export function CardModal({ code, onClose }: { code: string; onClose: () => void
                   {owner && !archived && !['ACKED', 'CANCELED'].includes(card.child.status) && (
                     <NoPassToggle delegationId={card.child.delegationId} value={card.child.noPass} who={card.child.ownerName} />
                   )}
+                  {/* Item 48: cancelar a delegação daqui mesmo, da tarefa original (com Desfazer no aviso). */}
+                  {owner && !archived && ['PENDING_ACCEPT', 'IN_PROGRESS', 'DECLINED'].includes(card.child.status) && (
+                    <button className="b sm danger child-cancel" title={TIPS.cancel} onClick={() => setSub('cancelChild')}>Cancelar delegação</button>
+                  )}
                 </div>
               )}
 
@@ -196,7 +201,13 @@ export function CardModal({ code, onClose }: { code: string; onClose: () => void
       {sub === 'cancel' && (
         <ConfirmDialog title="Cancelar delegação" danger confirm="Cancelar delegação"
           text={`Cancelar “${card.title}”? ${firstName(card.ownerName)} é avisado(a) e a tarefa sai do quadro dessa pessoa.`}
-          onConfirm={async () => { const r = await post(`/delegations/${d!.id}/cancel`); toast('Delegação cancelada.'); return r; }}
+          onConfirm={() => cancelDelegation(d!.id, card.ownerName)}
+          onClose={() => setSub(null)} />
+      )}
+      {sub === 'cancelChild' && card.child && (
+        <ConfirmDialog title="Cancelar delegação" danger confirm="Cancelar delegação"
+          text={`Cancelar a delegação de “${card.title}” para ${card.child.ownerName}? ${firstName(card.child.ownerName)} é avisado(a) e a tarefa sai do quadro dessa pessoa. Esta tarefa continua com você.`}
+          onConfirm={() => cancelDelegation(card.child!.delegationId, card.child!.ownerName)}
           onClose={() => setSub(null)} />
       )}
     </>
@@ -404,6 +415,8 @@ function describe(e: Ev): { text: string; change?: string } {
     case 'reopened': return { text: 'reabriu a tarefa', change: `“${a.reason}”` };
     case 'canceled': return { text: 'cancelou a delegação' };
     case 'child_canceled': return { text: 'cancelou a delegação para baixo', change: a.childNum ? `#${a.childNum}` : a.childCode };
+    case 'cancel_undone': return { text: 'desfez o cancelamento da delegação' };
+    case 'child_cancel_undone': return { text: 'desfez o cancelamento da delegação para baixo', change: a.childNum ? `#${a.childNum}` : undefined };
     case 'redelegated': return { text: `redelegou para ${a.to}`, change: `Prazo sugerido: ${df(a.suggestedDue)}${a.noPass ? ' · não pode ser repassada' : ''}` };
     case 'transferred': return { text: `transferiu de ${b.owner} para ${a.owner}`, change: a.reason === 'deactivated' ? `${b.owner} foi desativado(a); a tarefa foi para a caixa de entrada de ${a.owner}` : undefined };
     case 'management_transferred': return { text: 'transferência de gestão', change: `Acompanhamento passou de ${b.delegator ?? '—'} para ${a.delegator}` };

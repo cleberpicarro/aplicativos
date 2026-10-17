@@ -9,6 +9,8 @@
  */
 import { describe, it, expect, afterAll } from 'vitest';
 import { setup, api, firstListOf, day, login, PASSWORD, type Ctx } from './helpers.js';
+import { tx } from '../src/lib/db.js';
+import { runReminders } from '../src/services/reminders.js';
 
 const STEPS = Number(process.env.CHAOS_STEPS ?? 400);
 const SEEDS = (process.env.CHAOS_SEEDS ?? '11,22,33').split(',').map(Number);
@@ -180,6 +182,33 @@ async function runChaos(seed: number) {
       await act('admin', 'POST', `/api/admin/users/${idOf(who)}/active`, { active: true });
       ctx.users[who].cookie = await login(ctx.app, ctx.users[who].email, PASSWORD);
     },
+    async desfazer() {
+      // item 48: quem acabou de cancelar uma delegação clica em "Desfazer"
+      const who = r.pick(PEOPLE.filter((p) => reportsOf(p).length));
+      const canceled = await q(`SELECT id FROM delegations WHERE delegator_id = $1 AND status = 'CANCELED' ORDER BY canceled_at DESC NULLS LAST, id LIMIT 3`, [idOf(who)]);
+      if (!canceled.length) return;
+      await act(who, 'POST', `/api/delegations/${r.pick(canceled).id}/undo-cancel`);
+    },
+    async avisos() {
+      // item 46: o servidor prepara os e-mails de prazo e o resumo diário (às vezes num horário sorteado de dia útil)
+      const before = (await q(`SELECT coalesce(max(created_at), 'epoch') AS t, count(*)::int AS n FROM email_outbox`))[0];
+      const at = r.chance(0.5) ? new Date() : new Date(`${day(Math.floor(r.next() * 10) - 5)}T${10 + Math.floor(r.next() * 4)}:15:00Z`);
+      await tx(ctx.pool, (db) => runReminders(db, at));
+      // Rodar de novo no mesmo momento não pode enviar nada a mais.
+      const mid = (await q(`SELECT count(*)::int AS n FROM email_outbox`))[0].n;
+      await tx(ctx.pool, (db) => runReminders(db, at));
+      const after = (await q(`SELECT count(*)::int AS n FROM email_outbox`))[0].n;
+      if (after !== mid) throw new Error(`Semente ${seed}: avisos de prazo repetidos (${mid} → ${after})`);
+      // Nenhum e-mail novo fala de tarefa privada para quem não é o dono.
+      const leak = await q(
+        `SELECT m.to_email, c.code FROM email_outbox m JOIN cards c ON m.body LIKE '%/#/tarefa/' || c.id || '%'
+           JOIN users o ON o.id = c.owner_id
+          WHERE m.created_at >= $1 AND c.is_private AND m.to_email <> o.email`,
+        [before.t],
+      );
+      if (leak.length) throw new Error(`Semente ${seed}: e-mail de prazo ou resumo revelou tarefa privada: ${JSON.stringify(leak)}`);
+      stats['avisos'] = (stats['avisos'] ?? 0) + (after - before.n);
+    },
     async intrometer() {
       // alguém tenta mexer na tarefa de outra pessoa: precisa sempre ser recusado
       const who = r.pick(PEOPLE);
@@ -194,7 +223,7 @@ async function runChaos(seed: number) {
   };
   const weights: [string, number][] = [
     ['criar', 14], ['delegar', 14], ['aceitar', 12], ['devolver', 5], ['concluir', 12], ['responder', 12],
-    ['transferir', 6], ['editar', 14], ['arquivar', 5], ['intrometer', 6], ['quadros', 2], ['desativar', 1],
+    ['transferir', 6], ['editar', 14], ['arquivar', 5], ['intrometer', 6], ['quadros', 2], ['desativar', 1], ['desfazer', 3], ['avisos', 2],
   ];
   const total = weights.reduce((s, [, w]) => s + w, 0);
   const pickAction = () => {

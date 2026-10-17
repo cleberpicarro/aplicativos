@@ -245,4 +245,48 @@ test.describe('meus quadros', () => {
     await irPara(page, 'Tarefas');
     await expect(page.getByRole('tab').last()).toHaveText(nome);
   });
+  test('o mesmo filtro da tabela no quadro, com os atalhos de delegadas (item 47) @celular', async ({ page }) => {
+    await entrar(page, 'marina');
+    await irPara(page, 'Tarefas');
+    const alfa = unico('Filtro alfa');
+    const beta = unico('Filtro beta');
+    await criarTarefa(page, alfa);
+    const idBeta = await criarTarefa(page, beta);
+    const cartao = (t: string) => page.locator('article.kc', { hasText: t });
+
+    // Filtro novo, só aplicado: “Título contém alfa”.
+    await page.getByRole('button', { name: /^Filtro:/ }).click();
+    await page.getByRole('menuitem', { name: 'Novo filtro' }).click();
+    const dlg = dialogo(page, 'Filtro');
+    await dlg.getByLabel('Valor').first().fill(alfa);
+    await dlg.getByRole('button', { name: 'Só aplicar' }).click();
+    await expect(cartao(alfa)).toBeVisible();
+    await expect(cartao(beta)).toHaveCount(0);
+    await expect(page.locator('.filter-band')).toContainText(/Filtro ligado: mostrando 1 de \d+ tarefas/);
+    await expect(page.locator('.col-h .n').first()).toHaveText(/^1 de \d+$/);
+
+    // Um filtro só: na Tabela ele continua ligado, e volta ao Quadro do mesmo jeito.
+    await page.getByRole('button', { name: 'Ver em tabela' }).click();
+    await expect(page.getByRole('button', { name: 'Filtro: Filtro avulso' })).toBeVisible();
+    await expect(page.locator('table.tasks tbody tr')).toHaveCount(1);
+    await page.getByRole('button', { name: 'Ver em quadros' }).click();
+    await expect(cartao(beta)).toHaveCount(0);
+    await page.getByRole('button', { name: 'Limpar filtro' }).click();
+    await expect(cartao(beta)).toBeVisible();
+    await expect(page.locator('.filter-band')).toHaveCount(0);
+
+    // Atalho “Delegadas por mim”: só as que ela repassou e estão em aberto, com a etiqueta “Para João”.
+    const me = await api(page, 'GET', '/me');
+    const joao = me.directReports.find((r: { name: string }) => /João/.test(r.name)).id;
+    await api(page, 'POST', `/cards/${idBeta}/delegate`, { toUserId: joao });
+    await page.reload();
+    await page.getByRole('button', { name: 'Delegadas por mim', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'Delegadas por mim', exact: true })).toHaveAttribute('aria-pressed', 'true');
+    await expect(cartao(beta)).toBeVisible();
+    await expect(cartao(beta).locator('.dtag.to')).toHaveText('Para João');
+    await expect(cartao(alfa)).toHaveCount(0);
+    // A etiqueta com × desliga o atalho.
+    await page.getByRole('button', { name: 'Desligar Delegadas por mim' }).click();
+    await expect(cartao(alfa)).toBeVisible();
+  });
 });

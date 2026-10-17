@@ -13,6 +13,14 @@ export async function setWorkspaceBg(db: Db, actor: Actor, color: string | null)
   await db.query('UPDATE users SET workspace_bg = $2, updated_at = now() WHERE id = $1', [actor.id, color]);
 }
 
+/** Item 46: em "Meus dados", a pessoa liga ou desliga o resumo diário e os avisos de prazo por e-mail. */
+export async function setEmailPrefs(db: Db, actor: Actor, prefs: { emailDigest?: boolean; emailDue?: boolean }) {
+  await db.query(
+    'UPDATE users SET email_digest = coalesce($2, email_digest), email_due = coalesce($3, email_due), updated_at = now() WHERE id = $1',
+    [actor.id, prefs.emailDigest ?? null, prefs.emailDue ?? null],
+  );
+}
+
 export async function me(db: Db, actor: Actor) {
   const reports = actor.level === null ? [] : await directReports(db, actor.id);
   const counts = await one(
@@ -24,6 +32,8 @@ export async function me(db: Db, actor: Actor) {
          WHERE d.delegator_id = $1 AND c.archived_at IS NULL AND d.status IN ('AWAITING_ACK','DECLINED')) AS need_action,
        (SELECT count(*)::int FROM notifications WHERE user_id = $1 AND read_at IS NULL) AS unread,
        (SELECT workspace_bg FROM users WHERE id = $1) AS workspace_bg,
+       (SELECT email_digest FROM users WHERE id = $1) AS email_digest,
+       (SELECT email_due FROM users WHERE id = $1) AS email_due,
        (now() AT TIME ZONE 'America/Sao_Paulo')::date AS today`,
     [actor.id],
   );
@@ -31,7 +41,7 @@ export async function me(db: Db, actor: Actor) {
     user: { ...actor, inHierarchy: actor.level !== null },
     directReports: reports.map((r) => ({ id: r.id, name: r.name, roleTitle: r.role_title })),
     counts: { inbox: counts.inbox, needAction: counts.need_action, unread: counts.unread },
-    prefs: { workspaceBg: counts.workspace_bg as string | null },
+    prefs: { workspaceBg: counts.workspace_bg as string | null, emailDigest: counts.email_digest as boolean, emailDue: counts.email_due as boolean },
     today: counts.today,
     trelloKey: config.trelloKey,
   };
