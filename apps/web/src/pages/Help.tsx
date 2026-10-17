@@ -1,10 +1,12 @@
 import type { ReactNode } from 'react';
 import { StatusIcon, TipIcon } from '../components/ui';
+import { Icon } from '../components/Icons';
 import { BookmarkletButton } from './Capture';
 
 const SECTIONS: [string, string][] = [
   ['inicio', 'Primeiros passos'],
   ['quadros', 'Tarefas: quadros'],
+  ['filtro-quadro', 'Filtro no quadro'],
   ['tabela', 'Tarefas: tabela e filtros'],
   ['arquivadas', 'Arquivadas'],
   ['trello', 'Importar e exportar (Trello)'],
@@ -82,7 +84,16 @@ export function HelpPage({ isAdmin }: { isAdmin: boolean }) {
         </ul>
       </Sec>
 
-      <Sec id="tabela" title="Tarefas: tabela e filtros">
+            <Sec id="filtro-quadro" title="Filtro no quadro">
+        <p>No quadro aberto, a barra acima das fases tem o mesmo <b>Filtro</b> da tabela, com os filtros prontos, os seus filtros salvos e os atalhos <b>Delegadas para mim</b> e <b>Delegadas por mim</b>.</p>
+        <ul>
+          <li>Com o filtro ligado, o quadro <b>esconde as tarefas que não atendem a ele</b>; as fases continuam no lugar, cada uma com a contagem, por exemplo “3 de 10”. A faixa azul mostra “Filtro ligado: mostrando 12 de 40 tarefas” e tem o botão <b>Limpar filtro</b>.</li>
+          <li>Arrastar, criar e abrir tarefas continua igual. Se uma tarefa deixar de atender ao filtro (por exemplo, concluída num filtro de abertas) ou for criada sem atender a ele, ela some da vista e um aviso explica.</li>
+          <li>O filtro vale para o quadro aberto. As condições <b>Quadro</b> e <b>Arquivada</b> não fazem sentido ali: num filtro que as tenha, elas aparecem riscadas e são ignoradas no quadro.</li>
+        </ul>
+      </Sec>
+
+<Sec id="tabela" title="Tarefas: tabela e filtros">
         <p>Em <b>Tarefas</b>, clique em <b>Tabela</b> (no topo, à direita) para ver as tarefas de <b>todos os seus quadros</b> e da caixa de entrada numa lista só. Só aparecem as suas tarefas, como nos quadros.</p>
         <ul>
           <li><b>Colunas:</b> número (#12), tarefa (com uma bolinha da cor do cartão, se tiver), quadro e fase, prazo (vermelho quando atrasado), situação, delegação (“Delegada para…” ou “Recebida de…”), checklist e data de criação. No botão <b>Colunas</b> dá para mostrar também concluída em, arquivada em, privada, origem e descrição.</li>
@@ -90,6 +101,8 @@ export function HelpPage({ isAdmin }: { isAdmin: boolean }) {
           <li><b>Abrir:</b> clique na linha.</li>
           <li><b>Filtro:</b> cada condição tem <b>campo</b>, <b>operador</b> e <b>valor</b>, por exemplo “Prazo · nos próximos · 7 dias”. No bloco <b>Todas estas condições</b> a tarefa precisa atender a todas; no bloco <b>Qualquer uma destas condições</b>, a pelo menos uma. As condições em uso aparecem acima da tabela, e o <b>×</b> de cada uma a tira na hora.</li>
           <li><b>Filtros prontos e salvos:</b> clique no botão <b>Filtro</b> para escolher um pronto (Atrasadas, Vencem nos próximos 7 dias, Delegadas por mim em aberto…) ou um dos seus. Para guardar um filtro, dê um nome e clique em <b>Salvar filtro</b>. Só você vê os seus filtros. O último filtro usado fica lembrado.</li>
+          <li><b>Atalhos de delegadas:</b> ao lado do botão Filtro, <b>Delegadas para mim</b> mostra só as tarefas que chegaram para você por delegação, e <b>Delegadas por mim</b>, só as que você delegou e ainda não receberam o seu ciente. Um clique liga, outro desliga (ou o <b>×</b> da etiqueta). Funcionam sozinhos ou somados ao filtro escolhido; com os dois ligados, aparecem as duas.</li>
+          <li><b>O mesmo filtro no Quadro:</b> o filtro e os atalhos valem para a Tabela e para o Quadro. Ao trocar de visão, eles continuam ligados.</li>
           <li><b>Arquivadas:</b> ficam fora da tabela; para vê-las, use a condição <b>Arquivada · é · Sim</b>.</li>
           <li><b>Exportar planilha:</b> baixa um arquivo que abre no Excel, com as colunas e o filtro que estão na tela (até 5.000 tarefas).</li>
         </ul>
@@ -172,7 +185,10 @@ export function HelpPage({ isAdmin }: { isAdmin: boolean }) {
         </ol>
         <p>Você liga ou desliga <b>Não pode ser repassada</b> depois, dentro da sua tarefa, no bloco “Repassada para”. A pessoa é avisada e a mudança fica no log. Na tabela, o filtro <b>Pode repassar</b> acha essas tarefas.</p>
         <p>Se a tarefa for <b>privada</b>, ela deixa de ser privada ao delegar: tarefa delegada não pode ser privada.</p>
-        <p>A pessoa recebe um <b>cartão ligado ao seu</b>, com o número do quadro dela, e é avisada no app e por e-mail. O seu cartão continua no seu quadro com o ícone de “repassada para”.</p>
+        <p>A pessoa recebe um <b>cartão ligado ao seu</b>, com o número do quadro dela, e é avisada no app e por e-mail. O seu cartão continua no seu quadro com a etiqueta verde-azulada <b>Para [nome]</b>; no quadro da pessoa, o cartão dela mostra a etiqueta roxa <b>De [seu nome]</b>.</p>
+        <p>Quando a pessoa <b>aceita</b> a tarefa, você recebe um aviso no app e por e-mail.</p>
+        <h3>Cancelar a delegação</h3>
+        <p>Mudou de ideia? Abra a sua tarefa e, no bloco <b>Repassada para</b>, clique em <b>Cancelar delegação</b> (enquanto ela aguarda o aceite, está em andamento ou foi devolvida). A pessoa é avisada e a tarefa sai do quadro dela; a sua continua com você. O aviso na tela traz <b>Desfazer</b> por alguns segundos: a delegação volta como estava, no mesmo quadro, fase e número da pessoa, com o que ela tinha escrito, e ela recebe o aviso de que a tarefa voltou. Depois de 10 minutos, ou se você já tiver delegado a tarefa de novo, não dá mais para desfazer.</p>
         <p className="ex">Exemplo: o diretor delega “Orçamento 2027” ao gestor. O gestor abre essa tarefa e delega parte dela ao funcionário. Cada nível dá o ciente no nível de baixo antes de concluir o seu.</p>
       </Sec>
 
@@ -207,7 +223,7 @@ export function HelpPage({ isAdmin }: { isAdmin: boolean }) {
           </li>
         </ol>
         <p>Enquanto ninguém der o ciente, a tarefa continua em “Precisam da sua ação”.</p>
-        <p>Para uma tarefa devolvida, quem delegou pode <b>Redelegar</b> (para a mesma ou outra pessoa; é o mesmo cartão, que chega à caixa de entrada dela) ou <b>Cancelar</b>.</p>
+        <p>Para uma tarefa devolvida, quem delegou pode <b>Redelegar</b> (para a mesma ou outra pessoa; é o mesmo cartão, que chega à caixa de entrada dela) ou <b>Cancelar</b>. Todo cancelamento tem <b>Desfazer</b> no aviso, logo depois de cancelar.</p>
       </Sec>
 
       <Sec id="devolver" title="Devolver e transferir">
@@ -227,7 +243,10 @@ export function HelpPage({ isAdmin }: { isAdmin: boolean }) {
           <li>Ao <b>mover para outro quadro</b>, aceitar uma tarefa da caixa de entrada ou receber por transferência, a tarefa ganha o próximo número de onde chegou; o log guarda o número antigo. Numa tarefa delegada, cada um vê o número do próprio quadro.</li>
           <li>Na <b>busca</b>, digite o número (<kbd>12</kbd> ou <kbd>#12</kbd>): abre a tarefa 12 do quadro aberto; se houver tarefa 12 em outros quadros seus, aparece a lista para escolher. Também vale uma palavra do título ou da descrição. Aparecem só tarefas que você pode ver. Links e códigos antigos (<code>ST-</code>, <code>NT-</code>) continuam abrindo a tarefa.</li>
           <li><b>Cor do cartão:</b> na tarefa aberta, clique em <b>Cor</b> (ao lado do número) e escolha uma das cores, ou <b>Sem cor</b>. O cartão fica todo dessa cor no quadro, em tom sólido médio; o texto fica escuro no tema claro e branco no tema escuro para ler bem, e o prazo atrasado aparece numa etiqueta branca. A cor é só sua: numa tarefa delegada, o cartão de quem recebe começa sem cor, e quem recebe por transferência também vê sem cor.</li>
-          <li><b>Avisos</b> chegam no app e por e-mail quando: uma tarefa é delegada a você, devolvida, concluída, reaberta, arquivada com ciente, cancelada, transferida para você, ou quando o prazo de uma tarefa que você delegou muda.</li>
+          <li><b>Avisos</b> chegam no app e por e-mail quando: uma tarefa é delegada a você, aceita, devolvida, concluída, reaberta, arquivada com ciente, cancelada (ou o cancelamento é desfeito), transferida para você, ou quando o prazo de uma tarefa que você delegou muda.</li>
+          <li><b>Avisos de prazo por e-mail:</b> na <b>véspera</b> do prazo (“Prazo amanhã”) e no <b>dia seguinte</b>, se a tarefa continuar aberta (“Prazo vencido”), uma vez cada. Vão para quem está com a tarefa; numa tarefa delegada, quem delegou recebe também o de vencido. Se o prazo mudar, o aviso vale para a nova data.</li>
+          <li><b>Resumo diário por e-mail:</b> às <b>7h</b>, de segunda a sexta, com o que vence hoje, o que está atrasado, as delegações aguardando o seu aceite e as tarefas aguardando o seu ciente, cada uma com o número e o link. Dia sem nada, sem e-mail.</li>
+          <li><b>Meus dados:</b> clique no seu nome, no alto do menu à esquerda (ou em <b>Meus dados</b>, embaixo), para desligar o resumo diário ou os avisos de prazo. Os avisos de delegação continuam chegando sempre.</li>
         </ul>
       </Sec>
 
@@ -249,8 +268,8 @@ export function HelpPage({ isAdmin }: { isAdmin: boolean }) {
           <dt><StatusIcon status="reopened" /> Seta circular</dt><dd>Reaberta para ser refeita</dd>
           <dt><StatusIcon status="acked" /> Arquivo</dt><dd>Ciente dado, tarefa arquivada</dd>
           <dt><TipIcon name="inbox" tip="Capturada da web" /> Caixa</dt><dd>Na caixa de entrada: tarefa capturada da web ou de um e-mail</dd>
-          <dt><TipIcon name="into" tip="Delegada por" /> Seta entrando</dt><dd>Delegada a você por alguém acima</dd>
-          <dt><TipIcon name="out" tip="Repassada para" /> Seta saindo</dt><dd>Você delegou para alguém da sua equipe</dd>
+          <dt><span className="dtag from"><Icon name="into" />De Ana</span></dt><dd>Etiqueta roxa: delegada a você por alguém acima (aqui, a Ana)</dd>
+          <dt><span className="dtag to"><Icon name="out" />Para João</span></dt><dd>Etiqueta verde-azulada: você delegou para alguém da sua equipe (aqui, o João)</dd>
           <dt><TipIcon name="lock" tip="Privada" /> Cadeado</dt><dd>Tarefa privada</dd>
           <dt><TipIcon name="self" tip="Não pode ser repassada" /> Pessoa</dt><dd>Não pode ser repassada: quem recebeu precisa fazer</dd>
           <dt><span className="due late">3 out</span></dt><dd>Prazo em vermelho: atrasada</dd>

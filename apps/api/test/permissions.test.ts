@@ -69,6 +69,11 @@ beforeAll(async () => {
   const p4 = await newTask(ctx, 'gest', 'Na caixa de entrada');
   const d4 = await delegateTask(ctx, 'gest', p4.id, 'func2');
   s.inboxCard = d4.cardId;
+  // Item 48: delegação cancelada agora há pouco (o "Desfazer" é só de quem delegou).
+  const p5 = await newTask(ctx, 'gest', 'Cancelada há pouco');
+  const d5 = await delegateTask(ctx, 'gest', p5.id, 'func');
+  await call('gest', 'POST', `/api/delegations/${d5.delegationId}/cancel`);
+  s.canceled = d5.delegationId;
   // Item 42: um quadro vazio (pode ser arquivado pelo dono) e um arquivado (pode ser desarquivado pelo dono).
   s.board2 = (await call('gest', 'POST', '/api/boards', { name: 'Vazio do gestor' })).body.id;
   s.board3 = (await call('gest', 'POST', '/api/boards', { name: 'Arquivado do gestor' })).body.id;
@@ -110,9 +115,11 @@ async function attemptsAgainstGest(who: string): Promise<Attempt[]> {
     { method: 'POST', url: `/api/delegations/${id}/cancel`, route: 'POST /api/delegations/:id/cancel' },
     { method: 'POST', url: `/api/delegations/${id}/redelegate`, body: { toUserId: someone }, route: 'POST /api/delegations/:id/redelegate' },
     { method: 'POST', url: `/api/delegations/${id}/no-pass`, body: { noPass: true }, route: 'POST /api/delegations/:id/no-pass' },
+    { method: 'POST', url: `/api/delegations/${id}/undo-cancel`, route: 'POST /api/delegations/:id/undo-cancel' },
   ];
   return [
     { method: 'GET', url: `/api/boards/${s.board}`, route: 'GET /api/boards/:id' },
+    { method: 'GET', url: `/api/boards/${s.board}/match?filter=${encodeURIComponent('{"all":[]}')}`, route: 'GET /api/boards/:id/match' },
     { method: 'PATCH', url: `/api/boards/${s.board}`, body: { name: 'invadido' }, route: 'PATCH /api/boards/:id' },
     { method: 'PATCH', url: `/api/boards/${s.board}`, body: { color: 'roxo' }, route: 'PATCH /api/boards/:id' },
     { method: 'PATCH', url: `/api/boards/${s.board}`, body: { position: -5 }, route: 'PATCH /api/boards/:id' },
@@ -133,7 +140,7 @@ async function attemptsAgainstGest(who: string): Promise<Attempt[]> {
     { method: 'PATCH', url: `/api/filters/${s.filter}`, body: { filter: { all: [] } }, route: 'PATCH /api/filters/:id' },
     { method: 'DELETE', url: `/api/filters/${s.filter}`, route: 'DELETE /api/filters/:id' },
     ...card(s.own), ...card(s.priv), ...card(s.done), ...card(s.parent), ...card(s.inboxCard),
-    ...deleg(s.deleg), ...deleg(s.awaiting), ...deleg(s.declined),
+    ...deleg(s.deleg), ...deleg(s.awaiting), ...deleg(s.declined), ...deleg(s.canceled),
   ];
 }
 
@@ -172,6 +179,7 @@ describe('permissões em massa (frente 2)', () => {
       { method: 'POST', url: `/api/cards/${s.child}/move`, body: { listId: s.list }, route: '' }, // fase do gestor
       { method: 'PATCH', url: `/api/cards/${s.child}`, body: { isPrivate: true }, route: '' }, // RN-08
       { method: 'POST', url: `/api/delegations/${s.deleg}/no-pass`, body: { noPass: false }, route: '' }, // item 41: só o delegador
+      { method: 'POST', url: `/api/delegations/${s.canceled}/undo-cancel`, route: '' }, // item 48: só o delegador
     ];
     for (const t of tries) {
       const r = await call('func', t.method, t.url, t.body);
@@ -297,7 +305,7 @@ describe('permissões em massa (frente 2)', () => {
       'DELETE /api/cards/:id/checklist/:itemId', 'POST /api/cards/:id/comments', 'GET /api/cards/:id/events', 'POST /api/cards/:id/delegate',
       'POST /api/cards/:id/accept', 'POST /api/cards/:id/decline', 'GET /api/cards/:id/transfer-targets', 'POST /api/cards/:id/transfer',
       'POST /api/delegations/:id/ack', 'POST /api/delegations/:id/reopen', 'POST /api/delegations/:id/cancel', 'POST /api/delegations/:id/redelegate',
-      'POST /api/delegations/:id/no-pass', 'POST /api/boards/:id/archive', 'POST /api/boards/:id/unarchive',
+      'POST /api/delegations/:id/no-pass', 'POST /api/delegations/:id/undo-cancel', 'GET /api/boards/:id/match', 'POST /api/boards/:id/archive', 'POST /api/boards/:id/unarchive',
       'GET /api/admin/users/:id/deactivation', 'POST /api/admin/users/:id/deactivate',
       'GET /api/admin/users', 'POST /api/admin/users', 'PATCH /api/admin/users/:id', 'POST /api/admin/users/:id/transfer-management',
       'POST /api/admin/users/:id/active', 'POST /api/admin/users/:id/invite', 'PATCH /api/filters/:id', 'DELETE /api/filters/:id',

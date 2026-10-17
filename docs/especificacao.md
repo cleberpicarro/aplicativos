@@ -248,7 +248,8 @@ Só o administrador:
 - **RN-25** **Dar ciente** em tarefa concluída arquiva a tarefa e avisa o detentor.
 - **RN-26** **Reabrir** exige comentário com o motivo. A tarefa volta para "em andamento", marcada como reaberta, e o detentor é avisado.
 - **RN-27** Sem ciente, a tarefa fica pendente na tela do delegador **indefinidamente**. Não há prazo automático.
-- **RN-28** **Cancelar** uma delegação, em andamento ou devolvida, arquiva o cartão do subordinado como cancelado e o avisa. O cartão de origem fica livre para nova delegação.
+- **RN-28** **Cancelar** uma delegação, aguardando aceite, em andamento ou devolvida, arquiva o cartão do subordinado como cancelado e o avisa. O cartão de origem fica livre para nova delegação. Quem delegou cancela pela tela Tarefas delegadas, ao abrir a tarefa repassada ou **de dentro da própria tarefa**, no bloco “Repassada para” (item 48).
+- **RN-28a** (item 48) Logo depois de cancelar, o aviso traz **Desfazer**: só quem delegou, em até **10 minutos**, enquanto a tarefa de origem não foi delegada de novo nem arquivada, a pessoa continua ativa e a fase onde o cartão estava ainda existe. A delegação volta à situação anterior e o cartão volta ao mesmo quadro, fase, posição e **número** da pessoa, com o que ela tinha escrito; o log registra “desfez o cancelamento” e a pessoa recebe aviso e e-mail (menos na devolvida, que já tinha saído dela).
 - **RN-29** **Redelegar** uma tarefa devolvida a envia para o mesmo ou outro subordinado direto, opcionalmente com novo prazo. É o **mesmo cartão**: chega à caixa de entrada de quem recebe, com o número de lá (item 37).
 
 ### 7.6 Transferência de tarefa
@@ -318,7 +319,7 @@ Desde o item 37 (09/10/2026), o código que aparece é **só um número, com num
 | De | Ação | Quem | Para | Efeitos |
 |---|---|---|---|---|
 | (novo) | Delegar | delegador | `PENDING_ACCEPT` | cria cartão ligado; aviso e e-mail ao subordinado |
-| `PENDING_ACCEPT` | Aceitar | subordinado | `IN_PROGRESS` | cartão vai para o quadro e fase escolhidos |
+| `PENDING_ACCEPT` | Aceitar | subordinado | `IN_PROGRESS` | cartão vai para o quadro e fase escolhidos; aviso e e-mail ao delegador (item 46) |
 | `PENDING_ACCEPT` / `IN_PROGRESS` | Devolver (justificativa) | subordinado | `DECLINED` | some do subordinado; aviso e e-mail ao delegador |
 | `IN_PROGRESS` | Concluir | subordinado | `AWAITING_ACK` | aviso e e-mail ao delegador |
 | `AWAITING_ACK` | Desmarcar conclusão | subordinado | `IN_PROGRESS` | registro no log |
@@ -326,6 +327,7 @@ Desde o item 37 (09/10/2026), o código que aparece é **só um número, com num
 | `AWAITING_ACK` | Reabrir (comentário) | delegador | `IN_PROGRESS` + `reopened` | aviso e e-mail ao subordinado |
 | `DECLINED` | Redelegar | delegador | `PENDING_ACCEPT` | mesmo código; novo destinatário possível |
 | `PENDING_ACCEPT` / `IN_PROGRESS` / `DECLINED` | Cancelar | delegador | `CANCELED` | arquiva; aviso ao subordinado |
+| `CANCELED` (até 10 min) | Desfazer cancelamento | delegador | situação anterior | mesmo quadro, fase e número; aviso ao subordinado (item 48, RN-28a) |
 | qualquer aberto | Alterar prazo | subordinado | (mesmo) | aviso e e-mail ao delegador |
 | qualquer aberto | Transferir | detentor | `PENDING_ACCEPT` no destino | delegador mantido (RN-32) |
 
@@ -381,6 +383,7 @@ Cada evento gera um **aviso no app** e um **e-mail**:
 | Evento | Quem recebe | Assunto do e-mail (exemplo) |
 |---|---|---|
 | Nova delegação | subordinado | `[#12] Marina delegou: Conferir notas fiscais` |
+| Delegação aceita (item 46) | delegador | `[#12] João aceitou a tarefa` |
 | Delegação devolvida | delegador | `[#12] João devolveu: Conferir notas fiscais` |
 | Prazo alterado | delegador | `[#12] Prazo alterado para 10/10` |
 | Tarefa concluída (aguardando ciente) | delegador | `[#12] Concluída, aguardando seu ciente` |
@@ -388,6 +391,7 @@ Cada evento gera um **aviso no app** e um **e-mail**:
 | Ciente dado (arquivada) | subordinado | `[#12] Ciente dado, tarefa arquivada` |
 | Tarefa transferida para você | destino | `[#12] Carlos transferiu para você` |
 | Delegação cancelada | subordinado | `[#12] Delegação cancelada` |
+| Cancelamento desfeito (item 48) | subordinado | `[#12] Marina desfez o cancelamento: a tarefa voltou para você` |
 | Gestão transferida | pessoa, novo e antigo superior | `Mudança de gestão: João agora responde a Paulo` |
 | Convite / definir senha | pessoa nova | `Seu acesso ao SyncTasks` |
 
@@ -398,6 +402,22 @@ Cada evento gera um **aviso no app** e um **e-mail**:
 - Todo e-mail traz um link direto para a tarefa.
 - Os avisos no app ficam na tela **Avisos**, com contador de não lidos no menu.
 - Comentários não geram e-mail na v1.
+
+### 11.3 E-mails automáticos: prazo e resumo diário (item 46)
+
+Saem sozinhos, sem aviso no app. O servidor (sempre ligado no plano Starter) confere a cada 15 minutos e marca no banco o que já foi enviado, para não repetir.
+
+| E-mail | Quem recebe | Quando | Assunto (exemplo) |
+|---|---|---|---|
+| Prazo amanhã | quem está com a tarefa aberta | na véspera do prazo, uma vez | `[#12] Prazo amanhã: Conferir notas fiscais` |
+| Prazo vencido | quem está com a tarefa aberta e, se for delegada, também quem delegou | no dia seguinte ao prazo, se continuar aberta, uma vez | `[#12] Prazo vencido: Conferir notas fiscais` (para quem delegou: `… (com João)`, com o número e o link da tarefa dele) |
+| Resumo diário | cada pessoa da hierarquia | às 7h (Brasília), de segunda a sexta, só se houver algo | `Resumo do dia: 2 vencem hoje, 1 atrasada, 1 para aceitar, 1 aguarda seu ciente` |
+
+- Os dias contam em **America/Sao_Paulo**. Se o prazo mudar, os avisos valem para a nova data. Tarefas atrasadas há mais tempo não recebem o “vencido” de novo.
+- Não entram: tarefa concluída, arquivada, devolvida ou cancelada, nem a tarefa de origem de uma delegação em aberto (quem cuida dela é quem recebeu; quem delegou recebe só o “vencido”).
+- O resumo traz, cada um com número e link: o que vence hoje, o que está atrasado, as delegações aguardando aceite na caixa de entrada e as tarefas concluídas aguardando o ciente da pessoa (até 30 por grupo). Dia sem nada, sem e-mail. Se o servidor reiniciar de manhã, o resumo ainda sai até o meio-dia.
+- Tarefa privada só aparece no e-mail do dono. Pessoas desativadas e administradores fora da hierarquia não recebem.
+- Em **Meus dados** (clique no nome, no menu à esquerda), cada pessoa liga ou desliga **Receber resumo diário por e-mail** e **Receber avisos de prazo por e-mail** (ligados por padrão). Os avisos de delegação continuam sempre.
 
 ---
 
@@ -431,7 +451,8 @@ No topo de cada tela: título, campo de **busca** (texto ou código) e controle 
 - Arrastar funciona entre fases e **dentro da mesma fase**: uma linha mostra onde a tarefa vai cair (acima ou abaixo do cartão, conforme a metade em que o ponteiro está).
 - No cartão aberto, **Mover para** escolhe quadro e fase, ou leva a tarefa **para o topo / para o fim** da fase. Mudar de quadro fica no log com o quadro e a fase de origem.
 - **+ Fase** ao final.
-- **Cartão no quadro:** botão de concluir (círculo), título (até 2 linhas), número (#12), prazo, progresso do checklist e ícones (delegada por, repassada para, privada, **não pode ser repassada** (item 41), aguardando ciente, reaberta).
+- **Cartão no quadro:** botão de concluir (círculo), título (até 2 linhas), número (#12), prazo, progresso do checklist, **etiquetas de delegação** (opção A, decidida em 17/10: roxa **De [nome]** na tarefa recebida, verde-azulada **Para [nome]** na tarefa que a pessoa delegou, com o primeiro nome) e ícones (privada, **não pode ser repassada** (item 41), aguardando ciente, reaberta).
+- **Filtro no quadro** (item 47): acima das fases, a mesma barra de filtro da tabela (12.2a), com os atalhos **Delegadas para mim** e **Delegadas por mim**. Com filtro ligado, os cartões que não atendem somem e as fases ficam no lugar, cada uma com a contagem “3 de 10”; a faixa “Filtro ligado: mostrando 12 de 40 tarefas deste quadro” tem o botão **Limpar filtro**. O filtro vale para o quadro aberto; as condições Quadro e Arquivada ficam fora da lista de campos ali e, num filtro que as tenha, aparecem riscadas e são ignoradas, com um aviso. O servidor diz quais tarefas do quadro atendem ao filtro (`GET /api/boards/:id/match`), com as mesmas regras da tabela. Quando um cartão deixa de atender (por exemplo, concluído num filtro de abertas) ou é criado sem atender, ele some e um aviso explica.
 - Arrastar e soltar entre fases. No celular, usar "Mover para" dentro do cartão.
 - **Arquivar tarefa concluída:** ícone de arquivo no cartão concluído (só em tarefa própria), **Arquivar** dentro da tarefa e **Arquivar as concluídas** no menu da fase, sempre com **Desfazer** no aviso. A arquivada continua na busca e pode ser **desarquivada** (volta à mesma fase, ou à primeira fase do quadro se a fase foi arquivada). Arquivar e desarquivar entram no log.
 - **Estado vazio:** "Você ainda não tem quadros…", com o botão de criar.
@@ -443,6 +464,8 @@ No topo de cada tela: título, campo de **busca** (texto ou código) e controle 
 - Clicar no título da coluna ordena (outro clique inverte); clicar na linha abre a tarefa. Mostra 100 por vez, com **Carregar mais**.
 - **Filtro por condições** (como no Pipedrive): cada condição é campo + operador + valor. Dois blocos: **Todas estas condições** (E) e **Qualquer uma destas condições** (OU); bloco vazio não conta. Campos: Título, Descrição, Código, Quadro, Fase, Situação, Prazo, Criada em, Concluída em, Delegada para, Recebida de, Privada, Arquivada, Origem e Cor (item 38). Código aceita 12 ou #12 (e os códigos antigos ST-/NT-). Operadores: texto (contém, não contém, é, está vazio, não está vazio); quadro, fase, situação e origem (é, não é); data (antes de, depois de, é, entre, nos últimos N dias, nos próximos N dias, está vazio, não está vazio, com “Hoje” como valor, que é o dia em Brasília); pessoa (é, não é, é alguém, é ninguém); privada e arquivada (sim ou não); cor (é, não é, com alguma cor, sem cor).
 - As condições em uso aparecem como etiquetas acima da tabela; o × tira a condição na hora.
+- **Um filtro só para Tabela e Quadro** (item 47): o filtro escolhido e os atalhos continuam ligados ao trocar de visão.
+- **Atalhos de delegadas** (item 47): ao lado do botão Filtro, **Delegadas para mim** (tarefas recebidas por delegação; aparece para quem tem superior) e **Delegadas por mim** (tarefas que a pessoa delegou e ainda não receberam o ciente; aparece para quem tem subordinados). Um clique liga, outro desliga; aparecem também como etiqueta com ×. Somam-se ao filtro escolhido (E); com os dois ligados, vale qualquer um (OU). Ficam guardados no navegador, separados do filtro salvo.
 - **Filtros prontos:** Todas as abertas, Atrasadas, Vencem nos próximos 7 dias, Delegadas por mim em aberto, Concluídas nos últimos 30 dias. **Filtros salvos** com nome (até 50 por pessoa), visíveis só para quem os criou; podem ser editados e excluídos. O último filtro usado fica guardado no navegador.
 - **Exportar planilha:** CSV com separador “;” (abre direto no Excel em português), com as colunas e o filtro da tela, até 5.000 tarefas.
 - O servidor só aceita campos e operadores da lista; os valores sempre entram como parâmetros da consulta.
@@ -470,7 +493,7 @@ No topo de cada tela: título, campo de **busca** (texto ou código) e controle 
 - Mover para outra fase.
 - Privacidade, só em tarefa própria que não tem nem teve delegação (item 43).
 - **Não pode ser repassada** (item 41): quem recebeu vê o aviso “[delegador] pediu que você mesmo faça esta tarefa” e não vê **Delegar**; quem delegou tem a caixinha para ligar ou desligar a marca no bloco “Repassada para” (ou ao abrir a tarefa delegada).
-- Bloco **Desdobramento**: "Repassada para X #3 (status)" ou "Desdobramento da tarefa #7 de Carlos".
+- Bloco **Desdobramento**: "Repassada para X #3 (status)" ou "Desdobramento da tarefa #7 de Carlos". No bloco “Repassada para”, quem delegou tem **Cancelar delegação** enquanto ela aguarda aceite, está em andamento ou foi devolvida (item 48), com a mesma confirmação e **Desfazer** no aviso.
 - Comentários.
 - **Log:** só para administrador, CEO e diretores.
 - **Ações do detentor:** Concluir ou Desfazer, Delegar (se tiver subordinados e não houver delegação ativa), Transferir e Devolver ao delegador (se for delegação em andamento).
@@ -558,8 +581,8 @@ O tema escuro tem equivalentes definidos na amostra.
 | seta circular | Reaberta |
 | arquivo | Arquivada (ciente dado) |
 | x em círculo | Cancelada |
-| seta entrando | Delegada por alguém acima |
-| seta saindo | Repassada para um subordinado |
+| etiqueta roxa “De Ana” (seta entrando) | Delegada por alguém acima (no cartão do quadro) |
+| etiqueta verde-azulada “Para João” (seta saindo) | Repassada para um subordinado (no cartão do quadro) |
 | cadeado | Privada |
 | triângulo (vermelho) | Atrasada (junto do prazo) |
 
@@ -678,7 +701,7 @@ REST com JSON, sob `/api`. A autenticação usa cookie httpOnly de sessão. Toda
 | Método e rota | Descrição |
 |---|---|
 | `POST /auth/login` · `POST /auth/logout` · `POST /auth/password/forgot` · `POST /auth/password/set` | autenticação |
-| `GET /me` | usuário logado, subordinados diretos, contadores do menu |
+| `GET /me` · `PATCH /me/prefs` `{workspaceBg?, emailDigest?, emailDue?}` | usuário logado, subordinados diretos, contadores do menu; preferências da própria pessoa (fundo, e-mails do item 46) |
 | `GET/POST /boards` · `PATCH /boards/:id` | quadros |
 | `POST /boards/:id/archive` · `POST /boards/:id/unarchive` `{back?}` · `GET /boards/archived` | arquivar quadro vazio e desarquivar (item 42) |
 | `POST /boards/:id/lists` · `PATCH /lists/:id` · `POST /lists/:id/archive` | fases (archive retorna 409 se não estiver vazia) |
@@ -689,13 +712,14 @@ REST com JSON, sob `/api`. A autenticação usa cookie httpOnly de sessão. Toda
 | `GET/POST /cards/:id/comments` | comentários |
 | `POST /cards/:id/delegate` | delegar `{toUserId, suggestedDue?, note?, noPass?}` |
 | `GET /inbox` · `POST /cards/:id/accept` `{listId}` · `POST /cards/:id/decline` `{reason}` | caixa de entrada |
-| `POST /delegations/:id/ack` · `POST /delegations/:id/reopen` `{comment}` · `POST /delegations/:id/cancel` · `POST /delegations/:id/redelegate` `{toUserId, suggestedDue?, noPass?}` · `POST /delegations/:id/no-pass` `{noPass}` | ações do delegador |
+| `POST /delegations/:id/ack` · `POST /delegations/:id/reopen` `{comment}` · `POST /delegations/:id/cancel` · `POST /delegations/:id/redelegate` `{toUserId, suggestedDue?, noPass?}` · `POST /delegations/:id/no-pass` `{noPass}` · `POST /delegations/:id/undo-cancel` (item 48) | ações do delegador |
 | `POST /cards/:id/transfer` `{toUserId}` | transferir |
 | `GET /delegations?scope=mine` | dados da tela Tarefas delegadas (agrupados por subordinado, com contadores) |
 | `GET /cards/:id/events` | log (admin, CEO e diretor) |
 | `GET /search?q=` | busca por texto ou código |
 | `GET /archived?q=&offset=` | tela Arquivadas (item 35) |
-| `GET /table?filter=&sort=&dir=&offset=&limit=` · `GET /table/options` | tabela com filtro por condições (item 36) |
+| `GET /table?filter=&sort=&dir=&offset=&limit=` · `GET /table/options` | tabela com filtro por condições (item 36); o filtro aceita `quick: {toMe, byMe}` (item 47) |
+| `GET /boards/:id/match?filter=` | quais tarefas do quadro (só do dono) atendem ao filtro: `{ids, ignored}` (item 47) |
 | `GET/POST /filters` · `PATCH/DELETE /filters/:id` | filtros salvos da tabela (só os da própria pessoa) |
 | `GET /notifications` · `POST /notifications/read` | avisos |
 | `GET/POST/PATCH /admin/users` · `POST /admin/users/:id/transfer-management` · `POST /admin/users/:id/active` `{active}` | administração |

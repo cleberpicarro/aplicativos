@@ -117,8 +117,12 @@ export async function buildApp({ pool, logger = false, serveWeb = false }: AppOp
   });
   app.get('/api/me', async (req) => misc.me(pool, need(req)));
   app.patch('/api/me/prefs', async (req) => {
-    const { workspaceBg } = z.object({ workspaceBg: z.string().max(20).nullable() }).parse(req.body);
-    await misc.setWorkspaceBg(pool, need(req), workspaceBg);
+    const body = z
+      .object({ workspaceBg: z.string().max(20).nullable().optional(), emailDigest: z.boolean().optional(), emailDue: z.boolean().optional() })
+      .parse(req.body);
+    const a = need(req);
+    if (body.workspaceBg !== undefined) await misc.setWorkspaceBg(pool, a, body.workspaceBg);
+    if (body.emailDigest !== undefined || body.emailDue !== undefined) await misc.setEmailPrefs(pool, a, body);
     return { ok: true };
   });
 
@@ -323,6 +327,11 @@ export async function buildApp({ pool, logger = false, serveWeb = false }: AppOp
     await inTx((db) => deleg.cancel(db, need(req), id));
     return { ok: true };
   });
+  app.post('/api/delegations/:id/undo-cancel', async (req) => {
+    const { id } = z.object({ id: uuid }).parse(req.params);
+    await inTx((db) => deleg.undoCancel(db, need(req), id));
+    return { ok: true };
+  });
   app.post('/api/delegations/:id/redelegate', async (req) => {
     const { id } = z.object({ id: uuid }).parse(req.params);
     const body = z.object({ toUserId: uuid, suggestedDue: date.optional(), noPass: z.boolean().optional() }).parse(req.body);
@@ -394,6 +403,18 @@ export async function buildApp({ pool, logger = false, serveWeb = false }: AppOp
       throw new HttpError(422, 'Filtro inválido.');
     }
     return table.tableRows(pool, a, table.filterSchema.parse(raw), query.sort, query.dir, query.offset, query.limit);
+  });
+  // Item 47: o mesmo filtro da tabela no quadro aberto. Devolve quais tarefas do quadro atendem ao filtro.
+  app.get('/api/boards/:id/match', async (req) => {
+    const { id } = z.object({ id: uuid }).parse(req.params);
+    const { filter } = z.object({ filter: z.string().max(20000).default('{}') }).parse(req.query);
+    let raw: unknown;
+    try {
+      raw = JSON.parse(filter);
+    } catch {
+      throw new HttpError(422, 'Filtro inválido.');
+    }
+    return table.boardMatches(pool, need(req), id, table.filterSchema.parse(raw));
   });
   app.get('/api/table/options', async (req) => table.tableOptions(pool, need(req)));
   app.get('/api/filters', async (req) => table.listFilters(pool, need(req)));

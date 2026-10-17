@@ -670,3 +670,44 @@ table.t .desc { display: inline-block; max-width: 20rem; overflow: hidden; text-
   .b.fsel { max-width: 100%; }
   .cell-link { max-width: 14rem; }
 }
+
+/* Opção A do ícone de delegada: etiqueta com o nome. Roxa = recebida de alguém; verde-azulada = você delegou. */
+.dtag { --dt: #6e4fc7; display: inline-flex; align-items: center; gap: 3px; height: 1.3rem; padding: 0 7px 0 5px; border-radius: 999px;
+  font-size: 0.76rem; font-weight: 500; white-space: nowrap; max-width: 10rem; overflow: hidden; text-overflow: ellipsis;
+  background: color-mix(in srgb, var(--dt) 15%, var(--bg)); color: color-mix(in srgb, var(--dt) 82%, #000); }
+.dtag.to { --dt: #0f8187; }
+.dtag svg { width: 0.85rem; height: 0.85rem; flex: none; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .dtag { --dt: #b49cf2; background: color-mix(in srgb, var(--dt) 20%, var(--bg)); color: var(--dt); }
+  :root:not([data-theme='light']) .dtag.to { --dt: #5fd0cc; }
+}
+:root[data-theme='dark'] .dtag { --dt: #b49cf2; background: color-mix(in srgb, var(--dt) 20%, var(--bg)); color: var(--dt); }
+:root[data-theme='dark'] .dtag.to { --dt: #5fd0cc; }
+/* No cartão colorido, a etiqueta ganha fundo próprio para não sumir na cor. */
+.kc.painted .dtag { background: var(--bg); }
+
+/* Item 47: filtro também no quadro, atalhos de delegadas e faixa “Filtro ligado”. */
+.quick { display: inline-flex; gap: 6px; flex-wrap: wrap; }
+.b.qk svg { width: 0.9rem; height: 0.9rem; }
+.b.qk.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, var(--bg)); color: var(--accent); font-weight: 500; }
+.chip.off, .chip .off { text-decoration: line-through; color: var(--faint); }
+.filter-band { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 0 0 10px; padding: 6px 10px; border-radius: 8px; font-size: 0.88rem;
+  background: color-mix(in srgb, var(--accent) 9%, var(--bg)); border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent); }
+.filter-band > svg { width: 1rem; height: 1rem; color: var(--accent); }
+.filter-band .b { margin-left: auto; }
+.filter-band .hint { flex-basis: 100%; order: 3; margin: 0; }
+
+/* Item 48: cancelar a delegação de dentro da tarefa original. */
+.child-cancel { margin-top: 8px; display: flex; }
+
+/* Item 46: Meus dados (clique no nome, no menu à esquerda). */
+button.who { border: 0; background: none; font: inherit; color: inherit; text-align: left; cursor: pointer; border-radius: 7px; width: 100%; }
+button.who:hover { background: var(--hover); }
+.my-data-list { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 14px; margin: 0; font-size: 0.92rem; }
+.my-data-list dt { color: var(--muted); }
+.my-data-list dd { margin: 0; overflow-wrap: anywhere; }
+.my-mail { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px 12px; margin: 0; display: grid; gap: 10px; }
+.my-mail legend { padding: 0 4px; font-weight: 500; font-size: 0.92rem; }
+.my-mail .check { align-items: flex-start; }
+.my-mail .check input { margin-top: 3px; }
+.my-mail .check small { display: block; color: var(--muted); font-size: 0.8rem; margin-top: 2px; }

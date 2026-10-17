@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { get, post, type Card } from './lib/api';
+import { get, patch, post, type Card } from './lib/api';
 import { go, useRoute } from './lib/router';
 import { STATUS, cardNo, type StatusKey } from './lib/format';
-import { Avatar, CardStatusIcon, Dialog, StatusIcon, TipIcon, useMe } from './components/ui';
+import { Avatar, CardStatusIcon, Dialog, ErrorText, StatusIcon, TipIcon, useMe } from './components/ui';
 import { Icon, type IconName } from './components/Icons';
 import { CardModal } from './components/CardModal';
+import { useAction } from './components/dialogs';
 import { BoardsPage, rememberedBoard } from './pages/Boards';
 import { InboxPage } from './pages/Inbox';
 import { DelegatedPage } from './pages/Delegated';
@@ -99,6 +100,7 @@ function Shell() {
   const font = useFontSize();
   const theme = useTheme();
   const [legend, setLegend] = useState(false);
+  const [myData, setMyData] = useState(false);
   const [collapsed, setCollapsed] = useState(() => stored('synctasks.side', ['open', 'closed'] as const, 'open') === 'closed');
   const lastPage = useRef('/quadros');
 
@@ -145,9 +147,9 @@ function Shell() {
     <div className={`app${collapsed ? ' collapsed' : ''}`}>
       <aside className="side">
         <button className="brand" onClick={toggleSide} title={collapsed ? 'Expandir menu' : 'Recolher menu'} aria-expanded={!collapsed} aria-label={`SyncTasks: ${collapsed ? 'expandir' : 'recolher'} menu`}><img src="/icon.svg" alt="" /><span>SyncTasks</span></button>
-        <div className="who" title={collapsed ? `${me.user.name} · ${me.user.roleTitle}` : undefined}>
+        <button className="who" onClick={() => setMyData(true)} title={collapsed ? `${me.user.name} · ${me.user.roleTitle}. Meus dados` : 'Meus dados'}>
           <Avatar name={me.user.name} large /><div style={{ minWidth: 0 }}><b>{me.user.name}</b><small>{me.user.roleTitle}</small></div>
-        </div>
+        </button>
         <nav className="nav" aria-label="Principal">
           {nav.filter((n) => n.show).map((n) => (
             <a key={n.path} href={`#${n.path}`} aria-current={page === n.path ? 'page' : undefined} title={collapsed ? n.label : undefined}>
@@ -162,6 +164,7 @@ function Shell() {
             <span className="ico"><Icon name="book" /></span><span className="lbl">Ajuda</span>
           </button>
           <button onClick={() => setLegend(true)} title="Legenda dos ícones"><span className="ico"><Icon name="help" /></span><span className="lbl">Legenda</span></button>
+          <button className="my-data" onClick={() => setMyData(true)} title="Meus dados"><span className="ico"><Icon name="self" /></span><span className="lbl">Meus dados</span></button>
           <button className="collapse" onClick={toggleSide} title={collapsed ? 'Expandir menu' : 'Recolher menu'} aria-expanded={!collapsed}>
             <span className="ico"><Icon name={collapsed ? 'sideOpen' : 'sideClose'} /></span><span className="lbl">Recolher menu</span>
           </button>
@@ -199,6 +202,7 @@ function Shell() {
       </main>
       {cardCode && <CardModal key={cardCode} code={cardCode} onClose={() => go(lastPage.current)} />}
       {legend && <LegendDialog onClose={() => setLegend(false)} />}
+      {myData && <MyDataDialog onClose={() => setMyData(false)} />}
     </div>
   );
 }
@@ -259,6 +263,40 @@ function SearchBox() {
   );
 }
 
+/** Item 46: Meus dados, com as escolhas de e-mail da própria pessoa. */
+function MyDataDialog({ onClose }: { onClose: () => void }) {
+  const me = useMe().data!;
+  const { run, error } = useAction();
+  const set = (prefs: { emailDigest?: boolean; emailDue?: boolean }, msg: string) => run(() => patch('/me/prefs', prefs), msg);
+  return (
+    <Dialog title="Meus dados" onClose={onClose} footer={<button className="b pri" onClick={onClose}>Pronto</button>}>
+      <dl className="my-data-list">
+        <dt>Nome</dt><dd>{me.user.name}</dd>
+        <dt>E-mail</dt><dd>{me.user.email}</dd>
+        <dt>Cargo</dt><dd>{me.user.roleTitle}</dd>
+      </dl>
+      <p className="hint" style={{ margin: 0 }}>Para mudar nome, e-mail ou cargo, fale com a administração.</p>
+      {me.user.inHierarchy && (
+        <fieldset className="my-mail">
+          <legend>E-mails do SyncTasks</legend>
+          <label className="check">
+            <input type="checkbox" checked={me.prefs.emailDigest}
+              onChange={(e) => set({ emailDigest: e.target.checked }, e.target.checked ? 'Resumo diário ligado.' : 'Resumo diário desligado.')} />
+            <span>Receber resumo diário por e-mail<small>Às 7h, de segunda a sexta, só quando houver algo: o que vence hoje, o que está atrasado, o que espera o seu aceite e o seu ciente.</small></span>
+          </label>
+          <label className="check">
+            <input type="checkbox" checked={me.prefs.emailDue}
+              onChange={(e) => set({ emailDue: e.target.checked }, e.target.checked ? 'Avisos de prazo ligados.' : 'Avisos de prazo desligados.')} />
+            <span>Receber avisos de prazo por e-mail<small>Um e-mail na véspera do prazo e outro no dia seguinte, se a tarefa continuar aberta.</small></span>
+          </label>
+          <p className="hint" style={{ margin: 0 }}>Os avisos de delegação (delegar, aceitar, devolver, concluir, ciente…) continuam chegando sempre.</p>
+        </fieldset>
+      )}
+      <ErrorText error={error} />
+    </Dialog>
+  );
+}
+
 function LegendDialog({ onClose }: { onClose: () => void }) {
   const keys: StatusKey[] = ['active', 'inbox', 'awaiting', 'declined', 'reopened', 'acked', 'canceled', 'done'];
   return (
@@ -266,8 +304,8 @@ function LegendDialog({ onClose }: { onClose: () => void }) {
       <p className="hint">Passe o mouse ou toque em qualquer ícone para ver o significado.</p>
       <div className="legend">
         {keys.map((k) => <div key={k}><StatusIcon status={k} />{STATUS[k].label}</div>)}
-        <div><TipIcon name="into" tip="Delegada por" />Delegada por alguém acima de você</div>
-        <div><TipIcon name="out" tip="Repassada para" />Repassada para um subordinado</div>
+        <div><span className="dtag from"><Icon name="into" />De Ana</span>Delegada para você por alguém acima (Ana)</div>
+        <div><span className="dtag to"><Icon name="out" />Para João</span>Você delegou para um subordinado (João)</div>
         <div><TipIcon name="lock" tip="Privada" />Privada: nenhum superior vê</div>
         <div><span className="due late">3 out</span>Prazo atrasado</div>
         <div><span className="due today">hoje</span>Vence hoje</div>

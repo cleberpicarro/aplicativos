@@ -10,6 +10,7 @@ import { ConfirmDialog, NameDialog, useAction } from '../components/dialogs';
 import { ImportTrelloDialog } from '../components/ImportTrello';
 import { ExportTrelloDialog } from '../components/ExportTrello';
 import { asSingle, MAX_BATCH, MAX_TITLE, splitLines } from '../lib/lines';
+import { FilterBar, useTaskFilter } from '../components/TaskFilter';
 
 const STORE_KEY = 'synctasks.board';
 const ZOOM_KEY = 'synctasks.zoom';
@@ -65,6 +66,17 @@ export function BoardsPage() {
   // O quadro se atualiza sozinho a cada 30 segundos enquanto está na tela: o que foi mudado em outro
   // aparelho (cor, número, conclusão, tarefa delegada que chegou) aparece sem precisar recarregar a página.
   const board = useQuery({ queryKey: ['board', boardId], queryFn: () => get<Board>(`/boards/${boardId}`), enabled: !!boardId, refetchInterval: 30_000 });
+  // Item 47: o mesmo filtro da tabela, no quadro aberto. O servidor diz quais tarefas do quadro atendem a ele.
+  const filter = useTaskFilter();
+  const match = useQuery({
+    queryKey: ['board-match', boardId, filter.param],
+    queryFn: () => get<{ ids: string[]; ignored: boolean }>(`/boards/${boardId}/match?filter=${filter.param}`),
+    enabled: !!boardId && filter.active,
+    refetchInterval: 30_000,
+    placeholderData: (prev) => prev,
+  });
+  const matchIds = filter.active && match.data ? new Set(match.data.ids) : null;
+  useHiddenNotice(board, match, matchIds);
 
   const select = (id: string) => {
     setSelected(id);
@@ -169,8 +181,17 @@ export function BoardsPage() {
       {boards.data && boards.data.length === 0 && (
         <div className="empty"><b>Você ainda não tem quadros.</b>Crie o primeiro e escolha as fases que fizerem sentido para você.</div>
       )}
+      {board.data && <FilterBar f={filter} onBoard />}
+      {board.data && matchIds && (
+        <div className="filter-band" role="status">
+          <Icon name="filter" />
+          <span>Filtro ligado: mostrando <b>{board.data.cards.filter((c) => matchIds.has(c.id)).length}</b> de {board.data.cards.length} {board.data.cards.length === 1 ? 'tarefa' : 'tarefas'} deste quadro.</span>
+          {match.data?.ignored && <span className="hint">As condições “Quadro” e “Arquivada” não valem dentro do quadro e foram ignoradas.</span>}
+          <button className="b sm" onClick={filter.clear}>Limpar filtro</button>
+        </div>
+      )}
       {board.isLoading && <p className="loading">Carregando o quadro…</p>}
-      {board.data && <Kanban board={board.data} today={me.today} zoom={zoom} onNewList={() => setDialog('newList')} />}
+      {board.data && <Kanban board={board.data} today={me.today} zoom={zoom} match={matchIds} onNewList={() => setDialog('newList')} />}
 
       {dialog === 'newBoard' && (
         <NameDialog title="Novo quadro" label="Nome do quadro" confirm="Criar" onClose={() => setDialog(null)}
@@ -263,7 +284,29 @@ const SORTS: { by: 'title' | 'created' | 'due'; label: string; done: string }[] 
 
 type DropAt = { listId: string; beforeId: string | null } | null;
 
-function Kanban({ board, today, zoom, onNewList }: { board: Board; today: string; zoom: number; onNewList: () => void }) {
+/**
+ * Item 47: avisa quando uma tarefa some do quadro por causa do filtro ligado: ao ser concluída num filtro de abertas,
+ * ou ao ser criada sem atender ao filtro. Só compara quando a resposta do filtro é mais nova que a do quadro.
+ */
+function useHiddenNotice(board: { data?: Board; dataUpdatedAt: number }, match: { data?: { ids: string[] }; dataUpdatedAt: number; isFetching: boolean }, matchIds: Set<string> | null) {
+  const toast = useToast();
+  const last = useRef<{ boardId: string; ids: Set<string>; visible: Set<string> } | null>(null);
+  useEffect(() => {
+    const b = board.data;
+    if (!b || !matchIds) { last.current = null; return; }
+    if (match.isFetching || match.dataUpdatedAt < board.dataUpdatedAt) return;
+    const ids = new Set(b.cards.map((c) => c.id));
+    const visible = new Set(b.cards.filter((c) => matchIds.has(c.id)).map((c) => c.id));
+    const prev = last.current;
+    last.current = { boardId: b.id, ids, visible };
+    if (!prev || prev.boardId !== b.id) return;
+    const gone = b.cards.filter((c) => !visible.has(c.id) && (prev.visible.has(c.id) || !prev.ids.has(c.id)));
+    if (gone.length === 1) toast(`A tarefa “${gone[0].title}” não aparece agora: ela não atende ao filtro ligado.`);
+    else if (gone.length > 1) toast(`${gone.length} tarefas não aparecem agora: elas não atendem ao filtro ligado.`);
+  }, [board.data, board.dataUpdatedAt, match.data, match.dataUpdatedAt, match.isFetching, matchIds, toast]);
+}
+
+function Kanban({ board, today, zoom, match, onNewList }: { board: Board; today: string; zoom: number; match: Set<string> | null; onNewList: () => void }) {
   const { run, error } = useAction();
   const toast = useToast();
   const [dragId, setDragId] = useState<string | null>(null);
@@ -271,7 +314,9 @@ function Kanban({ board, today, zoom, onNewList }: { board: Board; today: string
   const [renaming, setRenaming] = useState<{ id: string; name: string } | null>(null);
   const [archiving, setArchiving] = useState<{ id: string; name: string } | null>(null);
 
-  const cardsOf = (listId: string) => board.cards.filter((c) => c.listId === listId).sort((a, b) => a.position - b.position);
+  const allOf = (listId: string) => board.cards.filter((c) => c.listId === listId);
+  // Com filtro ligado, os cartões que não atendem a ele ficam escondidos; as fases continuam todas no lugar.
+  const cardsOf = (listId: string) => allOf(listId).filter((c) => !match || match.has(c.id)).sort((a, b) => a.position - b.position);
 
   /** Item 10: decide se a tarefa entra antes ou depois do cartão, pela metade em que o mouse está. */
   const overCard = (e: DragEvent, listId: string, cardId: string) => {
@@ -334,6 +379,7 @@ function Kanban({ board, today, zoom, onNewList }: { board: Board; today: string
       <div className="kanban" style={{ '--zoom': zoom / 100 } as CSSProperties}>
         {board.lists.map((l, i) => {
           const cards = cardsOf(l.id);
+          const all = allOf(l.id);
           const here = dropAt?.listId === l.id;
           return (
             <section key={l.id} className={`col${here ? ' over' : ''}`} aria-label={l.name}
@@ -351,14 +397,14 @@ function Kanban({ board, today, zoom, onNewList }: { board: Board; today: string
               onDrop={drop}>
               <div className="col-h">
                 <b title={l.name}>{l.name}</b>
-                <span className="n">{cards.length}</span>
+                <span className="n" title={match ? 'Tarefas que atendem ao filtro, do total da fase' : undefined}>{match ? `${cards.length} de ${all.length}` : cards.length}</span>
                 <Menu label={`Opções da fase ${l.name}`} items={[
-                  ...SORTS.map((s) => ({ label: s.label, onClick: () => run(() => post(`/lists/${l.id}/sort`, { by: s.by }), `Fase “${l.name}” ordenada ${s.done}.`), disabled: cards.length < 2 })),
-                  { label: 'Arquivar as concluídas', onClick: () => archiveDone(l.id, l.name), disabled: !cards.some(archivable) },
+                  ...SORTS.map((s) => ({ label: s.label, onClick: () => run(() => post(`/lists/${l.id}/sort`, { by: s.by }), `Fase “${l.name}” ordenada ${s.done}.`), disabled: all.length < 2 })),
+                  { label: 'Arquivar as concluídas', onClick: () => archiveDone(l.id, l.name), disabled: !all.some(archivable) },
                   { label: 'Renomear fase', onClick: () => setRenaming({ id: l.id, name: l.name }) },
                   { label: 'Mover fase para a esquerda', onClick: () => moveList(i, -1), disabled: i === 0 },
                   { label: 'Mover fase para a direita', onClick: () => moveList(i, 1), disabled: i === board.lists.length - 1 },
-                  { label: cards.length ? 'Arquivar fase (mova as tarefas antes)' : 'Arquivar fase', onClick: () => cards.length ? toast('Mova as tarefas desta fase antes de arquivá-la.', 'error') : setArchiving({ id: l.id, name: l.name }), danger: true },
+                  { label: all.length ? 'Arquivar fase (mova as tarefas antes)' : 'Arquivar fase', onClick: () => all.length ? toast('Mova as tarefas desta fase antes de arquivá-la.', 'error') : setArchiving({ id: l.id, name: l.name }), danger: true },
                 ]} />
               </div>
               <div className="col-list">
@@ -424,8 +470,11 @@ function Tile({ card, today, dragging, onDragStart, onDragEnd, onDragOver, onDro
         <span className="code">{cardNo(card.num)}</span>
         <Due date={card.dueDate} done={done} today={today} />
         {card.checklist.total > 0 && <span className="cl" title="Checklist"><Icon name="checks" />{card.checklist.done}/{card.checklist.total}</span>}
-        {d && <TipIcon name="into" tip={`Delegada por ${d.delegatorName}`} />}
-        {card.child && !['CANCELED'].includes(card.child.status) && <TipIcon name="out" tip={`Repassada para ${card.child.ownerName}`} />}
+        {/* Opção A do ícone de delegada: etiqueta com o nome (roxa = recebida de alguém; verde-azulada = você delegou). */}
+        {d && <span className="dtag from" title={`Delegada por ${d.delegatorName}`}><Icon name="into" />De {firstName(d.delegatorName)}</span>}
+        {card.child && !['CANCELED'].includes(card.child.status) && (
+          <span className="dtag to" title={`Repassada para ${card.child.ownerName}`}><Icon name="out" />Para {firstName(card.child.ownerName)}</span>
+        )}
         {card.isPrivate && <TipIcon name="lock" tip="Privada: nenhum superior vê" />}
         {d?.noPass && <TipIcon name="self" tip={`Não pode ser repassada: ${firstName(d.delegatorName)} pediu que você mesmo faça`} />}
         {card.child?.noPass && !['ACKED', 'CANCELED'].includes(card.child.status) && <TipIcon name="self" tip={`Não pode ser repassada por ${firstName(card.child.ownerName)}`} />}

@@ -618,7 +618,7 @@ describe('quinta rodada', () => {
   });
 
   it('cor de fundo da área de trabalho fica na conta (item 24)', async () => {
-    expect((await call('func', 'GET', '/api/me')).body.prefs).toEqual({ workspaceBg: null });
+    expect((await call('func', 'GET', '/api/me')).body.prefs).toMatchObject({ workspaceBg: null });
     expect((await call('func', 'PATCH', '/api/me/prefs', { workspaceBg: 'azul' })).status).toBe(200);
     expect((await call('func', 'GET', '/api/me')).body.prefs.workspaceBg).toBe('azul');
     expect((await call('func2', 'GET', '/api/me')).body.prefs.workspaceBg).toBe(null);

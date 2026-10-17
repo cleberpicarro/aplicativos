@@ -58,6 +58,8 @@ export const conditionSchema = z
 export const filterSchema = z.object({
   all: z.array(conditionSchema).max(20).default([]),
   any: z.array(conditionSchema).max(20).default([]),
+  // Item 47: atalhos de um clique, somados ao filtro escolhido. Com os dois ligados, vale qualquer um deles.
+  quick: z.object({ toMe: z.boolean().default(false), byMe: z.boolean().default(false) }).optional(),
 });
 export type Filter = z.infer<typeof filterSchema>;
 export type Condition = z.infer<typeof conditionSchema>;
@@ -208,7 +210,37 @@ export function whereFor(actor: Actor, filter: Filter) {
   if (!usesArchived) parts.push('c.archived_at IS NULL');
   for (const c of filter.all) parts.push(`(${conditionSql(sql, c)})`);
   if (filter.any.length) parts.push(`(${filter.any.map((c) => `(${conditionSql(sql, c)})`).join(' OR ')})`);
+  const quick = [
+    // Delegadas para mim: chegaram por delegação.
+    filter.quick?.toMe ? 'd.id IS NOT NULL' : null,
+    // Delegadas por mim: repassadas a alguém e ainda sem o ciente.
+    filter.quick?.byMe ? `(ch.id IS NOT NULL AND ch.status <> 'ACKED')` : null,
+  ].filter(Boolean);
+  if (quick.length) parts.push(`(${quick.join(' OR ')})`);
   return { where: parts.join(' AND '), params: sql.params };
+}
+
+/** Joins de que as condições precisam (delegação recebida e delegação para baixo), sem montar o cartão inteiro. */
+const FILTER_FROM = `FROM cards c
+    LEFT JOIN lists l ON l.id = c.list_id
+    LEFT JOIN delegations d ON d.card_id = c.id
+    LEFT JOIN LATERAL (SELECT * FROM delegations x WHERE x.parent_card_id = c.id AND x.status <> 'CANCELED' ORDER BY x.created_at DESC LIMIT 1) ch ON true
+    LEFT JOIN cards chc ON chc.id = ch.card_id`;
+
+/** Item 47: condições que não fazem sentido dentro de um quadro aberto e são ignoradas nele. */
+export const BOARD_IGNORED: Field[] = ['board', 'archived'];
+
+/** Item 47: quais tarefas do quadro aberto atendem ao filtro (o mesmo da tabela). Só o dono do quadro. */
+export async function boardMatches(db: Db, actor: Actor, boardId: string, filter: Filter) {
+  const board = await one(db, 'SELECT id FROM boards WHERE id = $1 AND owner_id = $2 AND archived_at IS NULL', [boardId, actor.id]);
+  if (!board) throw notFound('Quadro não encontrado.');
+  const keep = (c: Condition) => !BOARD_IGNORED.includes(c.field);
+  const used = { ...filter, all: filter.all.filter(keep), any: filter.any.filter(keep) };
+  const ignored = used.all.length + used.any.length < filter.all.length + filter.any.length;
+  const { where, params } = whereFor(actor, used);
+  params.push(boardId);
+  const rows = await many<{ id: string }>(db, `SELECT c.id ${FILTER_FROM} WHERE ${where} AND l.board_id = $${params.length}`, params);
+  return { ids: rows.map((r) => r.id), ignored };
 }
 
 export async function tableRows(db: Db, actor: Actor, filter: Filter, sort: SortKey, dir: 'asc' | 'desc', offset: number, limit: number) {
@@ -216,12 +248,7 @@ export async function tableRows(db: Db, actor: Actor, filter: Filter, sort: Sort
   const from = CARD_SELECT.replace('SELECT c.*, l.board_id,', 'SELECT c.*, l.board_id, l.name AS list_name,');
   const nulls = dir === 'asc' ? 'NULLS LAST' : 'NULLS FIRST';
   const order = [...SORTS[sort].split(', '), 'c.seq'].map((col) => `${col} ${dir.toUpperCase()} ${nulls}`).join(', ');
-  const total = (await one<{ n: number }>(db, `SELECT count(*)::int AS n FROM cards c
-    LEFT JOIN lists l ON l.id = c.list_id
-    LEFT JOIN delegations d ON d.card_id = c.id
-    LEFT JOIN LATERAL (SELECT * FROM delegations x WHERE x.parent_card_id = c.id AND x.status <> 'CANCELED' ORDER BY x.created_at DESC LIMIT 1) ch ON true
-    LEFT JOIN cards chc ON chc.id = ch.card_id
-    WHERE ${where}`, params))!.n;
+  const total = (await one<{ n: number }>(db, `SELECT count(*)::int AS n ${FILTER_FROM} WHERE ${where}`, params))!.n;
   const rows = await many(db, `${from} WHERE ${where} ORDER BY ${order} LIMIT ${Math.trunc(limit)} OFFSET ${Math.trunc(offset)}`, params);
   return {
     total,

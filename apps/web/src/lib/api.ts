@@ -69,7 +69,8 @@ export interface Me {
   user: { id: string; name: string; email: string; level: number | null; roleTitle: string; managerId: string | null; isAdmin: boolean; inHierarchy: boolean };
   directReports: { id: string; name: string; roleTitle: string }[];
   counts: { inbox: number; needAction: number; unread: number };
-  prefs: { workspaceBg: string | null };
+  /** Item 46: resumo diário e avisos de prazo por e-mail (ligados por padrão). */
+  prefs: { workspaceBg: string | null; emailDigest: boolean; emailDue: boolean };
   today: string;
   trelloKey: string | null;
 }
