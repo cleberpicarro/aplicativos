@@ -1,0 +1,48 @@
+# Blueprint do Render: cria o app e o banco PostgreSQL de uma vez.
+# No painel do Render: New > Blueprint > escolha este repositório.
+services:
+  - type: web
+    # O endereço público vem deste nome: https://synctasks.onrender.com (synctask, sem o "s", já é de outra pessoa).
+    name: synctasks
+    runtime: node
+    # Item 45 (implantação): plano pago Starter. Não dorme, libera o envio de e-mail (SMTP) e a tela Shell.
+    plan: starter
+    # Só publica quando a verificação automática do GitHub (.github/workflows/testes.yml) passar.
+    autoDeployTrigger: checksPass
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: nerus-db
+          property: connectionString
+      # Uso real: nunca cria a equipe de exemplo (senha nerus2026). Com "true", ela só seria criada num banco vazio.
+      - key: SEED_DEMO
+        value: "false"
+      # Item 31: chave do SyncTasks no Trello para "Exportar para o Trello" (preencher no painel do Render; passo a passo na Ajuda).
+      - key: TRELLO_API_KEY
+        sync: false
+
+  # Site comercial (pasta site/): página estática gratuita, sem build.
+  # Endereço: https://synctasks-site.onrender.com
+  - type: web
+    name: synctasks-site
+    runtime: static
+    buildCommand: echo "site estático, sem build"
+    staticPublishPath: ./site
+    buildFilter:
+      paths:
+        - site/**
+
+databases:
+  # Item 45: o mesmo banco, com os dados do Cleber e do Daniel, passa para o plano pago (não expira, tem cópia de segurança).
+  # O nome nerus-db fica, de propósito: trocar o nome criaria um banco novo e vazio.
+  - name: nerus-db
+    plan: basic-256mb
+    databaseName: nerus
+    user: nerus

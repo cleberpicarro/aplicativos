@@ -1,0 +1,97 @@
+# Verificação automática do SyncTasks: roda a cada envio de código.
+# O Render só publica a versão nova quando esta verificação termina com sucesso (autoDeployTrigger: checksPass no render.yaml).
+name: Testes
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: testes-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  testes:
+    name: Verificação completa
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        # Imagem oficial espelhada na AWS: sem o limite de downloads do Docker Hub, que derrubava a verificação.
+        image: public.ecr.aws/docker/library/postgres:16
+        env:
+          POSTGRES_USER: nerus
+          POSTGRES_PASSWORD: nerus
+          POSTGRES_DB: nerus_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U nerus"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgres://nerus:nerus@localhost:5432/nerus_test
+      E2E_DATABASE_URL: postgres://nerus:nerus@localhost:5432/nerus_e2e
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Instalar dependências
+        run: npm ci
+      - name: Conferir tipos (typecheck)
+        run: npm run typecheck
+      - name: Testes da API, permissões, regras e uso caótico
+        run: npm test
+      - name: Compilar o app
+        run: npm run build
+      - name: Instalar o navegador dos roteiros de tela
+        run: npx playwright install --with-deps chromium
+      - name: Roteiros de tela (computador e celular)
+        run: npm run test:telas
+      - name: Guardar fotos e relatório se algum roteiro falhar
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: roteiros-de-tela
+          path: |
+            e2e/resultados/
+            e2e/relatorio/
+          retention-days: 14
+
+  carga:
+    # Teste de carga: só sob demanda (aba Actions > Testes > Run workflow), porque é demorado.
+    name: Teste de carga (sob demanda)
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        # Imagem oficial espelhada na AWS: sem o limite de downloads do Docker Hub, que derrubava a verificação.
+        image: public.ecr.aws/docker/library/postgres:16
+        env:
+          POSTGRES_USER: nerus
+          POSTGRES_PASSWORD: nerus
+          POSTGRES_DB: nerus
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U nerus"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: 100 pessoas ao mesmo tempo por 2 minutos
+        run: npm run test:carga
+        env:
+          CARGA_SEGUNDOS: '120'
