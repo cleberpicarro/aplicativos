@@ -242,6 +242,8 @@ Só o administrador:
 - **RN-22** **Aceitar** significa escolher o quadro e a fase de destino.
 - **RN-23** **Devolver** exige justificativa. A tarefa sai do subordinado e aparece para o delegador como **Devolvida**.
 - **RN-24** Uma tarefa transferida não pode ser devolvida pela caixa de entrada, só aceita. Se o detentor não quiser, pode transferi-la de novo.
+- **RN-24a** (item 50) **Delegar direto da caixa de entrada:** quem tem equipe escolhe, numa janela só, o quadro e a fase de destino (a tarefa que fica com ele, para acompanhar) e o subordinado direto. O sistema aceita e delega na mesma transação; se a delegação for recusada (destino fora da equipe, “não pode ser repassada”), o aceite também é desfeito.
+- **RN-24b** (item 50) **Descartar** tira da caixa de entrada, sem concluir, uma tarefa **própria** (capturada, transferida ou vinda de quem foi desativado). Ela fica arquivada como **descartada**, aparece em Arquivadas e, ao ser desarquivada, volta para a caixa de entrada com o mesmo número. Ninguém é avisado; o log registra `discarded`. Tarefa recebida por delegação não se descarta (devolve-se, RN-23). Dá para descartar até 1.000 de uma vez, e é tudo ou nada: se uma não puder, nenhuma é descartada.
 
 ### 7.5 Ciente, reabertura, cancelamento e redelegação
 
@@ -473,12 +475,14 @@ No topo de cada tela: título, campo de **busca** (texto ou código) e controle 
 ### 12.3 Caixa de entrada
 
 - Lista com ícone, título, código, origem ("Delegada por…" ou "Transferida por…"), prazo sugerido e observação.
-- Ações: **Aceitar e organizar** (escolher quadro e fase) e **Devolver**, só para delegações, com justificativa obrigatória.
+- Ações em cada linha (item 50): **Aceitar** (escolher quadro e fase), **Delegar** (para quem tem equipe e se a tarefa não está marcada como “não pode ser repassada”; RN-24a), **Descartar** (só tarefa própria; RN-24b) e **Devolver** (só delegações, com justificativa obrigatória).
+- **Várias de uma vez** (item 50): caixinha em cada tarefa que pode ser descartada, **Selecionar todas**, **Selecionar de…** (agrupa pela origem: a pessoa que transferiu, “Capturada da web”, “Capturada do e-mail”) e **Descartar selecionadas**, com confirmação. O aviso de descarte traz **Desfazer**.
 - **Estado vazio:** "Nada novo por aqui…".
 
 ### 12.3a Arquivadas (item 35)
 
 - Lista as tarefas arquivadas **pela própria pessoa**, da mais recente para a mais antiga, 50 por vez com **Carregar mais**: código, título, quadro e fase de onde saiu, data de conclusão e data de arquivamento.
+- Item 50: as tarefas **descartadas** da caixa de entrada aparecem com a etiqueta cinza **“Descartada”** e “Caixa de entrada” no lugar do quadro; **Desarquivar** as devolve à caixa de entrada.
 - No topo, **Quadros arquivados** (item 42): nome, cor, data e quantas tarefas arquivadas o quadro tem, com o botão **Desarquivar** (o quadro volta como a última aba). Na lista de tarefas, a de um quadro arquivado mostra “(quadro arquivado)”; desarquivá-la leva a tarefa para a primeira fase do primeiro quadro.
 - Entram: as tarefas **próprias** que ela arquivou (botão **Desarquivar** na linha, com **Desfazer** no aviso; volta à mesma fase e posição, ou à primeira fase do quadro se a fase foi arquivada) e as tarefas que ela **delegou e em que deu o ciente**, marcadas **“Delegada para X”**, só para consulta (o ciente não se desfaz; o quadro do subordinado não aparece).
 - Não entram: tarefas recebidas por delegação (quem arquivou foi o superior), delegações canceladas e as tarefas apagadas pelo “Desfazer” da criação (item 30).
@@ -712,6 +716,7 @@ REST com JSON, sob `/api`. A autenticação usa cookie httpOnly de sessão. Toda
 | `GET/POST /cards/:id/comments` | comentários |
 | `POST /cards/:id/delegate` | delegar `{toUserId, suggestedDue?, note?, noPass?}` |
 | `GET /inbox` · `POST /cards/:id/accept` `{listId}` · `POST /cards/:id/decline` `{reason}` | caixa de entrada |
+| `POST /cards/:id/accept-delegate` `{listId, toUserId, suggestedDue?, note?, noPass?}` · `POST /inbox/discard` `{ids}` · `POST /inbox/restore` `{ids}` | item 50: delegar direto da caixa e descartar (com desfazer) |
 | `POST /delegations/:id/ack` · `POST /delegations/:id/reopen` `{comment}` · `POST /delegations/:id/cancel` · `POST /delegations/:id/redelegate` `{toUserId, suggestedDue?, noPass?}` · `POST /delegations/:id/no-pass` `{noPass}` · `POST /delegations/:id/undo-cancel` (item 48) | ações do delegador |
 | `POST /cards/:id/transfer` `{toUserId}` | transferir |
 | `GET /delegations?scope=mine` | dados da tela Tarefas delegadas (agrupados por subordinado, com contadores) |

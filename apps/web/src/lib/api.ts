@@ -45,6 +45,8 @@ export interface Card {
   listId: string | null;
   position: number;
   inInbox: boolean;
+  /** Item 50: descartada da caixa de entrada (arquivada sem concluir); desarquivar devolve à caixa. */
+  discarded: boolean;
   transferredFrom: { id: string; name: string } | null;
   delegation: null | {
     id: string;

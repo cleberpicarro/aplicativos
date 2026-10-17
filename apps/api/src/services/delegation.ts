@@ -80,6 +80,16 @@ export async function accept(db: Db, actor: Actor, cardId: string, listId: strin
   }
 }
 
+/**
+ * Item 50: "Delegar" direto da caixa de entrada. Aceita a tarefa no quadro e fase escolhidos (é a cópia que fica com
+ * quem delega, para acompanhar) e delega na mesma transação: se a delegação for recusada, o aceite também é desfeito.
+ */
+export async function acceptAndDelegate(db: Db, actor: Actor, cardId: string, input: { listId: string; toUserId: string; suggestedDue?: string | null; note?: string; noPass?: boolean }) {
+  const { listId, ...rest } = input;
+  await accept(db, actor, cardId, listId);
+  return delegate(db, actor, cardId, rest);
+}
+
 /** RN-23: devolver exige justificativa; a tarefa volta ao delegador. */
 export async function decline(db: Db, actor: Actor, cardId: string, reason: string) {
   const { row, role } = await loadCard(db, actor, cardId, { lock: true });

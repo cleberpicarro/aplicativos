@@ -1,7 +1,7 @@
 import { one, many, type Db } from '../lib/db.js';
 import { badRequest, conflict, forbidden, notFound } from '../lib/errors.js';
 import type { Actor } from './actors.js';
-import { loadCard, nextPosition, cardRef, numOf } from './cards.js';
+import { loadCard, nextPosition, cardRef, numOf, isDiscarded } from './cards.js';
 import { BOARD_COLORS, ownList } from './boards.js';
 import { logEvent } from './events.js';
 import { notify } from './notify.js';
@@ -196,6 +196,12 @@ export async function unarchiveCard(db: Db, actor: Actor, cardId: string) {
   const { row, role } = await loadCard(db, actor, cardId, { lock: true });
   assertArchivable(row, role);
   if (!row.archived_at) throw conflict('A tarefa não está arquivada.');
+  // Item 50: a tarefa descartada volta para a caixa de entrada, com o mesmo número.
+  if (isDiscarded(row)) {
+    await db.query('UPDATE cards SET archived_at = NULL, updated_at = now() WHERE id = $1', [cardId]);
+    await logEvent(db, cardId, actor.id, 'unarchived', undefined, { inbox: true });
+    return;
+  }
   // Volta para a mesma fase; se ela foi arquivada, para a primeira fase do mesmo quadro (ou do primeiro quadro).
   const target = await one<{ id: string }>(
     db,
@@ -211,6 +217,51 @@ export async function unarchiveCard(db: Db, actor: Actor, cardId: string) {
     : await nextPosition(db, 'SELECT max(position) AS max FROM cards WHERE list_id = $1 AND archived_at IS NULL', [target.id]);
   await db.query('UPDATE cards SET archived_at = NULL, list_id = $2, position = $3, updated_at = now() WHERE id = $1', [cardId, target.id, position]);
   await logEvent(db, cardId, actor.id, 'unarchived');
+}
+
+/* ---------- descartar da caixa de entrada (item 50) ---------- */
+
+/** Quantas tarefas dá para descartar (ou trazer de volta) de uma vez. */
+export const MAX_DISCARD = 1000;
+
+/**
+ * Tira tarefas da caixa de entrada sem concluir: elas vão para Arquivadas como "descartadas" e podem voltar.
+ * Só tarefa própria: a recebida por delegação se devolve (com justificativa), porque quem delegou espera por ela.
+ * Tudo ou nada: se uma delas não puder ser descartada, nenhuma é.
+ */
+export async function discardFromInbox(db: Db, actor: Actor, ids: string[]) {
+  const unique = [...new Set(ids)];
+  for (const id of unique) {
+    const { row, role } = await loadCard(db, actor, id, { lock: true });
+    if (role !== 'owner') throw forbidden('Só quem tem a tarefa pode descartá-la.');
+    if (row.list_id || row.archived_at) throw conflict(`A tarefa “${row.title}” não está na sua caixa de entrada.`);
+    if (row.d_id) {
+      throw conflict(row.transferred_from_id
+        ? `A tarefa “${row.title}” foi delegada por ${row.d_delegator_name}: ela não pode ser descartada. Você pode transferi-la.`
+        : `A tarefa “${row.title}” foi delegada por ${row.d_delegator_name}: use Devolver, com a justificativa.`);
+    }
+    if (await one(db, CHILD_OPEN, [id])) throw conflict(`A tarefa “${row.title}” tem uma delegação em aberto.`);
+  }
+  for (const id of unique) {
+    await db.query('UPDATE cards SET archived_at = now(), updated_at = now() WHERE id = $1', [id]);
+    await logEvent(db, id, actor.id, 'discarded');
+  }
+  return { discarded: unique.length, ids: unique };
+}
+
+/** "Desfazer" do descartar: as tarefas voltam para a caixa de entrada. */
+export async function restoreDiscarded(db: Db, actor: Actor, ids: string[]) {
+  const unique = [...new Set(ids)];
+  for (const id of unique) {
+    const { row, role } = await loadCard(db, actor, id, { lock: true });
+    if (role !== 'owner') throw forbidden();
+    if (!isDiscarded(row)) throw conflict(`A tarefa “${row.title}” não está descartada.`);
+  }
+  for (const id of unique) {
+    await db.query('UPDATE cards SET archived_at = NULL, updated_at = now() WHERE id = $1', [id]);
+    await logEvent(db, id, actor.id, 'unarchived', undefined, { inbox: true });
+  }
+  return { restored: unique.length };
 }
 
 /** Menu da fase: arquiva de uma vez as tarefas concluídas que a pessoa pode arquivar. */

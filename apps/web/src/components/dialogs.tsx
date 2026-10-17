@@ -48,6 +48,32 @@ export function useCancelDelegation() {
   };
 }
 
+/**
+ * Item 50: descarta tarefas da caixa de entrada (vão para Arquivadas, sem concluir), com Desfazer no aviso.
+ * Devolve false se o servidor recusou; o erro aparece no aviso.
+ */
+export function useDiscard() {
+  const qc = useQueryClient();
+  const toast = useToast();
+  return async (ids: string[]) => {
+    try {
+      await post('/inbox/discard', { ids });
+    } catch (e) {
+      toast((e as Error).message, 'error');
+      return false;
+    }
+    await qc.invalidateQueries();
+    toast(ids.length === 1 ? 'Tarefa descartada.' : `${ids.length} tarefas descartadas.`, 'ok', {
+      label: 'Desfazer',
+      onClick: () => post('/inbox/restore', { ids }).then(
+        async () => { await qc.invalidateQueries(); toast(ids.length === 1 ? 'A tarefa voltou para a caixa de entrada.' : `${ids.length} tarefas voltaram para a caixa de entrada.`); },
+        (e) => toast((e as Error).message, 'error'),
+      ),
+    });
+    return true;
+  };
+}
+
 type Close = () => void;
 
 function Footer({ busy, onClose, label, danger }: { busy: boolean; onClose: Close; label: string; danger?: boolean }) {
@@ -59,9 +85,40 @@ function Footer({ busy, onClose, label, danger }: { busy: boolean; onClose: Clos
   );
 }
 
-export function DelegateDialog({ card, onClose }: { card: Card; onClose: Close }) {
+/** Escolha de quadro e fase (Aceitar e organizar, e Delegar direto da caixa de entrada). */
+function useBoardList() {
+  const boards = useQuery({ queryKey: ['boards'], queryFn: () => get<{ id: string; name: string }[]>('/boards') });
+  const [boardId, setBoardId] = useState('');
+  const bId = boardId || boards.data?.[0]?.id || '';
+  const board = useQuery({ queryKey: ['board', bId], queryFn: () => get(`/boards/${bId}`), enabled: !!bId });
+  const [listId, setListId] = useState('');
+  const lists: { id: string; name: string }[] = board.data?.lists ?? [];
+  const lId = lists.some((l) => l.id === listId) ? listId : lists[0]?.id ?? '';
+  const listName = lists.find((l) => l.id === lId)?.name;
+  const fields = (
+    <div className="row2">
+      <div className="field">
+        <label htmlFor="a-b">Quadro</label>
+        <select id="a-b" className="select input" value={bId} onChange={(e) => { setBoardId(e.target.value); setListId(''); }}>
+          {boards.data?.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+        </select>
+      </div>
+      <div className="field">
+        <label htmlFor="a-l">Fase</label>
+        <select id="a-l" className="select input" value={lId} onChange={(e) => setListId(e.target.value)}>
+          {lists.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+        </select>
+      </div>
+    </div>
+  );
+  return { lId, listName, fields };
+}
+
+/** Item 50: com fromInbox, a janela também pede o quadro e a fase onde fica a sua tarefa, e aceita e delega de uma vez. */
+export function DelegateDialog({ card, onClose, fromInbox }: { card: Card; onClose: Close; fromInbox?: boolean }) {
   const me = useMe().data!;
   const { run, busy, error } = useAction();
+  const place = useBoardList();
   const [to, setTo] = useState(me.directReports[0]?.id ?? '');
   const [due, setDue] = useState(card.dueDate ?? '');
   const [note, setNote] = useState('');
@@ -69,14 +126,23 @@ export function DelegateDialog({ card, onClose }: { card: Card; onClose: Close }
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     const name = me.directReports.find((r) => r.id === to)?.name ?? '';
-    const r = await run(() => post(`/cards/${card.id}/delegate`, { toUserId: to, suggestedDue: due || null, note, noPass }), `Delegada para ${firstName(name)}. Aviso enviado por e-mail.`);
+    const body = { toUserId: to, suggestedDue: due || null, note, noPass };
+    const r = fromInbox
+      ? await run(() => post(`/cards/${card.id}/accept-delegate`, { ...body, listId: place.lId }), `Tarefa colocada em “${place.listName}” e delegada para ${firstName(name)}.`)
+      : await run(() => post(`/cards/${card.id}/delegate`, body), `Delegada para ${firstName(name)}. Aviso enviado por e-mail.`);
     if (r) onClose();
   };
   return (
-    <Dialog title="Delegar tarefa" onClose={onClose} footer={<Footer busy={busy} onClose={onClose} label="Delegar" />}>
+    <Dialog title="Delegar tarefa" onClose={onClose} footer={<Footer busy={busy || (!!fromInbox && !place.lId)} onClose={onClose} label="Delegar" />}>
       <form id="dlg" onSubmit={submit} className="dialog-b" style={{ padding: 0 }}>
         <div className="box"><span className="code">{cardNo(card.num)}</span> <b style={{ fontWeight: 500 }}>{card.title}</b></div>
         <p className="hint">A pessoa recebe um cartão ligado a este, com o número do quadro dela. Você acompanha até dar o ciente.</p>
+        {fromInbox && (
+          <>
+            <p className="hint" style={{ margin: 0 }}>Onde fica a sua tarefa, para acompanhar:</p>
+            {place.fields}
+          </>
+        )}
         <div className="field">
           <label htmlFor="d-to">Para (subordinado direto)</label>
           <select id="d-to" className="select input" value={to} onChange={(e) => setTo(e.target.value)} required>
@@ -229,36 +295,16 @@ export function TransferDialog({ card, onClose }: { card: Card; onClose: Close }
 
 export function AcceptDialog({ card, onClose }: { card: Card; onClose: Close }) {
   const { run, busy, error } = useAction();
-  const boards = useQuery({ queryKey: ['boards'], queryFn: () => get<{ id: string; name: string }[]>('/boards') });
-  const [boardId, setBoardId] = useState('');
-  const bId = boardId || boards.data?.[0]?.id || '';
-  const board = useQuery({ queryKey: ['board', bId], queryFn: () => get(`/boards/${bId}`), enabled: !!bId });
-  const [listId, setListId] = useState('');
-  const lists: { id: string; name: string }[] = board.data?.lists ?? [];
-  const lId = lists.some((l) => l.id === listId) ? listId : lists[0]?.id ?? '';
+  const place = useBoardList();
   const submit = async (e: FormEvent) => {
     e.preventDefault();
-    const name = lists.find((l) => l.id === lId)?.name;
-    if (await run(() => post(`/cards/${card.id}/accept`, { listId: lId }), `Tarefa colocada em “${name}”.`)) onClose();
+    if (await run(() => post(`/cards/${card.id}/accept`, { listId: place.lId }), `Tarefa colocada em “${place.listName}”.`)) onClose();
   };
   return (
-    <Dialog title="Aceitar e organizar" onClose={onClose} footer={<Footer busy={busy || !lId} onClose={onClose} label="Aceitar" />}>
+    <Dialog title="Aceitar e organizar" onClose={onClose} footer={<Footer busy={busy || !place.lId} onClose={onClose} label="Aceitar" />}>
       <form id="dlg" onSubmit={submit} className="dialog-b" style={{ padding: 0 }}>
         <p style={{ margin: 0 }}><span className="code">{cardNo(card.num)}</span> {card.title}</p>
-        <div className="row2">
-          <div className="field">
-            <label htmlFor="a-b">Quadro</label>
-            <select id="a-b" className="select input" value={bId} onChange={(e) => { setBoardId(e.target.value); setListId(''); }}>
-              {boards.data?.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
-            </select>
-          </div>
-          <div className="field">
-            <label htmlFor="a-l">Fase</label>
-            <select id="a-l" className="select input" value={lId} onChange={(e) => setListId(e.target.value)}>
-              {lists.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
-            </select>
-          </div>
-        </div>
+        {place.fields}
         <ErrorText error={error} />
       </form>
     </Dialog>

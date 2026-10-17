@@ -52,6 +52,8 @@ export interface CardDto {
   listId: string | null;
   position: number;
   inInbox: boolean;
+  /** Item 50: descartada da caixa de entrada (arquivada sem concluir, fora de um quadro). */
+  discarded: boolean;
   transferredFrom: { id: string; name: string } | null;
   delegation: null | {
     id: string;
@@ -70,6 +72,11 @@ export interface CardDto {
   checklist: { done: number; total: number };
   source: string | null;
   createdAt: string;
+}
+
+/** Item 50: tarefa descartada da caixa de entrada: arquivada sem concluir e sem fase (só tarefa própria, nunca delegada). */
+export function isDiscarded(r: any): boolean {
+  return !!r.archived_at && r.list_id === null && !r.completed_at && !r.d_id;
 }
 
 export function toCardDto(r: any): CardDto {
@@ -91,6 +98,7 @@ export function toCardDto(r: any): CardDto {
     listId: r.list_id,
     position: r.position,
     inInbox: r.list_id === null && !r.archived_at && (!r.d_id || r.d_status === 'PENDING_ACCEPT'),
+    discarded: isDiscarded(r),
     transferredFrom: r.transferred_from_id ? { id: r.transferred_from_id, name: r.transferred_from_name } : null,
     delegation: r.d_id
       ? {

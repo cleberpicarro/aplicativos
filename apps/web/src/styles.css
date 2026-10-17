@@ -163,7 +163,13 @@ h2 .c.attn { color: var(--attn); }
   padding: 0 8px; border-bottom: 1px solid var(--line); }
 .row:hover { background: var(--hover); }
 .row.need { grid-template-columns: 1.25rem minmax(0, 1fr) 9rem 4.9rem 4.4rem 12.5rem; }
-.row.inbox { grid-template-columns: 1.25rem minmax(0, 1fr) 9rem 4.9rem 4.4rem 14rem; }
+.row.inbox { grid-template-columns: 1.25rem minmax(0, 1fr) 9rem 4.9rem 4.4rem 16.5rem; }
+/* Item 50: seleção para descartar várias de uma vez. */
+.row.inbox .pick { width: 1rem; height: 1rem; margin: 0; accent-color: var(--accent); cursor: pointer; }
+.row.inbox.picked { background: color-mix(in srgb, var(--accent) 7%, transparent); }
+.inbox-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding: 0 8px 10px; }
+.inbox-bar .select { width: auto; max-width: 18rem; height: 1.65rem; font-size: 0.84rem; }
+.inbox-bar .muted { color: var(--muted); font-size: 0.86rem; }
 .title { min-width: 0; display: flex; align-items: baseline; gap: 8px; }
 .title button, .title a { border: 0; background: none; padding: 0; cursor: pointer; text-align: left; font-size: 0.95rem; font-weight: 450; color: var(--fg);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; flex: 0 1 auto; min-width: 0; text-decoration: none; }
@@ -619,6 +625,7 @@ table.t td.c-acts { text-align: right; white-space: nowrap; }
 table.t td { white-space: nowrap; }
 .tag { display: inline-flex; align-items: center; height: 1.35rem; padding: 0 8px; border-radius: 999px; font-size: 0.78rem; white-space: nowrap;
   background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); }
+.tag.disc { background: var(--hover); color: var(--muted); }
 .tag.rec { background: color-mix(in srgb, #2f8f5b 14%, transparent); color: color-mix(in srgb, #2f8f5b 80%, var(--fg)); }
 
 .tbl-bar { display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; margin-bottom: 10px; }

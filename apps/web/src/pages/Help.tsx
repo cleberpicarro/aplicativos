@@ -169,9 +169,12 @@ export function HelpPage({ isAdmin }: { isAdmin: boolean }) {
       <Sec id="entrada" title="Caixa de entrada">
         <p>Tarefas que alguém delegou ou transferiu para você, e páginas que você capturou da web, chegam aqui primeiro. Para cada uma:</p>
         <ul>
-          <li><b>Aceitar e organizar:</b> escolha o quadro e a fase. A tarefa vai para lá.</li>
-          <li><b>Devolver:</b> só para tarefas delegadas. Escreva a justificativa (obrigatória). A tarefa volta para quem delegou.</li>
+          <li><b>Aceitar:</b> escolha o quadro e a fase. A tarefa vai para lá.</li>
+          <li><b>Delegar</b> (para quem tem equipe): numa janela só, escolha o quadro e a fase onde fica a sua tarefa, para acompanhar, e o subordinado direto que vai fazer. É o mesmo que aceitar e depois delegar.</li>
+          <li><b>Descartar:</b> tira a tarefa da caixa sem concluir. Ela vai para <b>Arquivadas</b>, marcada como “Descartada”, e o aviso traz <b>Desfazer</b>. Ninguém é avisado. Para trazer de volta depois, clique em <b>Desarquivar</b> em Arquivadas: ela volta para a caixa de entrada, com o mesmo número.</li>
+          <li><b>Devolver:</b> para tarefas que chegaram por delegação, no lugar de Descartar, porque quem delegou espera por elas. Escreva a justificativa (obrigatória). A tarefa volta para quem delegou.</li>
         </ul>
+        <p><b>Várias de uma vez:</b> marque as caixinhas à esquerda (ou <b>Selecionar todas</b>, ou <b>Selecionar de…</b> para pegar todas que vieram da mesma pessoa) e clique em <b>Descartar selecionadas</b>.</p>
         <p>O prazo vem sugerido por quem delegou. Você pode ajustá-lo dentro da tarefa, e quem delegou recebe um aviso.</p>
       </Sec>
 

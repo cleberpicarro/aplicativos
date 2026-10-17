@@ -78,6 +78,10 @@ beforeAll(async () => {
   s.board2 = (await call('gest', 'POST', '/api/boards', { name: 'Vazio do gestor' })).body.id;
   s.board3 = (await call('gest', 'POST', '/api/boards', { name: 'Arquivado do gestor' })).body.id;
   await call('gest', 'POST', `/api/boards/${s.board3}/archive`);
+  // Item 50: uma tarefa própria na caixa de entrada do gestor (capturada) e uma que ele descartou.
+  s.gestInbox = (await call('gest', 'POST', '/api/capture', { title: 'Capturada pelo gestor', url: 'https://exemplo.com/a' })).body.id;
+  s.discarded = (await call('gest', 'POST', '/api/capture', { title: 'Descartada pelo gestor', url: 'https://exemplo.com/b' })).body.id;
+  await call('gest', 'POST', '/api/inbox/discard', { ids: [s.discarded] });
   // Filtro salvo da tabela (item 36).
   s.filter = (await call('gest', 'POST', '/api/filters', { name: 'Do gestor', filter: { all: [{ field: 'status', op: 'eq', value: 'open' }] } })).body.id;
 });
@@ -108,6 +112,9 @@ async function attemptsAgainstGest(who: string): Promise<Attempt[]> {
     { method: 'POST', url: `/api/cards/${id}/decline`, body: { reason: 'não quero' }, route: 'POST /api/cards/:id/decline' },
     { method: 'POST', url: `/api/cards/${id}/transfer`, body: { toUserId: someone }, route: 'POST /api/cards/:id/transfer' },
     { method: 'GET', url: `/api/cards/${id}/transfer-targets`, route: 'GET /api/cards/:id/transfer-targets' },
+    { method: 'POST', url: `/api/cards/${id}/accept-delegate`, body: { listId: myList, toUserId: someone }, route: 'POST /api/cards/:id/accept-delegate' },
+    { method: 'POST', url: '/api/inbox/discard', body: { ids: [id] }, route: 'POST /api/inbox/discard' },
+    { method: 'POST', url: '/api/inbox/restore', body: { ids: [id] }, route: 'POST /api/inbox/restore' },
   ];
   const deleg = (id: string): Attempt[] => [
     { method: 'POST', url: `/api/delegations/${id}/ack`, route: 'POST /api/delegations/:id/ack' },
@@ -139,7 +146,7 @@ async function attemptsAgainstGest(who: string): Promise<Attempt[]> {
     { method: 'PATCH', url: `/api/filters/${s.filter}`, body: { name: 'invasão' }, route: 'PATCH /api/filters/:id' },
     { method: 'PATCH', url: `/api/filters/${s.filter}`, body: { filter: { all: [] } }, route: 'PATCH /api/filters/:id' },
     { method: 'DELETE', url: `/api/filters/${s.filter}`, route: 'DELETE /api/filters/:id' },
-    ...card(s.own), ...card(s.priv), ...card(s.done), ...card(s.parent), ...card(s.inboxCard),
+    ...card(s.own), ...card(s.priv), ...card(s.done), ...card(s.parent), ...card(s.inboxCard), ...card(s.gestInbox), ...card(s.discarded),
     ...deleg(s.deleg), ...deleg(s.awaiting), ...deleg(s.declined), ...deleg(s.canceled),
   ];
 }
@@ -309,6 +316,7 @@ describe('permissões em massa (frente 2)', () => {
       'GET /api/admin/users/:id/deactivation', 'POST /api/admin/users/:id/deactivate',
       'GET /api/admin/users', 'POST /api/admin/users', 'PATCH /api/admin/users/:id', 'POST /api/admin/users/:id/transfer-management',
       'POST /api/admin/users/:id/active', 'POST /api/admin/users/:id/invite', 'PATCH /api/filters/:id', 'DELETE /api/filters/:id',
+      'POST /api/cards/:id/accept-delegate', 'POST /api/inbox/discard', 'POST /api/inbox/restore',
       // só leem ou alteram os dados da própria pessoa (não recebem identificador de outra)
       'GET /api/me', 'PATCH /api/me/prefs', 'GET /api/boards', 'POST /api/boards', 'GET /api/inbox', 'GET /api/delegations', 'GET /api/dashboard',
       'GET /api/search', 'GET /api/notifications', 'POST /api/notifications/read', 'POST /api/capture', 'POST /api/import/trello',
