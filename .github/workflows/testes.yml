@@ -16,25 +16,18 @@ jobs:
     name: Verificação completa
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    services:
-      postgres:
-        # Imagem oficial espelhada na AWS: sem o limite de downloads do Docker Hub, que derrubava a verificação.
-        image: public.ecr.aws/docker/library/postgres:16
-        env:
-          POSTGRES_USER: nerus
-          POSTGRES_PASSWORD: nerus
-          POSTGRES_DB: nerus_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U nerus"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
     env:
       TEST_DATABASE_URL: postgres://nerus:nerus@localhost:5432/nerus_test
       E2E_DATABASE_URL: postgres://nerus:nerus@localhost:5432/nerus_e2e
     steps:
+      # Banco de testes: o PostgreSQL que já vem instalado na máquina do GitHub. Sem baixar imagem nenhuma,
+      # porque tanto o Docker Hub quanto o espelho da AWS passaram a recusar downloads por limite (18/10/2026).
+      - name: Ligar o banco de testes
+        run: |
+          sudo systemctl start postgresql.service
+          sudo -u postgres psql -v ON_ERROR_STOP=1 -c "CREATE ROLE nerus LOGIN SUPERUSER PASSWORD 'nerus';"
+          sudo -u postgres createdb -O nerus nerus_test
+          pg_isready -h localhost -p 5432
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
