@@ -412,7 +412,8 @@ table.t tr.off td { color: var(--faint); }
 .board-area { border-radius: 10px; }
 /* Item 34: zoom do quadro. Só as fases e os cartões mudam de tamanho; a altura da fase compensa o zoom para ocupar a tela. */
 .kanban { zoom: var(--zoom, 1); }
-@media (min-width: 821px) { .kanban .col { max-height: calc((100dvh - 11rem) / var(--zoom, 1)); } }
+/* Item 51: sem a linha do filtro (que subiu para a faixa do título), a fase ganha essa altura. */
+@media (min-width: 821px) { .kanban .col { max-height: calc((100dvh - 8.75rem) / var(--zoom, 1)); } }
 .zoom { display: inline-flex; align-items: center; margin-right: 6px; }
 .zoom .b { min-width: 1.9rem; justify-content: center; font-size: 0.95rem; }
 .zoom .zoom-val { font: 500 0.78rem var(--mono); min-width: 3.2rem; }
@@ -718,3 +719,12 @@ button.who:hover { background: var(--hover); }
 .my-mail .check { align-items: flex-start; }
 .my-mail .check input { margin-top: 3px; }
 .my-mail .check small { display: block; color: var(--muted); font-size: 0.8rem; margin-top: 2px; }
+
+/* Item 51: no quadro, o botão Filtro e os atalhos de delegadas ficam na faixa do título, ao lado de Quadro/Tabela. */
+.topbar-slot { flex: 1 1 auto; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; min-width: 0; }
+.topbar-slot .b.fsel { max-width: 16rem; }
+.qk-short { display: none; }
+@media (max-width: 1500px) {
+  .topbar-slot .qk-long { display: none; }
+  .topbar-slot .qk-short { display: inline; }
+}

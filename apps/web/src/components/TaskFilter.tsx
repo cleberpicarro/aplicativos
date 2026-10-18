@@ -1,4 +1,5 @@
-import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { del, get, patch, post } from '../lib/api';
 import { Dialog, ErrorText, useMe, useToast } from './ui';
@@ -75,6 +76,10 @@ export function FilterBar({ f, onBoard = false, children }: { f: TaskFilter; onB
   const toast = useToast();
   const [editing, setEditing] = useState<Current | null>(null);
   const [picking, setPicking] = useState(false);
+  // Item 51: no quadro, o botão Filtro e os atalhos sobem para a faixa do título (ao lado de Quadro/Tabela),
+  // e a linha de baixo só aparece quando há etiquetas de filtro para mostrar.
+  const [slot, setSlot] = useState<HTMLElement | null>(null);
+  useLayoutEffect(() => { if (onBoard) setSlot(document.getElementById('topbar-slot')); }, [onBoard]);
   const { cur, setCur, quick, setQuick, names } = f;
   const removeCond = (group: 'all' | 'any', i: number) =>
     setCur((c) => ({ ...c, savedId: null, readyId: null, name: 'Filtro alterado', filter: { ...c.filter, [group]: c.filter[group].filter((_, j) => j !== i) } }));
@@ -83,8 +88,8 @@ export function FilterBar({ f, onBoard = false, children }: { f: TaskFilter; onB
   // Item 47: "para mim" só faz sentido para quem tem superior; "por mim", para quem tem subordinados.
   const showToMe = !!me.user.managerId || quick.toMe;
   const showByMe = me.directReports.length > 0 || quick.byMe;
-  return (
-    <div className="tbl-bar">
+  const controls = (
+    <>
       <div className="menu">
         <button className={`b fsel${f.hasConds ? ' on' : ''}`} aria-haspopup="menu" aria-expanded={picking} onClick={() => setPicking((p) => !p)}>
           <Icon name="filter" /> Filtro: {cur.name} <Icon name="car" />
@@ -98,35 +103,50 @@ export function FilterBar({ f, onBoard = false, children }: { f: TaskFilter; onB
       {(showToMe || showByMe) && (
         <span className="quick" role="group" aria-label="Atalhos de tarefas delegadas">
           {showToMe && (
-            <button className={`b sm qk to-me${quick.toMe ? ' on' : ''}`} aria-pressed={quick.toMe} title="Só as tarefas que chegaram para você por delegação. Clique de novo para desligar."
-              onClick={() => setQuick((q) => ({ ...q, toMe: !q.toMe }))}><Icon name="into" />Delegadas para mim</button>
+            <button className={`b sm qk to-me${quick.toMe ? ' on' : ''}`} aria-pressed={quick.toMe} aria-label="Delegadas para mim" title="Só as tarefas que chegaram para você por delegação. Clique de novo para desligar."
+              onClick={() => setQuick((q) => ({ ...q, toMe: !q.toMe }))}><Icon name="into" /><span className="qk-long">Delegadas para mim</span><span className="qk-short">Para mim</span></button>
           )}
           {showByMe && (
-            <button className={`b sm qk by-me${quick.byMe ? ' on' : ''}`} aria-pressed={quick.byMe} title="Só as tarefas que você delegou e ainda estão em aberto. Clique de novo para desligar."
-              onClick={() => setQuick((q) => ({ ...q, byMe: !q.byMe }))}><Icon name="out" />Delegadas por mim</button>
+            <button className={`b sm qk by-me${quick.byMe ? ' on' : ''}`} aria-pressed={quick.byMe} aria-label="Delegadas por mim" title="Só as tarefas que você delegou e ainda estão em aberto. Clique de novo para desligar."
+              onClick={() => setQuick((q) => ({ ...q, byMe: !q.byMe }))}><Icon name="out" /><span className="qk-long">Delegadas por mim</span><span className="qk-short">Por mim</span></button>
           )}
         </span>
       )}
-      {quick.toMe && <span className="chip">Delegadas para mim<button aria-label="Desligar Delegadas para mim" onClick={() => setQuick((q) => ({ ...q, toMe: false }))}><Icon name="x" /></button></span>}
-      {quick.byMe && <span className="chip">Delegadas por mim<button aria-label="Desligar Delegadas por mim" onClick={() => setQuick((q) => ({ ...q, byMe: false }))}><Icon name="x" /></button></span>}
-      {cur.filter.all.map((c, i) => (
-        <span key={`a${i}`} className={`chip${ignored(c) ? ' off' : ''}`} title={chipTitle(c)}>{describe(c, names)}<button aria-label="Tirar esta condição" onClick={() => removeCond('all', i)}><Icon name="x" /></button></span>
-      ))}
-      {cur.filter.any.length > 0 && (
-        <span className="chip any">
-          {cur.filter.any.map((c, i) => (
-            <Fragment key={`o${i}`}>
-              {i > 0 && <span className="or">ou</span>}
-              <span className={ignored(c) ? 'off' : undefined} title={chipTitle(c)}>{describe(c, names)}</span><button aria-label="Tirar esta condição" onClick={() => removeCond('any', i)}><Icon name="x" /></button>
-            </Fragment>
+    </>
+  );
+  const top = onBoard && slot;
+  const editBtn = (
+    <button className="b sm" onClick={() => setEditing(f.hasConds ? cur : { ...cur, filter: { all: [newCondition()], any: [] } })}>
+      <Icon name="plus" /> {f.hasConds ? 'Editar filtro' : 'Condição'}
+    </button>
+  );
+  return (
+    <>
+      {top && createPortal(controls, slot)}
+      {(!top || f.active) && (
+        <div className="tbl-bar">
+          {!top && controls}
+          {quick.toMe && <span className="chip">Delegadas para mim<button aria-label="Desligar Delegadas para mim" onClick={() => setQuick((q) => ({ ...q, toMe: false }))}><Icon name="x" /></button></span>}
+          {quick.byMe && <span className="chip">Delegadas por mim<button aria-label="Desligar Delegadas por mim" onClick={() => setQuick((q) => ({ ...q, byMe: false }))}><Icon name="x" /></button></span>}
+          {cur.filter.all.map((c, i) => (
+            <span key={`a${i}`} className={`chip${ignored(c) ? ' off' : ''}`} title={chipTitle(c)}>{describe(c, names)}<button aria-label="Tirar esta condição" onClick={() => removeCond('all', i)}><Icon name="x" /></button></span>
           ))}
-        </span>
+          {cur.filter.any.length > 0 && (
+            <span className="chip any">
+              {cur.filter.any.map((c, i) => (
+                <Fragment key={`o${i}`}>
+                  {i > 0 && <span className="or">ou</span>}
+                  <span className={ignored(c) ? 'off' : undefined} title={chipTitle(c)}>{describe(c, names)}</span><button aria-label="Tirar esta condição" onClick={() => removeCond('any', i)}><Icon name="x" /></button>
+                </Fragment>
+              ))}
+            </span>
+          )}
+          <span className="grow" />
+          {/* No quadro, sem condições, “Novo filtro” (no menu do Filtro) faz o papel do botão Condição. */}
+          {(!top || f.hasConds) && editBtn}
+          {children}
+        </div>
       )}
-      <span className="grow" />
-      <button className="b sm" onClick={() => setEditing(f.hasConds ? cur : { ...cur, filter: { all: [newCondition()], any: [] } })}>
-        <Icon name="plus" /> {f.hasConds ? 'Editar filtro' : 'Condição'}
-      </button>
-      {children}
       {editing && (
         <FilterEditor
           initial={editing}
@@ -138,7 +158,7 @@ export function FilterBar({ f, onBoard = false, children }: { f: TaskFilter; onB
           onDeleted={async () => { await qc.invalidateQueries({ queryKey: ['filters'] }); setCur(NONE); setEditing(null); toast('Filtro excluído.'); }}
         />
       )}
-    </div>
+    </>
   );
 }
 

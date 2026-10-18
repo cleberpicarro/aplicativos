@@ -254,6 +254,11 @@ test.describe('meus quadros', () => {
     const idBeta = await criarTarefa(page, beta);
     const cartao = (t: string) => page.locator('article.kc', { hasText: t });
 
+    // Item 51: o Filtro e os atalhos ficam na faixa do título; sem filtro, não há linha a mais acima das fases.
+    await expect(page.locator('.topbar').getByRole('button', { name: /^Filtro:/ })).toBeVisible();
+    await expect(page.locator('.topbar').getByRole('button', { name: 'Delegadas por mim', exact: true })).toBeVisible();
+    await expect(page.locator('.tbl-bar')).toHaveCount(0);
+
     // Filtro novo, só aplicado: “Título contém alfa”.
     await page.getByRole('button', { name: /^Filtro:/ }).click();
     await page.getByRole('menuitem', { name: 'Novo filtro' }).click();

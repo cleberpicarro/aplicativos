@@ -174,6 +174,8 @@ function Shell() {
       <main className={me.prefs.workspaceBg ? `ws ws-${me.prefs.workspaceBg}` : undefined}>
         <div className="topbar">
           <h1>{PAGES[page]?.title}</h1>
+          {/* Item 51: no quadro, o botão Filtro e os atalhos de delegadas entram aqui (TaskFilter.tsx). */}
+          {page === '/quadros' && view === 'quadro' && <div className="topbar-slot" id="topbar-slot" />}
           <div className="tools">
             {page === '/quadros' && (
               <span className="view-switch" role="group" aria-label="Ver as tarefas em">
