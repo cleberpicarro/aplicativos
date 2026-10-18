@@ -47,11 +47,17 @@ test.describe('aparência e preferências', () => {
     await dialogo(page, 'Novo quadro').getByLabel('Nome do quadro').fill(nome);
     await dialogo(page, 'Novo quadro').getByRole('button', { name: 'Criar' }).click();
     await expect(page.getByRole('tab', { name: nome })).toHaveAttribute('aria-selected', 'true');
+    // Compara com a posição de antes (numa nova tentativa já existe outro quadro "Segundo") e espera o servidor
+    // gravar antes de recarregar a página.
+    const antes = (await page.getByRole('tab').allTextContents()).indexOf(nome);
+    expect(antes).toBeGreaterThan(0);
     await page.getByRole('button', { name: 'Opções do quadro' }).click();
+    const gravou = page.waitForResponse((r) => r.request().method() === 'PATCH' && /\/api\/boards\//.test(r.url()));
     await page.getByRole('menuitem', { name: 'Mover quadro para a esquerda' }).click();
-    await expect(page.getByRole('tab').first()).toHaveText(nome);
+    expect((await gravou).ok()).toBe(true);
+    await expect(page.getByRole('tab').nth(antes - 1)).toHaveText(nome);
     await page.reload();
-    await expect(page.getByRole('tab').first()).toHaveText(nome);
+    await expect(page.getByRole('tab').nth(antes - 1)).toHaveText(nome);
   });
 
   test('ajuda e legenda abrem sem erro @celular', async ({ page }) => {
