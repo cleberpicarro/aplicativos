@@ -1,7 +1,7 @@
 import { useMemo, type MouseEvent } from 'react';
 import { Marked } from 'marked';
 
-// Item 51: os textos de docs/ (guia do usuário e especificação) aparecem na Ajuda.
+// Item 52: os textos de docs/ (guia do usuário e especificação) aparecem na Ajuda.
 // As imagens de docs/imagens entram no build com nome versionado (o cache do app não guarda uma versão velha).
 const IMAGES = import.meta.glob('../../../../docs/imagens/*.png', { eager: true, query: '?url', import: 'default' }) as Record<string, string>;
 const imageUrl = (src: string) => {

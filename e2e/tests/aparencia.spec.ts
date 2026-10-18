@@ -67,7 +67,7 @@ test.describe('aparência e preferências', () => {
     await page.keyboard.press('Escape');
     await page.getByRole('button', { name: 'Ajuda' }).click();
     await expect(page.locator('.topbar h1')).toHaveText('Ajuda');
-    // Item 51: o guia rápido abre primeiro, com os prints; a especificação não aparece para quem não é administrador.
+    // Item 52: o guia rápido abre primeiro, com os prints; a especificação não aparece para quem não é administrador.
     await expect(page.getByRole('tab', { name: 'Guia rápido' })).toHaveAttribute('aria-selected', 'true');
     await expect(page.getByRole('heading', { name: 'Caixa de entrada', level: 2 })).toBeVisible();
     const print = page.getByRole('img', { name: 'Caixa de entrada com os botões Aceitar, Delegar e Descartar' });
@@ -78,7 +78,7 @@ test.describe('aparência e preferências', () => {
     await expect(page.getByRole('heading', { name: 'Glossário' })).toBeVisible();
   });
 
-  test('administração vê a especificação na Ajuda, com o sumário clicável (item 51)', async ({ page }) => {
+  test('administração vê a especificação na Ajuda, com o sumário clicável (item 52)', async ({ page }) => {
     await entrar(page, 'renata');
     await page.getByRole('button', { name: 'Ajuda' }).click();
     await page.getByRole('tab', { name: 'Especificação' }).click();

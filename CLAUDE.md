@@ -4,7 +4,7 @@ App de tarefas da **Nerus** (~90–99 pessoas): quadros pessoais no estilo Trell
 
 - Especificação completa e regras de negócio (RN-01…): `docs/especificacao.md`
 - Histórico de pedidos e o que foi feito, por rodada: `docs/feedback.md`
-- Guia do usuário (com prints em `docs/imagens/`): `docs/guia-do-usuario.md`. O guia e a especificação aparecem dentro do app, na Ajuda (item 51): ao mudar uma tela ou regra, atualize esses arquivos.
+- Guia do usuário (com prints em `docs/imagens/`): `docs/guia-do-usuario.md`. O guia e a especificação aparecem dentro do app, na Ajuda (item 52): ao mudar uma tela ou regra, atualize esses arquivos.
 - Como rodar, testar e publicar: `README.md`
 
 ## Como o dono do projeto trabalha

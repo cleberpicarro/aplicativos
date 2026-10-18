@@ -45,7 +45,7 @@ function Sec({ id, title, children }: { id: string; title: string; children: Rea
 type Aba = 'guia' | 'completa' | 'especificacao';
 const ABA_KEY = 'synctasks.ajuda.aba';
 
-// Item 51: a Ajuda tem três abas. O guia rápido e a especificação vêm de docs/ (uma fonte só);
+// Item 52: a Ajuda tem três abas. O guia rápido e a especificação vêm de docs/ (uma fonte só);
 // a especificação vem do servidor e só aparece para a administração.
 export function HelpPage({ isAdmin }: { isAdmin: boolean }) {
   const [aba, setAbaState] = useState<Aba>(() => {

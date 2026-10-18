@@ -37,7 +37,7 @@ export const config = {
   },
   // Item 31: chave do SyncTasks no Trello para "Exportar para o Trello" (é pública; o código de acesso de cada pessoa fica só no navegador).
   trelloKey: process.env.TRELLO_API_KEY?.trim() || null,
-  // Item 51: textos de docs/ mostrados na Ajuda (a especificação, só para a administração).
+  // Item 52: textos de docs/ mostrados na Ajuda (a especificação, só para a administração).
   docsDir: process.env.DOCS_DIR ?? path.resolve(API_ROOT, '../../docs'),
   // Front-end compilado (servido pela API em produção)
   webDist: process.env.WEB_DIST ?? path.resolve(API_ROOT, '../web/dist'),

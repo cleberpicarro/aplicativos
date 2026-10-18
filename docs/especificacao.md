@@ -2,11 +2,11 @@
 
 > O aplicativo se chamava **Nerus Tasks** até a terceira rodada de ajustes (ver `docs/feedback.md`, itens 13 e 20).
 >
-> Esta especificação está atualizada até o **item 51** de `docs/feedback.md`. Ela também aparece dentro do app, na **Ajuda** › **Especificação**, para a administração; o guia do usuário fica em `docs/guia-do-usuario.md` e aparece na Ajuda para todos (seção 12.10).
+> Esta especificação está atualizada até o **item 52** de `docs/feedback.md`. Ela também aparece dentro do app, na **Ajuda** › **Especificação**, para a administração; o guia do usuário fica em `docs/guia-do-usuario.md` e aparece na Ajuda para todos (seção 12.10).
 
 | | |
 |---|---|
-| **Versão** | 1.1 (atualizada com as rodadas de ajuste até o item 51) |
+| **Versão** | 1.1 (atualizada com as rodadas de ajuste até o item 52) |
 | **Data** | 18/10/2026 (primeira versão: 04/10/2026) |
 | **Status** | **Em produção** desde 16/10/2026 em https://synctasks.onrender.com (item 45), com o Cleber (CEO e administrador) e o Daniel (gestor). Histórico dos pedidos em `docs/feedback.md`; como rodar e publicar no README. |
 | **Público** | ~90 a 99 pessoas da Nerus |
@@ -90,7 +90,7 @@ A Nerus tem cerca de 90 pessoas organizadas em quatro níveis: **CEO > Diretores
 - E-mails de aceite, de prazo (véspera e vencido) e resumo diário (item 46).
 - Cancelar a delegação de dentro da tarefa, com Desfazer (item 48); marca **Não pode ser repassada** (item 41).
 - Desativar uma pessoa escolhendo quem recebe as pendências (item 44).
-- Guia do usuário e especificação dentro da Ajuda (item 51).
+- Guia do usuário e especificação dentro da Ajuda (item 52).
 
 ### 2.2 Fora do escopo (v1)
 
@@ -552,7 +552,7 @@ Visual de referência: a amostra aprovada.
 
 Quem tem subordinados abre no **Painel**; quem está fora da hierarquia (administrador “puro”) abre em **Pessoas**; os demais abrem em **Tarefas** (quadros).
 
-### 12.10 Ajuda (item 51)
+### 12.10 Ajuda (item 52)
 
 - No rodapé do menu: **Ajuda**, **Legenda** (ícones), **Meus dados**, **Recolher menu** e **Sair**.
 - A **Ajuda** tem abas no topo:
@@ -755,7 +755,7 @@ REST com JSON, sob `/api`. A autenticação usa cookie httpOnly de sessão. Toda
 | `GET /notifications` · `POST /notifications/read` | avisos |
 | `GET/POST/PATCH /admin/users` · `POST /admin/users/:id/transfer-management` · `POST /admin/users/:id/active` `{active}` | administração |
 | `GET /admin/users/:id/deactivation` · `POST /admin/users/:id/deactivate` `{successorId?}` | pendências e desativação com sucessor (item 44) |
-| `GET /docs/especificacao` | texto desta especificação para a Ajuda (só administrador; item 51) |
+| `GET /docs/especificacao` | texto desta especificação para a Ajuda (só administrador; item 52) |
 
 **Erros:** 401 (não autenticado), 403 (sem permissão), 404 (não existe ou não visível; não revela que a tarefa existe), 409 (transição inválida ou fase não vazia), 422 (validação).
 

@@ -458,7 +458,7 @@ export async function buildApp({ pool, logger = false, serveWeb = false }: AppOp
   });
 
   /* ---------------- administração ---------------- */
-  // Item 51: a especificação aparece na Ajuda, só para a administração.
+  // Item 52: a especificação aparece na Ajuda, só para a administração.
   app.get('/api/docs/especificacao', async (req) => {
     needAdmin(req);
     const file = `${config.docsDir}/especificacao.md`;
