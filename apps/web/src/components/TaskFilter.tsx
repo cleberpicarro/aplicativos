@@ -76,7 +76,7 @@ export function FilterBar({ f, onBoard = false, children }: { f: TaskFilter; onB
   const toast = useToast();
   const [editing, setEditing] = useState<Current | null>(null);
   const [picking, setPicking] = useState(false);
-  // Item 51: no quadro, o botão Filtro e os atalhos sobem para a faixa do título (ao lado de Quadro/Tabela),
+  // Item 53: no quadro, o botão Filtro e os atalhos sobem para a faixa do título (ao lado de Quadro/Tabela),
   // e a linha de baixo só aparece quando há etiquetas de filtro para mostrar.
   const [slot, setSlot] = useState<HTMLElement | null>(null);
   useLayoutEffect(() => { if (onBoard) setSlot(document.getElementById('topbar-slot')); }, [onBoard]);
