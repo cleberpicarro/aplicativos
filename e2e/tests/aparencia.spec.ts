@@ -67,6 +67,25 @@ test.describe('aparência e preferências', () => {
     await page.keyboard.press('Escape');
     await page.getByRole('button', { name: 'Ajuda' }).click();
     await expect(page.locator('.topbar h1')).toHaveText('Ajuda');
+    // Item 51: o guia rápido abre primeiro, com os prints; a especificação não aparece para quem não é administrador.
+    await expect(page.getByRole('tab', { name: 'Guia rápido' })).toHaveAttribute('aria-selected', 'true');
+    await expect(page.getByRole('heading', { name: 'Caixa de entrada', level: 2 })).toBeVisible();
+    const print = page.getByRole('img', { name: 'Caixa de entrada com os botões Aceitar, Delegar e Descartar' });
+    await print.scrollIntoViewIfNeeded();
+    await expect.poll(() => print.evaluate((i: HTMLImageElement) => i.complete && i.naturalWidth)).toBeGreaterThan(0);
+    await expect(page.getByRole('tab', { name: 'Especificação' })).toHaveCount(0);
+    await page.getByRole('tab', { name: 'Ajuda completa' }).click();
+    await expect(page.getByRole('heading', { name: 'Glossário' })).toBeVisible();
+  });
+
+  test('administração vê a especificação na Ajuda, com o sumário clicável (item 51)', async ({ page }) => {
+    await entrar(page, 'renata');
+    await page.getByRole('button', { name: 'Ajuda' }).click();
+    await page.getByRole('tab', { name: 'Especificação' }).click();
+    await expect(page.getByRole('heading', { name: /SyncTasks: especificação/, level: 1 })).toBeVisible();
+    await page.getByRole('link', { name: 'Fora do escopo e evoluções futuras' }).click();
+    await expect(page.getByRole('heading', { name: /21\. Fora do escopo/ })).toBeInViewport();
+    await expect(page.locator('.topbar h1')).toHaveText('Ajuda');
   });
   test('Meus dados: desligar e religar o resumo diário e os avisos de prazo por e-mail (item 46) @celular', async ({ page }) => {
     await entrar(page, 'beatriz');

@@ -309,6 +309,20 @@ h2 .c.attn { color: var(--attn); }
 .help dd { margin: 0; color: var(--muted); }
 .help .ex { border-left: 3px solid var(--edge); padding: 4px 0 4px 12px; color: var(--muted); margin: 8px 0; }
 .help kbd { font: 400 0.8rem var(--mono); border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; }
+/* Item 51: abas da Ajuda e textos vindos de docs/ (guia rápido e especificação) */
+.help .help-tabs { margin: 0 0 14px; }
+.help .md > h1 { font-size: 1.25rem; margin: 4px 0 8px; }
+.help .md img { display: block; max-width: 100%; height: auto; margin: 10px 0 14px; border: 1px solid var(--line); border-radius: 8px; }
+.help .md code { font: 400 0.84em var(--mono); background: var(--hover); border-radius: 4px; padding: 0 4px; }
+.help .md pre { overflow-x: auto; background: var(--hover); border-radius: 6px; padding: 8px 10px; }
+.help .md pre code { background: none; padding: 0; }
+.help .md blockquote { border-left: 3px solid var(--edge); margin: 8px 0; padding: 2px 0 2px 12px; color: var(--muted); }
+.help .md a { color: var(--accent); }
+.help .md hr { border: 0; border-top: 1px solid var(--line); margin: 18px 0; }
+.help .md-table { overflow-x: auto; margin: 8px 0 12px; }
+.help .md-table table { border-collapse: collapse; font-size: 0.88rem; min-width: 100%; }
+.help .md-table th { text-align: left; font-weight: 500; color: var(--muted); border-bottom: 1px solid var(--line); padding: 6px 8px; }
+.help .md-table td { border-bottom: 1px solid var(--line); padding: 6px 8px; vertical-align: top; line-height: 1.5; }
 
 /* ---------- pessoas ---------- */
 .table-wrap { overflow-x: auto; border-top: 1px solid var(--line); }

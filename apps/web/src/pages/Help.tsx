@@ -1,5 +1,9 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { StatusIcon, TipIcon } from '../components/ui';
+import { Markdown } from '../components/Markdown';
+import { get } from '../lib/api';
+import guia from '../../../../docs/guia-do-usuario.md?raw';
 import { Icon } from '../components/Icons';
 import { BookmarkletButton } from './Capture';
 
@@ -38,9 +42,50 @@ function Sec({ id, title, children }: { id: string; title: string; children: Rea
   );
 }
 
+type Aba = 'guia' | 'completa' | 'especificacao';
+const ABA_KEY = 'synctasks.ajuda.aba';
+
+// Item 51: a Ajuda tem três abas. O guia rápido e a especificação vêm de docs/ (uma fonte só);
+// a especificação vem do servidor e só aparece para a administração.
 export function HelpPage({ isAdmin }: { isAdmin: boolean }) {
+  const [aba, setAbaState] = useState<Aba>(() => {
+    try {
+      const v = localStorage.getItem(ABA_KEY);
+      if (v === 'completa' || (v === 'especificacao' && isAdmin)) return v;
+    } catch { /* sem armazenamento: começa no guia */ }
+    return 'guia';
+  });
+  const setAba = (a: Aba) => {
+    setAbaState(a);
+    try { localStorage.setItem(ABA_KEY, a); } catch { /* ignora */ }
+    window.scrollTo({ top: 0 });
+  };
   return (
     <div className="page help">
+      <div className="seg help-tabs" role="tablist" aria-label="Partes da ajuda">
+        <button role="tab" aria-pressed={aba === 'guia'} aria-selected={aba === 'guia'} onClick={() => setAba('guia')}>Guia rápido</button>
+        <button role="tab" aria-pressed={aba === 'completa'} aria-selected={aba === 'completa'} onClick={() => setAba('completa')}>Ajuda completa</button>
+        {isAdmin && (
+          <button role="tab" aria-pressed={aba === 'especificacao'} aria-selected={aba === 'especificacao'} onClick={() => setAba('especificacao')}>Especificação</button>
+        )}
+      </div>
+      {aba === 'guia' && <Markdown source={guia} />}
+      {aba === 'completa' && <FullHelp isAdmin={isAdmin} />}
+      {aba === 'especificacao' && isAdmin && <Spec />}
+    </div>
+  );
+}
+
+function Spec() {
+  const q = useQuery({ queryKey: ['docs', 'especificacao'], queryFn: () => get<{ markdown: string }>('/docs/especificacao') });
+  if (q.isLoading) return <div className="loading">Carregando…</div>;
+  if (q.isError) return <p>Não foi possível abrir a especificação. Tente de novo.</p>;
+  return <Markdown source={q.data!.markdown} />;
+}
+
+function FullHelp({ isAdmin }: { isAdmin: boolean }) {
+  return (
+    <div>
       <p style={{ marginTop: 0 }}>
         O SyncTasks junta duas coisas: <b>quadros pessoais</b>, onde cada um organiza o próprio trabalho como quiser, e{' '}
         <b>delegação</b>, para quem tem equipe saber o que entregou a cada pessoa e em que pé está.
@@ -348,8 +393,6 @@ export function HelpPage({ isAdmin }: { isAdmin: boolean }) {
         <p>Pode. Quem delegou recebe um aviso com o prazo antigo e o novo.</p>
         <h3>Concluí por engano.</h3>
         <p>Abra a tarefa e clique em <b>Desfazer conclusão</b>. Depois que quem delegou deu o ciente, não é mais possível.</p>
-        <h3>O app demorou para abrir.</h3>
-        <p>Na versão de teste, o servidor “dorme” depois de alguns minutos sem uso e leva cerca de um minuto para acordar.</p>
       </Sec>
     </div>
   );

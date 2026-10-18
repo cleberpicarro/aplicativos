@@ -1,12 +1,14 @@
 # SyncTasks: especificação funcional e técnica
 
-> O aplicativo se chamava **SyncTasks** até a terceira rodada de ajustes (ver `docs/feedback.md`, item 13).
+> O aplicativo se chamava **Nerus Tasks** até a terceira rodada de ajustes (ver `docs/feedback.md`, itens 13 e 20).
+>
+> Esta especificação está atualizada até o **item 51** de `docs/feedback.md`. Ela também aparece dentro do app, na **Ajuda** › **Especificação**, para a administração; o guia do usuário fica em `docs/guia-do-usuario.md` e aparece na Ajuda para todos (seção 12.10).
 
 | | |
 |---|---|
-| **Versão** | 1.0 (rascunho para validação) |
-| **Data** | 04/10/2026 |
-| **Status** | Jornadas validadas. Amostra visual aprovada. **Primeira versão implementada** (`apps/api`, `apps/web`), com três rodadas de ajustes do teste (`docs/feedback.md`); ver README. |
+| **Versão** | 1.1 (atualizada com as rodadas de ajuste até o item 51) |
+| **Data** | 18/10/2026 (primeira versão: 04/10/2026) |
+| **Status** | **Em produção** desde 16/10/2026 em https://synctasks.onrender.com (item 45), com o Cleber (CEO e administrador) e o Daniel (gestor). Histórico dos pedidos em `docs/feedback.md`; como rodar e publicar no README. |
 | **Público** | ~90 a 99 pessoas da Nerus |
 | **Protótipo navegável** | https://claude.ai/artifact/PzRKBmbgfbtbztuQDLnWcd |
 | **Amostra do visual aprovado** | https://claude.ai/artifact/VS56Z1i99KfRCXToV47EHm |
@@ -34,7 +36,7 @@
 17. [Arquitetura, hospedagem e custos](#17-arquitetura-hospedagem-e-custos)
 18. [Plano de entrega](#18-plano-de-entrega)
 19. [Critérios de aceite](#19-critérios-de-aceite)
-20. [Questões em aberto](#20-questões-em-aberto)
+20. [Questões que estavam em aberto](#20-questões-que-estavam-em-aberto)
     - [Painel e captura da web](#20a-painel-e-captura-da-web-terceira-rodada)
 21. [Fora do escopo e evoluções futuras](#21-fora-do-escopo-e-evoluções-futuras)
 
@@ -76,9 +78,23 @@ A Nerus tem cerca de 90 pessoas organizadas em quatro níveis: **CEO > Diretores
 - Avisos no app e e-mails pelo Google Workspace.
 - PWA instalável no celular. Tamanho do texto ajustável. Tema claro e escuro.
 
+**Acrescentado nas rodadas de ajuste** (detalhes em `docs/feedback.md`):
+
+- **Painel** para quem tem equipe, com as delegadas por pessoa (itens 17 e 27).
+- **Tabela** com filtros por condições, filtros salvos e exportação para planilha (item 36); o mesmo filtro no quadro (item 47).
+- **Arquivadas**: tarefas e quadros arquivados, com pesquisa e desarquivar (itens 35 e 42).
+- **Captura da web** e de e-mails do Gmail para a caixa de entrada (itens 14 e 21).
+- **Importar do Trello** e **Exportar para o Trello** (item 31).
+- Número da tarefa por quadro (#12) e cor de um cartão só (itens 37, 38 e 40).
+- Caixa de entrada com aceitar, delegar e descartar, inclusive várias de uma vez (item 50).
+- E-mails de aceite, de prazo (véspera e vencido) e resumo diário (item 46).
+- Cancelar a delegação de dentro da tarefa, com Desfazer (item 48); marca **Não pode ser repassada** (item 41).
+- Desativar uma pessoa escolhendo quem recebe as pendências (item 44).
+- Guia do usuário e especificação dentro da Ajuda (item 51).
+
 ### 2.2 Fora do escopo (v1)
 
-Anexos e integração com o Google Drive, trabalho entre times, vários responsáveis por tarefa, quadros compartilhados, indicador de performance, registro de horas, etiquetas, @menções, data de início, lembretes, modelos, filtros avançados, calendário, automações e integrações. A seção 21 traz a lista completa.
+Anexos e integração com o Google Drive, trabalho entre times, vários responsáveis por tarefa, quadros compartilhados, indicador de performance, registro de horas, etiquetas, @menções, data de início, modelos, calendário, automações e integrações. A seção 21 traz a lista completa.
 
 ---
 
@@ -534,7 +550,17 @@ Visual de referência: a amostra aprovada.
 
 ### 12.9 Tela inicial
 
-Em aberto (seção 20). Proposta: funcionário abre em Meus quadros; quem tem subordinados abre em Tarefas delegadas.
+Quem tem subordinados abre no **Painel**; quem está fora da hierarquia (administrador “puro”) abre em **Pessoas**; os demais abrem em **Tarefas** (quadros).
+
+### 12.10 Ajuda (item 51)
+
+- No rodapé do menu: **Ajuda**, **Legenda** (ícones), **Meus dados**, **Recolher menu** e **Sair**.
+- A **Ajuda** tem abas no topo:
+  - **Guia rápido** (para todos): o texto de `docs/guia-do-usuario.md`, com os prints de `docs/imagens/`. É a porta de entrada para quem começa.
+  - **Ajuda completa** (para todos): cada tela, os conceitos, os ícones, o glossário, o manual do administrador e as perguntas frequentes.
+  - **Especificação** (só para a administração): este documento, lido do servidor (`GET /api/docs/especificacao`), com o sumário clicável.
+- A aba escolhida fica lembrada no navegador.
+- **Fonte única:** o guia e a especificação ficam só em `docs/`. Ao mudar uma regra ou uma tela, atualiza-se o arquivo em `docs/`, e o app passa a mostrar o texto novo na próxima publicação.
 
 ---
 
@@ -729,6 +755,7 @@ REST com JSON, sob `/api`. A autenticação usa cookie httpOnly de sessão. Toda
 | `GET /notifications` · `POST /notifications/read` | avisos |
 | `GET/POST/PATCH /admin/users` · `POST /admin/users/:id/transfer-management` · `POST /admin/users/:id/active` `{active}` | administração |
 | `GET /admin/users/:id/deactivation` · `POST /admin/users/:id/deactivate` `{successorId?}` | pendências e desativação com sucessor (item 44) |
+| `GET /docs/especificacao` | texto desta especificação para a Ajuda (só administrador; item 51) |
 
 **Erros:** 401 (não autenticado), 403 (sem permissão), 404 (não existe ou não visível; não revela que a tarefa existe), 409 (transição inválida ou fase não vazia), 422 (validação).
 
@@ -755,33 +782,37 @@ REST com JSON, sob `/api`. A autenticação usa cookie httpOnly de sessão. Toda
 
 ### 17.1 Stack
 
-- **Front-end:** React, Vite e TypeScript, com TanStack Query, `@dnd-kit` (arrastar), Tailwind e `vite-plugin-pwa`.
-- **Back-end:** Node, TypeScript e Fastify, com Prisma, Zod e Nodemailer (SMTP do Google Workspace), mais uma fila de e-mails simples no próprio banco.
-- **Banco:** PostgreSQL 16.
-- **Empacotamento:** um único contêiner Docker. A API serve o front já compilado, o que deixa o app portável para qualquer hospedagem.
-- **Repositório:** monorepo (`apps/api`, `apps/web`), com `docker-compose` para desenvolvimento (Postgres e Mailpit para testar e-mails).
+A especificação original previa Prisma, Tailwind e `@dnd-kit`. A versão construída ficou mais enxuta:
+
+- **Front-end:** React 18, Vite e TypeScript, com TanStack Query, CSS puro (`apps/web/src/styles.css`), arrastar e soltar próprio e roteamento pelo `#` do endereço. PWA com `manifest.webmanifest` e um service worker simples. Os textos de `docs/` da Ajuda são mostrados com `marked`.
+- **Back-end:** Node, TypeScript (ESM) e Fastify 5, com `pg` (SQL direto), Zod e Nodemailer. Os e-mails de prazo e o resumo diário rodam num agendador dentro do próprio servidor.
+- **Banco:** PostgreSQL 16. As migrações SQL ficam em `apps/api/migrations` e são aplicadas ao iniciar; uma migração publicada nunca é editada (cria-se a próxima).
+- **Empacotamento:** a API serve o front já compilado. Há um `Dockerfile` para rodar em qualquer hospedagem; no Render, o app sobe com `npm run build` e `npm start`.
+- **Repositório:** monorepo com npm workspaces (`apps/api`, `apps/web`), mais `docs/`, `e2e/` (roteiros de tela com Playwright) e `site/` (site comercial).
+- **Verificação:** a cada envio ao GitHub rodam typecheck, os testes da API (com Postgres real, inclusive permissões em massa e uso caótico, item 28), os testes do front e os roteiros de tela. O Render só publica quando a verificação passa.
 
 ### 17.2 Hospedagem
 
-- **Render ou Railway:** app e PostgreSQL gerenciado, com deploy a cada push e HTTPS incluso.
-- **E-mail:** Google Workspace da Nerus, por SMTP com uma conta dedicada. O envio fica num módulo isolado: se o host bloquear SMTP, troca-se pela API do Gmail sem afetar o resto.
-- **Domínio:** subdomínio da Nerus, por exemplo `tarefas.<domínio>`.
+- **Render**, pelo Blueprint `render.yaml` (item 45): serviço **synctasks** no plano **Starter** (não dorme, permite SMTP), banco **`nerus-db`** no plano pago **Basic-256mb** (não expira, com cópia de segurança) e `SEED_DEMO=false`. Publica a partir da branch `claude/tender-volta-yd7999`.
+- **Endereço:** https://synctasks.onrender.com. O site comercial é um serviço estático à parte, **synctasks-site** (https://synctasks-site.onrender.com).
+- **E-mail:** SMTP do Gmail, com uma conta dedicada ao app e senha de app (ligado em 17/10/2026). Sem `SMTP_HOST`, os e-mails só vão para o log. O envio fica isolado em `apps/api/src/lib/mailer.ts`.
+- **Trello:** a exportação precisa da `TRELLO_API_KEY` no Render (passo a passo no manual do administrador, na Ajuda).
 
-### 17.3 Custo mensal estimado
+### 17.3 Custo mensal
 
-| Item | Estimativa |
+| Item | Valor |
 |---|---|
-| App (hospedagem) | US$ 7 a 25 |
-| PostgreSQL gerenciado com backup | US$ 7 a 20 |
-| E-mail (Google Workspace existente) | sem custo extra |
-| Domínio | subdomínio existente: sem custo |
-| **Total** | **≈ US$ 15 a 50 por mês** |
-
-Os valores devem ser confirmados no momento da contratação.
+| Serviço do app (Render Starter) | cerca de US$ 7 |
+| PostgreSQL gerenciado (Render Basic-256mb) | cerca de US$ 6 a 7 |
+| E-mail (Gmail dedicado) | sem custo |
+| Site comercial (estático) | sem custo |
+| **Total** | **≈ US$ 13 a 14 por mês** (aprovado em 16/10/2026) |
 
 ---
 
 ## 18. Plano de entrega
+
+> Concluído. Todas as etapas abaixo foram entregues; a publicação (etapa 9) virou o item 45, com o Render em vez de domínio próprio. O plano fica aqui como registro.
 
 | Etapa | Entregas |
 |---|---|
@@ -822,20 +853,20 @@ Os testes automáticos da API e o roteiro manual devem comprovar:
 
 ---
 
-## 20. Questões em aberto
+## 20. Questões que estavam em aberto
 
-> Para a primeira versão foram adotadas respostas provisórias para todas as questões abaixo. Elas estão listadas no README, em "Decisões provisórias", e podem ser revistas a qualquer momento.
+> Todas foram respondidas. As respostas provisórias da primeira versão continuam valendo, e a Q6 mudou com o Painel.
 
-| # | Questão | Impacto |
+| # | Questão | Decisão |
 |---|---|---|
-| Q1 | O **diretor** vê o log de qualquer tarefa da empresa ou só das tarefas da própria diretoria? E o **CEO**, de todas? | permissões e consultas |
-| Q2 | Como CEO e diretor chegam ao log de tarefas que não delegaram: só pelo código, ou com uma tela de consulta de logs? | nova tela |
-| Q3 | O log de **tarefas privadas** fica visível para administrador, CEO e diretores? | privacidade |
-| Q4 | Na cadeia de delegação, o log do cartão de cima mostra os eventos do cartão de baixo, ou cada cartão tem o seu? | exibição do log |
-| Q5 | Edições de título e descrição guardam o texto antigo e o novo, ou só registram que houve edição? Esta especificação assume **antigo e novo**. | volume do log |
-| Q6 | **Tela inicial:** todos abrem em Meus quadros, ou quem tem subordinados abre em Tarefas delegadas? | navegação |
-| Q7 | Quem pode **editar o checklist** de uma tarefa delegada: só o detentor (como assumido aqui) ou também o delegador? | permissões |
-| Q8 | Os contadores **próprias** devem incluir tarefas concluídas não arquivadas? Esta especificação assume **só abertas**. | contadores |
+| Q1 | Abrangência do log para diretor e CEO | Administração e CEO veem todas as tarefas. O diretor vê as da própria diretoria (detentor ou delegador abaixo dele). |
+| Q2 | Como chegar ao log | Abrindo a tarefa, inclusive pela busca por número ou código. A aba **Log** aparece para quem tem acesso. |
+| Q3 | Log de tarefa privada | Fica oculto para todos, menos o dono. |
+| Q4 | Log na cadeia de delegação | Cada cartão tem o seu. O cartão de cima registra a delegação para baixo e o cancelamento dela. |
+| Q5 | Edições no log | Guardam o texto antigo e o novo. |
+| Q6 | Tela inicial | Quem tem subordinados abre no **Painel**; o administrador fora da hierarquia, em **Pessoas**; os demais, em **Tarefas** (12.9). |
+| Q7 | Quem edita o checklist de uma tarefa delegada | Só quem está com a tarefa. |
+| Q8 | Contador “próprias” | Só tarefas abertas e não privadas. |
 
 ---
 
@@ -846,7 +877,7 @@ Os testes automáticos da API e o roteiro manual devem comprovar:
 Usa só as tarefas que a pessoa delegou, com a mesma visibilidade de Tarefas delegadas (RN-34).
 
 - **Resumo:** em aberto (aguardando aceite ou em andamento), atrasadas, aguardando seu ciente e devolvidas.
-- **Carga por pessoa:** barra empilhada por subordinado direto: no prazo ou sem prazo (cinza), vence em até 7 dias (âmbar), atrasadas (vermelho), com legenda e dica ao passar o mouse; ao lado, o total aberto e as tarefas próprias (RN-35).
+- **Delegadas por pessoa** (item 27): barra empilhada por subordinado direto, com as tarefas delegadas **no prazo ou sem data** (azul) e as **atrasadas** (vermelho), legenda e dica ao passar o mouse; botões para ordenar pelo total ou pelas atrasadas, do maior para o menor ou ao contrário; ao lado, o total aberto e as tarefas próprias (RN-35).
 - **Próximos 14 dias:** tarefas em aberto por dia de vencimento, com as atrasadas no topo.
 - **Paradas:** sem aceite há mais de 2 dias, sem movimento (nenhum evento no log) há mais de 7 dias e aguardando ciente há mais de 2 dias.
 - Cada número ou barra abre Tarefas delegadas com filtro (`#/delegadas?filtro=abertas|atrasadas|semana|noprazo|ciente|devolvidas&pessoa=<id>`).
@@ -864,17 +895,19 @@ Usa só as tarefas que a pessoa delegou, com a mesma visibilidade de Tarefas del
 
 ## 21. Fora do escopo e evoluções futuras
 
-**Decidido que fica fora da v1:**
+**Decidido que fica fora por enquanto:**
 - Anexos e integração com o Google Drive
 - Trabalho entre pessoas de linhas diferentes (outros times)
 - Vários responsáveis por tarefa e quadros compartilhados
-- Drill-down: superior ver delegações feitas por seus subordinados
-- Indicador de performance e de carga (hoje a avaliação é só visual)
+- Drill-down: superior ver delegações feitas por seus subordinados (visão da cadeia inteira para diretor e CEO)
+- Indicador de entregas no prazo e de performance (hoje a avaliação é visual, pelo Painel)
 - Registro de horas
-- Etiquetas, @menções, data de início, lembretes, copiar e modelos de tarefa, filtros avançados
-- Visões de calendário, tabela e linha do tempo
+- Etiquetas livres, @menções, data de início, copiar e modelos de tarefa
+- Visões de calendário e linha do tempo
 - Automações e integrações (Slack, Calendar etc.)
 - Notificações push no celular
 - Login com conta Google
 
-**Candidatos para a v2**, conforme o uso real: indicador de carga por pessoa, drill-down na hierarquia, lembretes de prazo, anexos no Drive, login Google e relatórios de entrega no prazo.
+**Já entregue depois da v1** (antes estava nesta lista): visão em tabela e filtros por condições (itens 36 e 47), avisos de prazo por e-mail e resumo diário (item 46), carga por pessoa no Painel (item 27).
+
+**Para depois, conforme o uso:** captura de e-mail por encaminhamento e complemento do Gmail (item 21), extensão do Chrome para captura (item 14), anexos no Drive, login Google, drill-down na hierarquia e relatório de entregas no prazo.

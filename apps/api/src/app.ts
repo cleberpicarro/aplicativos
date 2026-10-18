@@ -458,6 +458,13 @@ export async function buildApp({ pool, logger = false, serveWeb = false }: AppOp
   });
 
   /* ---------------- administração ---------------- */
+  // Item 51: a especificação aparece na Ajuda, só para a administração.
+  app.get('/api/docs/especificacao', async (req) => {
+    needAdmin(req);
+    const file = `${config.docsDir}/especificacao.md`;
+    if (!fs.existsSync(file)) throw notFound('Especificação não encontrada.');
+    return { markdown: fs.readFileSync(file, 'utf8') };
+  });
   app.get('/api/admin/users', async (req) => {
     needAdmin(req);
     return admin.listUsers(pool);

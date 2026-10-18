@@ -17,6 +17,7 @@ COPY --from=build /app/apps/api/package.json ./apps/api/
 COPY --from=build /app/apps/api/migrations ./apps/api/migrations
 COPY --from=build /app/apps/api/dist ./apps/api/dist
 COPY --from=build /app/apps/web/dist ./apps/web/dist
+COPY --from=build /app/docs ./docs
 EXPOSE 3000
 USER node
 CMD ["node", "apps/api/dist/src/server.js"]

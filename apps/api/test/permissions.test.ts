@@ -259,10 +259,14 @@ describe('permissões em massa (frente 2)', () => {
       { method: 'POST', url: `/api/admin/users/${target}/invite`, route: 'POST /api/admin/users/:id/invite' },
       { method: 'GET', url: `/api/admin/users/${target}/deactivation`, route: 'GET /api/admin/users/:id/deactivation' },
       { method: 'POST', url: `/api/admin/users/${target}/deactivate`, body: { successorId: null }, route: 'POST /api/admin/users/:id/deactivate' },
+      { method: 'GET', url: '/api/docs/especificacao', route: 'GET /api/docs/especificacao' },
     ];
     for (const who of ['ceo', 'dir', 'gest', 'func']) {
       for (const r of routes) expect((await call(who, r.method, r.url, r.body)).status, `${who} ${r.method} ${r.url}`).toBe(403);
     }
+    const spec = await call('admin', 'GET', '/api/docs/especificacao');
+    expect(spec.status).toBe(200);
+    expect(spec.body.markdown).toContain('# SyncTasks');
     expect(await snapshot()).toEqual(before);
   });
 
@@ -317,6 +321,7 @@ describe('permissões em massa (frente 2)', () => {
       'GET /api/admin/users', 'POST /api/admin/users', 'PATCH /api/admin/users/:id', 'POST /api/admin/users/:id/transfer-management',
       'POST /api/admin/users/:id/active', 'POST /api/admin/users/:id/invite', 'PATCH /api/filters/:id', 'DELETE /api/filters/:id',
       'POST /api/cards/:id/accept-delegate', 'POST /api/inbox/discard', 'POST /api/inbox/restore',
+      'GET /api/docs/especificacao',
       // só leem ou alteram os dados da própria pessoa (não recebem identificador de outra)
       'GET /api/me', 'PATCH /api/me/prefs', 'GET /api/boards', 'POST /api/boards', 'GET /api/inbox', 'GET /api/delegations', 'GET /api/dashboard',
       'GET /api/search', 'GET /api/notifications', 'POST /api/notifications/read', 'POST /api/capture', 'POST /api/import/trello',
