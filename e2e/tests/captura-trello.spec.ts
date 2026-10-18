@@ -11,7 +11,7 @@ test.describe('captura e importação', () => {
     await page.getByRole('button', { name: 'Abrir a caixa de entrada' }).click();
     const row = page.locator('.row.inbox', { hasText: titulo });
     await expect(row).toContainText('Capturada da web');
-    await row.getByRole('button', { name: 'Aceitar e organizar' }).click();
+    await row.getByRole('button', { name: 'Aceitar', exact: true }).click();
     await dialogo(page, 'Aceitar e organizar').getByRole('button', { name: 'Aceitar' }).click();
     await expect(row).toHaveCount(0);
     await irPara(page, 'Tarefas');

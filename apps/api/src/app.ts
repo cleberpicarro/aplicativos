@@ -292,6 +292,19 @@ export async function buildApp({ pool, logger = false, serveWeb = false }: AppOp
     await inTx((db) => deleg.accept(db, need(req), id, listId));
     return { ok: true };
   });
+  app.post('/api/cards/:id/accept-delegate', async (req) => {
+    const { id } = z.object({ id: uuid }).parse(req.params);
+    const body = z.object({ listId: uuid, toUserId: uuid, suggestedDue: date.optional(), note: z.string().max(5000).optional(), noPass: z.boolean().optional() }).parse(req.body);
+    return inTx((db) => deleg.acceptAndDelegate(db, need(req), id, body));
+  });
+  app.post('/api/inbox/discard', async (req) => {
+    const { ids } = z.object({ ids: z.array(uuid).min(1).max(tasks.MAX_DISCARD) }).parse(req.body);
+    return inTx((db) => tasks.discardFromInbox(db, need(req), ids));
+  });
+  app.post('/api/inbox/restore', async (req) => {
+    const { ids } = z.object({ ids: z.array(uuid).min(1).max(tasks.MAX_DISCARD) }).parse(req.body);
+    return inTx((db) => tasks.restoreDiscarded(db, need(req), ids));
+  });
   app.post('/api/cards/:id/decline', async (req) => {
     const { id } = z.object({ id: uuid }).parse(req.params);
     const { reason } = z.object({ reason: z.string().max(2000) }).parse(req.body);

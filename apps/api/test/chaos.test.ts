@@ -1,7 +1,7 @@
 /**
  * Frente 4 do plano de testes: "uso caótico".
  * Um robô sorteia milhares de ações (criar, delegar, aceitar, devolver, concluir, reabrir, dar ciente,
- * cancelar, redelegar, transferir, mover, arquivar, tornar privada…) entre as pessoas da hierarquia e,
+ * cancelar, redelegar, transferir, mover, arquivar, descartar da caixa de entrada, tornar privada…) entre as pessoas da hierarquia e,
  * de tempos em tempos, confere regras que nunca podem ser quebradas.
  *
  * O sorteio é reproduzível: se falhar, a mensagem mostra a "semente" e as últimas ações.
@@ -189,6 +189,24 @@ async function runChaos(seed: number) {
       if (!canceled.length) return;
       await act(who, 'POST', `/api/delegations/${r.pick(canceled).id}/undo-cancel`);
     },
+    async descartar() {
+      // item 50: descarta da caixa de entrada (às vezes junto com uma tarefa que não pode) e, às vezes, desfaz
+      const who = r.pick(PEOPLE);
+      const inbox = (await act(who, 'GET', '/api/inbox')).body as any[];
+      if (!inbox.length) return;
+      const ids = inbox.filter(() => r.chance(0.4)).map((c) => c.id);
+      if (!ids.length) ids.push(r.pick(inbox).id);
+      const res = await act(who, 'POST', '/api/inbox/discard', { ids });
+      if (res.status === 200 && r.chance(0.3)) await act(who, 'POST', '/api/inbox/restore', { ids });
+    },
+    async delegarDaCaixa() {
+      // item 50: aceita e delega de uma vez, direto da caixa de entrada
+      const who = r.pick(PEOPLE.filter((p) => reportsOf(p).length));
+      const inbox = (await act(who, 'GET', '/api/inbox')).body as any[];
+      if (!inbox.length) return;
+      const to = r.chance(0.9) ? r.pick(reportsOf(who)) : r.pick(PEOPLE);
+      await act(who, 'POST', `/api/cards/${r.pick(inbox).id}/accept-delegate`, { listId: await firstListOf(ctx, who), toUserId: idOf(to) });
+    },
     async avisos() {
       // item 46: o servidor prepara os e-mails de prazo e o resumo diário (às vezes num horário sorteado de dia útil)
       const before = (await q(`SELECT coalesce(max(created_at), 'epoch') AS t, count(*)::int AS n FROM email_outbox`))[0];
@@ -224,6 +242,7 @@ async function runChaos(seed: number) {
   const weights: [string, number][] = [
     ['criar', 14], ['delegar', 14], ['aceitar', 12], ['devolver', 5], ['concluir', 12], ['responder', 12],
     ['transferir', 6], ['editar', 14], ['arquivar', 5], ['intrometer', 6], ['quadros', 2], ['desativar', 1], ['desfazer', 3], ['avisos', 2],
+    ['descartar', 3], ['delegarDaCaixa', 3],
   ];
   const total = weights.reduce((s, [, w]) => s + w, 0);
   const pickAction = () => {

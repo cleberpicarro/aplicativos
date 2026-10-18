@@ -4,7 +4,7 @@ import { del, get, patch, post, type CardDetail } from '../lib/api';
 import { TIPS, cardNo, dateTime, delegationKey, firstName, fullDate, relative, statusOf } from '../lib/format';
 import { Avatar, Dialog, ErrorText, StatusPill, useMe, useToast } from './ui';
 import { Icon } from './Icons';
-import { AcceptDialog, ConfirmDialog, DeclineDialog, DelegateDialog, RedelegateDialog, ReopenDialog, TransferDialog, useAction, useCancelDelegation } from './dialogs';
+import { AcceptDialog, ConfirmDialog, DeclineDialog, DelegateDialog, RedelegateDialog, ReopenDialog, TransferDialog, useAction, useCancelDelegation, useDiscard } from './dialogs';
 import { go } from '../lib/router';
 import { BOARD_COLORS } from '../pages/Boards';
 
@@ -18,6 +18,7 @@ export function CardModal({ code, onClose }: { code: string; onClose: () => void
   const { run, busy, error } = useAction();
   const toast = useToast();
   const cancelDelegation = useCancelDelegation();
+  const discard = useDiscard();
 
   if (q.isLoading) return <Dialog title="Carregando…" onClose={onClose} wide><p className="loading">Carregando a tarefa…</p></Dialog>;
   if (q.error || !q.data) {
@@ -46,6 +47,12 @@ export function CardModal({ code, onClose }: { code: string; onClose: () => void
       {card.inInbox ? (
         <>
           <button className="b pri" title={TIPS.accept} onClick={() => setSub('accept')}>Aceitar e organizar</button>
+          {reports && !d?.noPass && <button className="b" title={TIPS.delegateInbox} onClick={() => setSub('delegate')}><Icon name="out" />Delegar</button>}
+          {!d && (
+            <button className="b" title={TIPS.discard} onClick={async () => { if (await discard([card.id])) onClose(); }}>
+              <Icon name="archive" />Descartar
+            </button>
+          )}
           {d && !card.transferredFrom && <button className="b" title={TIPS.decline} onClick={() => setSub('decline')}>Devolver</button>}
         </>
       ) : (
@@ -180,9 +187,9 @@ export function CardModal({ code, onClose }: { code: string; onClose: () => void
               )}
               {(ownerActions || delegatorActions) && <div style={{ display: 'grid', gap: 6 }}>{ownerActions}{delegatorActions}</div>}
               {role === 'auditor' && <p className="hint">Você está vendo esta tarefa pelo acesso de auditoria.</p>}
-              {archived && <p className="hint">{card.delegation?.status === 'CANCELED' ? 'Delegação cancelada.' : 'Tarefa arquivada.'}</p>}
+              {archived && <p className="hint">{card.delegation?.status === 'CANCELED' ? 'Delegação cancelada.' : card.discarded ? 'Tarefa descartada da caixa de entrada.' : 'Tarefa arquivada.'}</p>}
               {archived && owner && !d && (
-                <button className="b" disabled={busy} onClick={() => run(() => post(`/cards/${card.id}/unarchive`), 'Tarefa desarquivada: de volta ao quadro.')}>
+                <button className="b" disabled={busy} onClick={() => run(() => post(`/cards/${card.id}/unarchive`), card.discarded ? 'Tarefa desarquivada: de volta à caixa de entrada.' : 'Tarefa desarquivada: de volta ao quadro.')}>
                   <Icon name="undo" />Desarquivar
                 </button>
               )}
@@ -192,7 +199,7 @@ export function CardModal({ code, onClose }: { code: string; onClose: () => void
         )}
       </Dialog>
 
-      {sub === 'delegate' && <DelegateDialog card={card} onClose={() => setSub(null)} />}
+      {sub === 'delegate' && <DelegateDialog card={card} fromInbox={card.inInbox} onClose={() => setSub(null)} />}
       {sub === 'transfer' && <TransferDialog card={card} onClose={() => { setSub(null); onClose(); }} />}
       {sub === 'decline' && <DeclineDialog card={card} onClose={() => { setSub(null); onClose(); }} />}
       {sub === 'reopen' && <ReopenDialog card={card} onClose={() => setSub(null)} />}
@@ -410,7 +417,8 @@ function describe(e: Ev): { text: string; change?: string } {
     case 'completed': return { text: 'concluiu a tarefa' };
     case 'completion_undone': return { text: 'desfez a conclusão' };
     case 'archived': return { text: a.undo ? 'desfez a criação (tarefa arquivada)' : 'arquivou a tarefa' };
-    case 'unarchived': return { text: 'desarquivou a tarefa' };
+    case 'unarchived': return { text: a.inbox ? 'desarquivou a tarefa (de volta à caixa de entrada)' : 'desarquivou a tarefa' };
+    case 'discarded': return { text: 'descartou a tarefa da caixa de entrada' };
     case 'acked': return { text: 'deu ciente: tarefa arquivada' };
     case 'reopened': return { text: 'reabriu a tarefa', change: `“${a.reason}”` };
     case 'canceled': return { text: 'cancelou a delegação' };

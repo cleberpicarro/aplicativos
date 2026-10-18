@@ -16,6 +16,8 @@ export interface ArchivedItem {
   archivedAt: string;
   createdAt: string;
   kind: 'own' | 'delegated';
+  /** Item 50: descartada da caixa de entrada; ao desarquivar, volta para lá. */
+  discarded: boolean;
   boardName: string | null;
   listName: string | null;
   /** Item 42: o quadro onde a tarefa estava foi arquivado. */
@@ -68,9 +70,11 @@ export function ArchivedPage() {
     try {
       await post(`/cards/${it.id}/unarchive`);
       await qc.invalidateQueries();
-      toast(`Tarefa desarquivada: de volta a ${it.boardName && !it.boardArchived ? `“${it.boardName}”` : 'o seu primeiro quadro'}.`, 'ok', {
+      const where = it.discarded ? 'à caixa de entrada' : it.boardName && !it.boardArchived ? `a “${it.boardName}”` : 'ao seu primeiro quadro';
+      toast(`Tarefa desarquivada: de volta ${where}.`, 'ok', {
         label: 'Desfazer',
-        onClick: () => post(`/cards/${it.id}/archive`).then(() => qc.invalidateQueries(), (e) => toast((e as Error).message, 'error')),
+        onClick: () => (it.discarded ? post('/inbox/discard', { ids: [it.id] }) : post(`/cards/${it.id}/archive`))
+          .then(() => qc.invalidateQueries(), (e) => toast((e as Error).message, 'error')),
       });
     } catch (e) {
       toast((e as Error).message, 'error');
@@ -105,7 +109,7 @@ export function ArchivedPage() {
       {list.data && items.length === 0 && (
         term
           ? <div className="empty"><b>Nada encontrado.</b>Nenhuma tarefa arquivada tem esse código ou texto.</div>
-          : <div className="empty"><b>Nenhuma tarefa arquivada.</b>Quando você arquivar uma tarefa concluída, ou der ciente numa tarefa que delegou, ela aparece aqui.</div>
+          : <div className="empty"><b>Nenhuma tarefa arquivada.</b>Quando você arquivar uma tarefa concluída, descartar uma tarefa da caixa de entrada ou der ciente numa tarefa que delegou, ela aparece aqui.</div>
       )}
       {items.length > 0 && (
         <div className="table-wrap">
@@ -121,9 +125,10 @@ export function ArchivedPage() {
                     <span className="ttl">
                     <button className="cell-link" onClick={() => go(`/tarefa/${it.id}`)} title={it.title}>{it.title}</button>
                     {it.kind === 'delegated' && <span className="tag del" title="Você delegou e deu o ciente">Delegada para {it.delegatedTo}</span>}
+                    {it.discarded && <span className="tag disc" title="Descartada da caixa de entrada, sem concluir">Descartada</span>}
                     </span>
                   </td>
-                  <td className="muted">{it.boardName ? `${it.boardName} · ${it.listName}${it.boardArchived ? ' (quadro arquivado)' : ''}` : '—'}</td>
+                  <td className="muted">{it.discarded ? 'Caixa de entrada' : it.boardName ? `${it.boardName} · ${it.listName}${it.boardArchived ? ' (quadro arquivado)' : ''}` : '—'}</td>
                   <td className="c-date">{day(it.completedAt)}</td>
                   <td className="c-date">{day(it.archivedAt)}</td>
                   <td className="c-acts">

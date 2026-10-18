@@ -94,6 +94,8 @@ export const TIPS = {
   transfer: 'Passa a tarefa para outra pessoa (subordinado, colega do mesmo nível ou seu superior). Você deixa de acompanhar.',
   decline: 'Devolve a tarefa a quem delegou, com uma justificativa obrigatória.',
   accept: 'Escolhe em qual quadro e fase a tarefa vai ficar.',
+  delegateInbox: 'Coloca a tarefa num quadro seu (para acompanhar) e já a entrega a um subordinado direto, de uma vez.',
+  discard: 'Tira a tarefa da caixa de entrada sem concluir. Ela vai para Arquivadas, de onde dá para desarquivar. Ninguém é avisado.',
   ack: 'Valida a conclusão. A tarefa é arquivada e a pessoa é avisada.',
   reopen: 'Não aceita a conclusão: a tarefa volta para a pessoa, com o seu comentário.',
   redelegate: 'Envia a tarefa devolvida para a mesma ou outra pessoa da sua equipe. O código é mantido.',

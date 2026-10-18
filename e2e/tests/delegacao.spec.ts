@@ -19,7 +19,7 @@ async function delegar(page: Page, codigo: string, para: RegExp, obs?: string) {
 async function aceitarDaCaixa(page: Page, titulo: string) {
   await irPara(page, 'Caixa de entrada');
   const row = page.locator('.row.inbox', { hasText: titulo });
-  await row.getByRole('button', { name: 'Aceitar e organizar' }).click();
+  await row.getByRole('button', { name: 'Aceitar', exact: true }).click();
   await dialogo(page, 'Aceitar e organizar').getByRole('button', { name: 'Aceitar' }).click();
   await expect(row).toHaveCount(0);
 }
