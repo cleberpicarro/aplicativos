@@ -18,6 +18,7 @@ import { CapturePage } from './pages/Capture';
 import { DashboardPage } from './pages/Dashboard';
 import { ArchivedPage } from './pages/Archived';
 import { TablePage } from './pages/Table';
+import { SHORTCUTS, isTyping, requestNewTask } from './lib/shortcuts';
 
 const FS = [12, 13, 14, 15, 16, 18];
 const FS_KEY = 'synctasks.fs';
@@ -101,6 +102,7 @@ function Shell() {
   const theme = useTheme();
   const [legend, setLegend] = useState(false);
   const [myData, setMyData] = useState(false);
+  const [keysHelp, setKeysHelp] = useState(false);
   const [collapsed, setCollapsed] = useState(() => stored('synctasks.side', ['open', 'closed'] as const, 'open') === 'closed');
   const lastPage = useRef('/quadros');
 
@@ -111,7 +113,8 @@ function Shell() {
   const toggleSide = () => setCollapsed((c) => { store('synctasks.side', c ? 'open' : 'closed'); return !c; });
 
   const hasReports = me.directReports.length > 0;
-  const home = !me.user.inHierarchy ? '/pessoas' : hasReports ? '/painel' : '/quadros';
+  // Item 58: todo mundo da hierarquia abre nas próprias tarefas (o Painel fica a um clique, no menu).
+  const home = !me.user.inHierarchy ? '/pessoas' : '/quadros';
   let page = route.path;
   const cardCode = page.startsWith('/tarefa/') ? decodeURIComponent(page.slice(8)) : null;
   if (cardCode) page = lastPage.current;
@@ -122,6 +125,28 @@ function Shell() {
   useEffect(() => {
     if (!cardCode && !PAGES[route.path]) go(home);
   }, [route.path]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Item 56: atalhos de teclado gerais (N, / e ?). Não valem com uma janela aberta nem enquanto a pessoa escreve.
+  const keyState = useRef({ page, view });
+  keyState.current = { page, view };
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (isTyping(e) || document.querySelector('.scrim')) return;
+      if (e.key === '?') { e.preventDefault(); setKeysHelp(true); return; }
+      if (e.key === '/') {
+        const box = document.querySelector<HTMLInputElement>('.search input');
+        if (box) { e.preventDefault(); box.focus(); }
+        return;
+      }
+      if ((e.key === 'n' || e.key === 'N') && me.user.inHierarchy) {
+        e.preventDefault();
+        if (keyState.current.view !== 'quadro') setView('quadro');
+        if (keyState.current.page !== '/quadros') go('/quadros');
+        requestNewTask();
+      }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     document.title = `${cardCode ? 'Tarefa' : PAGES[page]?.title ?? ''} · SyncTasks`;
   }, [page, cardCode]);
@@ -164,6 +189,7 @@ function Shell() {
             <span className="ico"><Icon name="book" /></span><span className="lbl">Ajuda</span>
           </button>
           <button onClick={() => setLegend(true)} title="Legenda dos ícones"><span className="ico"><Icon name="help" /></span><span className="lbl">Legenda</span></button>
+          <button className="keys-btn" onClick={() => setKeysHelp(true)} title="Atalhos de teclado (tecla ?)"><span className="ico"><Icon name="keyboard" /></span><span className="lbl">Atalhos</span></button>
           <button className="my-data" onClick={() => setMyData(true)} title="Meus dados"><span className="ico"><Icon name="self" /></span><span className="lbl">Meus dados</span></button>
           <button className="collapse" onClick={toggleSide} title={collapsed ? 'Expandir menu' : 'Recolher menu'} aria-expanded={!collapsed}>
             <span className="ico"><Icon name={collapsed ? 'sideOpen' : 'sideClose'} /></span><span className="lbl">Recolher menu</span>
@@ -203,6 +229,7 @@ function Shell() {
       {cardCode && <CardModal key={cardCode} code={cardCode} onClose={() => go(lastPage.current)} />}
       {legend && <LegendDialog onClose={() => setLegend(false)} />}
       {myData && <MyDataDialog onClose={() => setMyData(false)} />}
+      {keysHelp && <ShortcutsDialog onClose={() => setKeysHelp(false)} />}
     </div>
   );
 }
@@ -293,6 +320,23 @@ function MyDataDialog({ onClose }: { onClose: () => void }) {
         </fieldset>
       )}
       <ErrorText error={error} />
+    </Dialog>
+  );
+}
+
+/** Item 56: a lista de atalhos de teclado (tecla ? ou “Atalhos” no menu). */
+function ShortcutsDialog({ onClose }: { onClose: () => void }) {
+  return (
+    <Dialog title="Atalhos de teclado" onClose={onClose}>
+      <p className="hint" style={{ marginTop: 0 }}>Funcionam quando você não está escrevendo num campo.</p>
+      <dl className="keys-list">
+        {SHORTCUTS.map((s) => (
+          <div key={s.what}>
+            <dt>{s.keys.map((k, i) => <span key={k}>{i > 0 && ' + '}<kbd>{k}</kbd></span>)}</dt>
+            <dd>{s.what}</dd>
+          </div>
+        ))}
+      </dl>
     </Dialog>
   );
 }

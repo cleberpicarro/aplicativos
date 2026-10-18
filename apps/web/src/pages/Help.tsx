@@ -18,6 +18,7 @@ const SECTIONS: [string, string][] = [
   ['concluir', 'Concluir, ciente e reabrir'],
   ['devolver', 'Devolver e transferir'],
   ['codigo', 'Código, busca e avisos'],
+  ['atalhos', 'Atalhos de teclado'],
   ['privacidade', 'Privacidade e log'],
   ['icones', 'Ícones'],
   ['glossario', 'Glossário'],
@@ -59,7 +60,7 @@ export function HelpPage({ isAdmin }: { isAdmin: boolean }) {
       <Sec id="inicio" title="Primeiros passos">
         <ol>
           <li>Você recebe um e-mail com o link para <b>definir sua senha</b>. Depois, entre com seu e-mail e senha. O <b>olho</b> no fim do campo de senha mostra o que você digitou; clique de novo para ocultar.</li>
-          <li>No menu à esquerda ficam o <b>Painel</b> e as <b>Tarefas delegadas</b> (só para quem tem equipe), <b>Tarefas</b>, a <b>Caixa de entrada</b>, as <b>Arquivadas</b> e <b>Avisos</b>. Quem tem equipe começa pelo Painel.</li>
+          <li>No menu à esquerda ficam o <b>Painel</b> e as <b>Tarefas delegadas</b> (só para quem tem equipe), <b>Tarefas</b>, a <b>Caixa de entrada</b>, as <b>Arquivadas</b> e <b>Avisos</b>. Todo mundo começa pelas próprias <b>Tarefas</b>; o Painel fica a um clique, no menu.</li>
           <li>O menu pode ser recolhido pelo botão <b>Recolher menu</b>, no rodapé dele. Recolhido, ele mostra só os ícones.</li>
           <li>No topo, à direita, ficam a <b>busca</b>, o tamanho do texto (<b>A−</b> / <b>A+</b>) e o botão de <b>tema</b>: automático (segue o Windows), claro ou escuro. Cada clique troca o tema.</li>
         </ol>
@@ -169,12 +170,12 @@ export function HelpPage({ isAdmin }: { isAdmin: boolean }) {
       <Sec id="entrada" title="Caixa de entrada">
         <p>Tarefas que alguém delegou ou transferiu para você, e páginas que você capturou da web, chegam aqui primeiro. Para cada uma:</p>
         <ul>
-          <li><b>Aceitar:</b> escolha o quadro e a fase. A tarefa vai para lá.</li>
+          <li><b>Aceitar:</b> na primeira vez, escolha o quadro e a fase. Depois disso, um clique em <b>Aceitar</b> coloca a tarefa no mesmo lugar da última vez (o aviso mostra onde e tem <b>Abrir</b>). Para escolher outro lugar, use a setinha ao lado do Aceitar (“Aceitar em…”).</li>
           <li><b>Delegar</b> (para quem tem equipe): numa janela só, escolha o quadro e a fase onde fica a sua tarefa, para acompanhar, e o subordinado direto que vai fazer. É o mesmo que aceitar e depois delegar.</li>
           <li><b>Descartar:</b> tira a tarefa da caixa sem concluir. Ela vai para <b>Arquivadas</b>, marcada como “Descartada”, e o aviso traz <b>Desfazer</b>. Ninguém é avisado. Para trazer de volta depois, clique em <b>Desarquivar</b> em Arquivadas: ela volta para a caixa de entrada, com o mesmo número.</li>
           <li><b>Devolver:</b> para tarefas que chegaram por delegação, no lugar de Descartar, porque quem delegou espera por elas. Escreva a justificativa (obrigatória). A tarefa volta para quem delegou.</li>
         </ul>
-        <p><b>Várias de uma vez:</b> marque as caixinhas à esquerda (ou <b>Selecionar todas</b>, ou <b>Selecionar de…</b> para pegar todas que vieram da mesma pessoa) e clique em <b>Descartar selecionadas</b>.</p>
+        <p><b>Várias de uma vez:</b> marque as caixinhas à esquerda (ou <b>Selecionar todas</b>, ou <b>Selecionar de…</b> para pegar todas que vieram da mesma pessoa) e clique em <b>Descartar selecionadas</b>. Não há janela de confirmação: o aviso traz <b>Desfazer</b>.</p>
         <p>O prazo vem sugerido por quem delegou. Você pode ajustá-lo dentro da tarefa, e quem delegou recebe um aviso.</p>
       </Sec>
 
@@ -251,6 +252,18 @@ export function HelpPage({ isAdmin }: { isAdmin: boolean }) {
           <li><b>Resumo diário por e-mail:</b> às <b>7h</b>, de segunda a sexta, com o que vence hoje, o que está atrasado, as delegações aguardando o seu aceite e as tarefas aguardando o seu ciente, cada uma com o número e o link. Dia sem nada, sem e-mail.</li>
           <li><b>Meus dados:</b> clique no seu nome, no alto do menu à esquerda (ou em <b>Meus dados</b>, embaixo), para desligar o resumo diário ou os avisos de prazo. Os avisos de delegação continuam chegando sempre.</li>
         </ul>
+      </Sec>
+
+      <Sec id="atalhos" title="Atalhos de teclado">
+        <p>Funcionam quando você não está escrevendo num campo. A lista também abre com a tecla <kbd>?</kbd> ou em <b>Atalhos</b>, embaixo no menu.</p>
+        <ul>
+          <li><kbd>N</kbd>: nova tarefa na primeira fase do quadro aberto.</li>
+          <li><kbd>/</kbd>: vai para a busca.</li>
+          <li><kbd>C</kbd>: conclui (ou desfaz a conclusão) da tarefa aberta. <kbd>D</kbd>: delega a tarefa aberta.</li>
+          <li><kbd>Ctrl</kbd> + <kbd>Enter</kbd>: envia o comentário, salva a descrição ou confirma a janela aberta (Delegar, Devolver, Reabrir…).</li>
+          <li><kbd>Esc</kbd>: fecha a janela ou o menu.</li>
+        </ul>
+        <p>As mudanças aparecem na tela na hora em que você clica ou solta o cartão; o app grava por trás. Se o servidor recusar, a tela volta como estava e aparece um aviso com o motivo.</p>
       </Sec>
 
       <Sec id="privacidade" title="Privacidade e log">

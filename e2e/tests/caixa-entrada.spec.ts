@@ -29,8 +29,7 @@ test.describe('caixa de entrada: aceitar, delegar e descartar', () => {
     await linha(dois).getByRole('checkbox').check();
     await linha(tres).getByRole('checkbox').check();
     await expect(page.locator('.inbox-bar')).toContainText('2 selecionadas');
-    await page.getByRole('button', { name: 'Descartar selecionadas' }).click();
-    await dialogo(page, 'Descartar 2 tarefas?').getByRole('button', { name: 'Descartar', exact: true }).click();
+    await page.getByRole('button', { name: 'Descartar selecionadas' }).click(); // item 58: sem confirmação, com Desfazer
     await aviso(page, '2 tarefas descartadas.');
     await expect(linha(dois)).toHaveCount(0);
     await expect(linha(tres)).toHaveCount(0);
@@ -75,5 +74,32 @@ test.describe('caixa de entrada: aceitar, delegar e descartar', () => {
     } finally {
       await joao.fechar();
     }
+  });
+
+  test('aceitar com um clique repete o último quadro e fase; a setinha deixa escolher outro', async ({ page }) => {
+    await entrar(page, 'beatriz');
+    const um = unico('Aceite um');
+    const dois = unico('Aceite dois');
+    for (const t of [um, dois]) await capturar(page, t);
+    await irPara(page, 'Caixa de entrada');
+    const linha = (t: string) => page.locator('.row.inbox', { hasText: t });
+
+    // Primeira vez: o Aceitar pergunta o lugar.
+    await linha(um).getByRole('button', { name: 'Aceitar', exact: true }).click();
+    const dlg = dialogo(page, 'Aceitar e organizar');
+    await dlg.getByLabel('Fase').selectOption({ label: 'Fazendo' });
+    await dlg.getByRole('button', { name: 'Aceitar' }).click();
+    await expect(linha(um)).toHaveCount(0);
+
+    // Depois: um clique, mesmo lugar, sem janela; o aviso diz onde e abre a tarefa.
+    await linha(dois).getByRole('button', { name: 'Aceitar', exact: true }).click();
+    await expect(linha(dois)).toHaveCount(0);
+    await expect(dlg).toHaveCount(0);
+    await aviso(page, /Tarefa aceita em “.+ · Fazendo”\./);
+    await page.locator('.toast').getByRole('button', { name: 'Abrir' }).click();
+    await expect(page.getByRole('dialog', { name: /^Tarefa #\d+$/ }).getByLabel('Título', { exact: true })).toHaveValue(dois);
+    await page.keyboard.press('Escape');
+    await irPara(page, 'Tarefas');
+    await expect(page.getByRole('region', { name: 'Fazendo', exact: true }).locator('article.kc', { hasText: dois })).toBeVisible();
   });
 });

@@ -97,7 +97,14 @@ export function Dialog({ title, onClose, children, footer, wide, label }: { titl
     const prev = document.activeElement as HTMLElement | null;
     const first = ref.current?.querySelector<HTMLElement>('[autofocus], input, textarea, select, button:not(.x)');
     first?.focus();
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+      // Item 56: Ctrl+Enter confirma a janela que tem formulário (Delegar, Devolver, Reabrir…).
+      else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+        const form = ref.current?.querySelector<HTMLFormElement>('form#dlg');
+        if (form) { e.preventDefault(); form.requestSubmit(); }
+      }
+    };
     document.addEventListener('keydown', onKey);
     return () => { document.removeEventListener('keydown', onKey); prev?.focus?.(); };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps

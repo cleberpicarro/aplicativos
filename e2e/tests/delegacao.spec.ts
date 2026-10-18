@@ -19,7 +19,8 @@ async function delegar(page: Page, codigo: string, para: RegExp, obs?: string) {
 async function aceitarDaCaixa(page: Page, titulo: string) {
   await irPara(page, 'Caixa de entrada');
   const row = page.locator('.row.inbox', { hasText: titulo });
-  await row.getByRole('button', { name: 'Aceitar', exact: true }).click();
+  // A setinha “Aceitar em…” sempre pergunta o lugar (o Aceitar sozinho repete o último, item 57).
+  await row.getByRole('button', { name: /^Aceitar em…/ }).click();
   await dialogo(page, 'Aceitar e organizar').getByRole('button', { name: 'Aceitar' }).click();
   await expect(row).toHaveCount(0);
 }
@@ -160,7 +161,7 @@ test.describe('delegação de ponta a ponta', () => {
 
   test('painel e tarefas delegadas mostram a equipe do gestor', async ({ page }) => {
     await entrar(page, 'marina');
-    await expect(page.locator('.topbar h1')).toHaveText('Painel');
+    await irPara(page, 'Painel');
     await expect(page.locator('section[aria-labelledby="h-load"]')).toBeVisible(); // quadro da equipe no Painel
     await irPara(page, 'Tarefas delegadas');
     await expect(page.getByRole('heading', { name: 'Equipe' })).toBeVisible();

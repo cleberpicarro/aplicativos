@@ -38,7 +38,8 @@ test.describe('entrar e sair', () => {
     await expect(page.getByRole('heading', { name: 'Entrar' })).toBeVisible();
 
     await entrar(page, 'marina');
-    await expect(page.locator('.topbar h1')).toHaveText('Painel');
+    await expect(page.locator('.topbar h1')).toHaveText('Tarefas'); // item 58: quem tem equipe também abre nas tarefas
+    await expect(page.getByRole('link', { name: /Painel/ })).toBeVisible();
     await sair(page);
 
     await entrar(page, 'renata');
