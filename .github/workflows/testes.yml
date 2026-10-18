@@ -16,26 +16,19 @@ jobs:
     name: Verificação completa
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    services:
-      postgres:
-        # Imagem oficial espelhada na AWS: sem o limite de downloads do Docker Hub, que derrubava a verificação.
-        image: public.ecr.aws/docker/library/postgres:16
-        env:
-          POSTGRES_USER: nerus
-          POSTGRES_PASSWORD: nerus
-          POSTGRES_DB: nerus_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U nerus"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
     env:
       TEST_DATABASE_URL: postgres://nerus:nerus@localhost:5432/nerus_test
       E2E_DATABASE_URL: postgres://nerus:nerus@localhost:5432/nerus_e2e
     steps:
       - uses: actions/checkout@v4
+      # PostgreSQL que já vem instalado na máquina do GitHub: sem baixar imagem, porque os limites
+      # de download do Docker Hub e depois do espelho da AWS derrubavam a verificação.
+      - name: Ligar o PostgreSQL
+        run: |
+          sudo systemctl start postgresql.service
+          until pg_isready -h localhost; do sleep 1; done
+          sudo -u postgres psql -c "CREATE ROLE nerus LOGIN SUPERUSER PASSWORD 'nerus';"
+          for db in nerus nerus_test nerus_e2e; do sudo -u postgres createdb -O nerus "$db"; done
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -68,23 +61,16 @@ jobs:
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    services:
-      postgres:
-        # Imagem oficial espelhada na AWS: sem o limite de downloads do Docker Hub, que derrubava a verificação.
-        image: public.ecr.aws/docker/library/postgres:16
-        env:
-          POSTGRES_USER: nerus
-          POSTGRES_PASSWORD: nerus
-          POSTGRES_DB: nerus
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U nerus"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
     steps:
       - uses: actions/checkout@v4
+      # PostgreSQL que já vem instalado na máquina do GitHub: sem baixar imagem, porque os limites
+      # de download do Docker Hub e depois do espelho da AWS derrubavam a verificação.
+      - name: Ligar o PostgreSQL
+        run: |
+          sudo systemctl start postgresql.service
+          until pg_isready -h localhost; do sleep 1; done
+          sudo -u postgres psql -c "CREATE ROLE nerus LOGIN SUPERUSER PASSWORD 'nerus';"
+          for db in nerus nerus_test nerus_e2e; do sudo -u postgres createdb -O nerus "$db"; done
       - uses: actions/setup-node@v4
         with:
           node-version: 22
