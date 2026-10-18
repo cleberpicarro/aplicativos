@@ -11,6 +11,8 @@ import { ImportTrelloDialog } from '../components/ImportTrello';
 import { ExportTrelloDialog } from '../components/ExportTrello';
 import { asSingle, MAX_BATCH, MAX_TITLE, splitLines } from '../lib/lines';
 import { FilterBar, useTaskFilter } from '../components/TaskFilter';
+import { addPendingCard, changeCard, isPending } from '../lib/optimistic';
+import { NEW_TASK_EVENT, takeNewTaskRequest } from '../lib/shortcuts';
 
 const STORE_KEY = 'synctasks.board';
 const ZOOM_KEY = 'synctasks.zoom';
@@ -308,6 +310,7 @@ function useHiddenNotice(board: { data?: Board; dataUpdatedAt: number }, match: 
 
 function Kanban({ board, today, zoom, match, onNewList }: { board: Board; today: string; zoom: number; match: Set<string> | null; onNewList: () => void }) {
   const { run, error } = useAction();
+  const qc = useQueryClient();
   const toast = useToast();
   const [dragId, setDragId] = useState<string | null>(null);
   const [dropAt, setDropAt] = useState<DropAt>(null);
@@ -347,7 +350,9 @@ function Kanban({ board, today, zoom, match, onNewList }: { board: Board; today:
     const unchanged = current && current.listId === target.listId &&
       cardsOf(target.listId).findIndex((c) => c.id === id) === (idx === -1 ? cardsOf(target.listId).length - 1 : idx);
     if (unchanged) return;
-    run(() => post(`/cards/${id}/move`, { listId: target.listId, position }));
+    // Item 54: o cartão já fica onde foi solto; se o servidor recusar, volta para o lugar de antes.
+    run(() => post(`/cards/${id}/move`, { listId: target.listId, position }), undefined,
+      { optimistic: () => changeCard(qc, id, { listId: target.listId, position }), scope: 'card' });
   };
 
   const moveList = (index: number, dir: -1 | 1) => {
@@ -420,7 +425,7 @@ function Kanban({ board, today, zoom, match, onNewList }: { board: Board; today:
                 ))}
                 {here && dropAt?.beforeId === null && line}
               </div>
-              <AddCard listId={l.id} />
+              <AddCard listId={l.id} first={i === 0} />
             </section>
           );
         })}
@@ -447,27 +452,31 @@ function Tile({ card, today, dragging, onDragStart, onDragEnd, onDragOver, onDro
   onDragStart: (e: DragEvent) => void; onDragEnd: () => void; onDragOver: (e: DragEvent) => void; onDrop: (e: DragEvent) => void;
 }) {
   const { run } = useAction();
+  const qc = useQueryClient();
   const d = card.delegation;
   const done = !!card.completedAt;
-  const canToggle = !d || d.status === 'IN_PROGRESS' || d.status === 'AWAITING_ACK';
+  const pending = isPending(card);
+  const canToggle = !pending && (!d || d.status === 'IN_PROGRESS' || d.status === 'AWAITING_ACK');
   const toggle = () =>
     run(() => post(`/cards/${card.id}/${done ? 'uncomplete' : 'complete'}`),
-      done ? 'Conclusão desfeita.' : d ? `Concluída. ${firstName(d.delegatorName)} foi avisado(a) para dar o ciente.` : 'Tarefa concluída.');
+      done ? 'Conclusão desfeita.' : d ? `Concluída. ${firstName(d.delegatorName)} foi avisado(a) para dar o ciente.` : 'Tarefa concluída.',
+      { optimistic: () => changeCard(qc, card.id, { completedAt: done ? null : new Date().toISOString() }), scope: 'card' });
   const showStatus = d && (d.status === 'AWAITING_ACK' || d.reopened);
   const toast = useToast();
   const archive = async () => {
-    if ((await run(() => post(`/cards/${card.id}/archive`))) === undefined) return;
+    if ((await run(() => post(`/cards/${card.id}/archive`), undefined, { optimistic: () => changeCard(qc, card.id, null), scope: 'card' })) === undefined) return;
     toast('Tarefa arquivada.', 'ok', { label: 'Desfazer', onClick: () => run(() => post(`/cards/${card.id}/unarchive`), 'Tarefa de volta ao quadro.') });
   };
   return (
-    <article data-id={card.id} className={`kc${done ? ' done' : ''}${dragging ? ' dragging' : ''}${card.color ? ` painted bc-${card.color}` : ''}`} draggable onDragStart={onDragStart} onDragEnd={onDragEnd}
+    <article data-id={pending ? undefined : card.id} aria-busy={pending || undefined}
+      className={`kc${done ? ' done' : ''}${dragging ? ' dragging' : ''}${pending ? ' pending' : ''}${card.color ? ` painted bc-${card.color}` : ''}`} draggable={!pending} onDragStart={onDragStart} onDragEnd={onDragEnd}
       onDragOver={onDragOver} onDrop={onDrop}>
       <button className={`ck${done ? ' on' : ''}`} onClick={toggle} disabled={!canToggle} aria-label={done ? `Desfazer conclusão de ${card.title}` : `Concluir ${card.title}`}>
         {done && <Icon name="check" />}
       </button>
-      <button className="t" onClick={() => go(`/tarefa/${card.id}`)} title={card.title}>{card.title}</button>
+      <button className="t" onClick={() => go(`/tarefa/${card.id}`)} title={card.title} disabled={pending}>{card.title}</button>
       <div className="meta">
-        <span className="code">{cardNo(card.num)}</span>
+        <span className="code">{pending ? 'criando…' : cardNo(card.num)}</span>
         <Due date={card.dueDate} done={done} today={today} />
         {card.checklist.total > 0 && <span className="cl" title="Checklist"><Icon name="checks" />{card.checklist.done}/{card.checklist.total}</span>}
         {/* Opção A do ícone de delegada: etiqueta com o nome (roxa = recebida de alguém; verde-azulada = você delegou). */}
@@ -494,8 +503,17 @@ function archivable(c: Card) {
   return !!c.completedAt && !c.delegation && !(c.child && ['PENDING_ACCEPT', 'IN_PROGRESS', 'AWAITING_ACK', 'DECLINED'].includes(c.child.status));
 }
 
-function AddCard({ listId }: { listId: string }) {
+function AddCard({ listId, first }: { listId: string; first?: boolean }) {
   const [open, setOpen] = useState(false);
+  const qc = useQueryClient();
+  // Item 56: a tecla N abre a criação de tarefa na primeira fase do quadro.
+  useEffect(() => {
+    if (!first) return;
+    const onNew = () => { takeNewTaskRequest(); setOpen(true); };
+    window.addEventListener(NEW_TASK_EVENT, onNew);
+    if (takeNewTaskRequest()) setOpen(true);
+    return () => window.removeEventListener(NEW_TASK_EVENT, onNew);
+  }, [first]);
   const [text, setText] = useState('');
   const [asking, setAsking] = useState<string[] | null>(null);
   const { run, busy, error, setError } = useAction();
@@ -528,7 +546,15 @@ function AddCard({ listId }: { listId: string }) {
     e?.preventDefault();
     const lines = splitLines(text);
     if (!lines.length) { setOpen(false); return; }
-    if (lines.length === 1) { if (!tooLong(lines)) void run(() => post('/cards', { listId, title: lines[0] })).then((r) => r && done()); return; }
+    if (lines.length === 1) {
+      if (tooLong(lines)) return;
+      // Item 54: o cartão aparece na hora (como “criando…”) e o campo já fica livre para a próxima tarefa.
+      const title = lines[0];
+      setText('');
+      void run(() => post('/cards', { listId, title }), undefined, { optimistic: () => addPendingCard(qc, listId, title), scope: 'card' })
+        .then((r) => { if (!r) setText(title); });
+      return;
+    }
     setAsking(lines);
   };
 

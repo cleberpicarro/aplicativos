@@ -429,7 +429,7 @@ Saem sozinhos, sem aviso no app. O servidor (sempre ligado no plano Starter) con
 
 Menu lateral, **nesta ordem**:
 
-1. **Painel** (só para quem tem subordinados; é a tela inicial dessas pessoas)
+1. **Painel** (só para quem tem subordinados; desde o item 58 a tela inicial de todos na hierarquia é **Tarefas**)
 2. **Tarefas** (antes “Meus quadros”; quadros ou tabela, item 36)
 3. **Caixa de entrada** (com contador)
 4. **Arquivadas** (item 35)
@@ -438,6 +438,10 @@ Menu lateral, **nesta ordem**:
 7. **Pessoas** (só para o administrador)
 
 No topo de cada tela: título, campo de **busca** (texto ou código) e controle **A− / A+**. No celular, o menu vira uma barra horizontal rolável.
+
+**Resposta imediata (item 54):** concluir, desfazer, arrastar, mover pela tarefa, criar, renomear, prazo, descrição, cor, privada, checklist e aceitar com um clique aparecem na tela antes da resposta do servidor; se ele recusar, a tela volta e um aviso mostra o motivo. Depois de uma mudança numa tarefa, o app recarrega só o que depende dela. A tarefa aberta a partir do quadro aparece na hora com os dados do cartão (item 55); checklist, comentários e log chegam em seguida.
+
+**Atalhos de teclado (item 56):** fora de campos de texto, **N** (nova tarefa na primeira fase do quadro), **/** (busca), **?** (lista de atalhos, também em **Atalhos** no menu); na tarefa aberta, **C** (concluir ou desfazer) e **D** (delegar); **Ctrl+Enter** envia o comentário, salva a descrição ou confirma a janela com formulário; **Esc** fecha.
 
 ### 12.2 Tarefas: quadros
 
@@ -475,8 +479,8 @@ No topo de cada tela: título, campo de **busca** (texto ou código) e controle 
 ### 12.3 Caixa de entrada
 
 - Lista com ícone, título, código, origem ("Delegada por…" ou "Transferida por…"), prazo sugerido e observação.
-- Ações em cada linha (item 50): **Aceitar** (escolher quadro e fase), **Delegar** (para quem tem equipe e se a tarefa não está marcada como “não pode ser repassada”; RN-24a), **Descartar** (só tarefa própria; RN-24b) e **Devolver** (só delegações, com justificativa obrigatória).
-- **Várias de uma vez** (item 50): caixinha em cada tarefa que pode ser descartada, **Selecionar todas**, **Selecionar de…** (agrupa pela origem: a pessoa que transferiu, “Capturada da web”, “Capturada do e-mail”) e **Descartar selecionadas**, com confirmação. O aviso de descarte traz **Desfazer**.
+- Ações em cada linha (item 50): **Aceitar** (escolher quadro e fase; desde o item 57, depois da primeira vez, um clique repete o último quadro e fase usados, guardados no navegador, e a setinha **Aceitar em…** abre a escolha), **Delegar** (para quem tem equipe e se a tarefa não está marcada como “não pode ser repassada”; RN-24a), **Descartar** (só tarefa própria; RN-24b) e **Devolver** (só delegações, com justificativa obrigatória).
+- **Várias de uma vez** (item 50): caixinha em cada tarefa que pode ser descartada, **Selecionar todas**, **Selecionar de…** (agrupa pela origem: a pessoa que transferiu, “Capturada da web”, “Capturada do e-mail”) e **Descartar selecionadas**, sem confirmação desde o item 58. O aviso de descarte traz **Desfazer**.
 - **Estado vazio:** "Nada novo por aqui…".
 
 ### 12.3a Arquivadas (item 35)
@@ -534,7 +538,7 @@ Visual de referência: a amostra aprovada.
 
 ### 12.9 Tela inicial
 
-Em aberto (seção 20). Proposta: funcionário abre em Meus quadros; quem tem subordinados abre em Tarefas delegadas.
+Item 58: todos na hierarquia abrem em **Tarefas**; o administrador fora da hierarquia abre em **Pessoas**.
 
 ---
 

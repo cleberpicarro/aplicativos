@@ -58,7 +58,8 @@ export async function criarTarefa(page: Page, titulo: string, fase = 'A fazer') 
   await col.getByRole('button', { name: 'Adicionar tarefa' }).click();
   await col.getByLabel('Título da nova tarefa').fill(titulo);
   await col.getByRole('button', { name: 'Adicionar', exact: true }).click();
-  const card = col.locator('article.kc', { hasText: titulo });
+  // Item 54: o cartão aparece na hora como “criando…”; o identificador chega quando o servidor termina.
+  const card = col.locator('article.kc[data-id]', { hasText: titulo });
   await expect(card).toBeVisible();
   await col.getByRole('button', { name: 'Cancelar' }).click();
   return (await card.getAttribute('data-id'))!;
