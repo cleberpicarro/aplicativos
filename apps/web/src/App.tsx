@@ -107,6 +107,9 @@ function Shell() {
   const lastPage = useRef('/quadros');
 
   // Item 36: "Tarefas" em quadro (kanban) ou tabela. A escolha fica lembrada no navegador.
+  // Item 59: no Quadro, o filtro sobe para a barra do topo (no celular continua acima das fases).
+  const [filterSlot, setFilterSlot] = useState<HTMLElement | null>(null);
+  const wide = useWide();
   const [view, setViewState] = useState<'quadro' | 'tabela'>(() => stored('synctasks.visao', ['quadro', 'tabela'] as const, 'quadro'));
   const setView = (v: 'quadro' | 'tabela') => { store('synctasks.visao', v); setViewState(v); };
 
@@ -201,6 +204,7 @@ function Shell() {
         <div className="topbar">
           <h1>{PAGES[page]?.title}</h1>
           <div className="tools">
+            {page === '/quadros' && view === 'quadro' && wide && <span className="filter-slot" ref={setFilterSlot} />}
             {page === '/quadros' && (
               <span className="view-switch" role="group" aria-label="Ver as tarefas em">
                 <button aria-pressed={view === 'quadro'} onClick={() => setView('quadro')} title="Quadros (kanban)" aria-label="Ver em quadros"><Icon name="board" />Quadro</button>
@@ -218,7 +222,7 @@ function Shell() {
           </div>
         </div>
         {page === '/painel' && <DashboardPage />}
-        {page === '/quadros' && (view === 'tabela' ? <TablePage /> : <BoardsPage />)}
+        {page === '/quadros' && (view === 'tabela' ? <TablePage /> : <BoardsPage top={wide ? filterSlot : null} />)}
         {page === '/arquivadas' && <ArchivedPage />}
         {page === '/entrada' && <InboxPage />}
         {page === '/delegadas' && <DelegatedPage />}
@@ -232,6 +236,19 @@ function Shell() {
       {keysHelp && <ShortcutsDialog onClose={() => setKeysHelp(false)} />}
     </div>
   );
+}
+
+/** Tela larga (computador e notebook); no celular, até 820 px, como no styles.css. */
+function useWide() {
+  const query = '(min-width: 821px)';
+  const [wide, setWide] = useState(() => window.matchMedia(query).matches);
+  useEffect(() => {
+    const m = window.matchMedia(query);
+    const change = () => setWide(m.matches);
+    m.addEventListener('change', change);
+    return () => m.removeEventListener('change', change);
+  }, []);
+  return wide;
 }
 
 function SearchBox() {

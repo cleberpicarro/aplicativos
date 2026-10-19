@@ -245,9 +245,16 @@ test.describe('meus quadros', () => {
     await irPara(page, 'Tarefas');
     await expect(page.getByRole('tab').last()).toHaveText(nome);
   });
-  test('o mesmo filtro da tabela no quadro, com os atalhos de delegadas (item 47) @celular', async ({ page }) => {
+  test('o mesmo filtro da tabela no quadro, com os atalhos de delegadas (item 47) @celular', async ({ page, isMobile }) => {
     await entrar(page, 'marina');
     await irPara(page, 'Tarefas');
+    // Item 59: no computador, Filtro, atalhos e Condição ficam na barra do topo; no celular, acima das fases.
+    const topo = page.locator('.topbar');
+    for (const nome of [/^Filtro:/, /^Delegadas por mim$/, /^Condição$/]) {
+      await expect(topo.getByRole('button', { name: nome })).toHaveCount(isMobile ? 0 : 1);
+      await expect(page.getByRole('button', { name: nome })).toBeVisible();
+    }
+    if (!isMobile) await expect(page.locator('.tbl-bar')).toHaveCount(0);
     const alfa = unico('Filtro alfa');
     const beta = unico('Filtro beta');
     await criarTarefa(page, alfa);

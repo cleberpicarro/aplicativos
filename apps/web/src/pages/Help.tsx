@@ -86,7 +86,7 @@ export function HelpPage({ isAdmin }: { isAdmin: boolean }) {
       </Sec>
 
             <Sec id="filtro-quadro" title="Filtro no quadro">
-        <p>No quadro aberto, a barra acima das fases tem o mesmo <b>Filtro</b> da tabela, com os filtros prontos, os seus filtros salvos e os atalhos <b>Delegadas para mim</b> e <b>Delegadas por mim</b>.</p>
+        <p>No quadro aberto, no alto da tela, à esquerda de <b>Quadro / Tabela</b>, ficam o mesmo <b>Filtro</b> da tabela (com os filtros prontos e os seus filtros salvos), os atalhos <b>Delegadas para mim</b> e <b>Delegadas por mim</b> (no notebook e no celular, <b>Para mim</b> e <b>Por mim</b>) e <b>Condição</b>. As etiquetas do filtro ligado aparecem acima das fases. No celular, esses botões ficam acima das fases.</p>
         <ul>
           <li>Com o filtro ligado, o quadro <b>esconde as tarefas que não atendem a ele</b>; as fases continuam no lugar, cada uma com a contagem, por exemplo “3 de 10”. A faixa azul mostra “Filtro ligado: mostrando 12 de 40 tarefas” e tem o botão <b>Limpar filtro</b>.</li>
           <li>Arrastar, criar e abrir tarefas continua igual. Se uma tarefa deixar de atender ao filtro (por exemplo, concluída num filtro de abertas) ou for criada sem atender a ele, ela some da vista e um aviso explica.</li>
