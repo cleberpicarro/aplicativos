@@ -48,7 +48,8 @@ export const WORKSPACE_COLORS: { id: string; label: string }[] = [
 
 type BoardTab = { id: string; name: string; color: string | null; position: number };
 
-export function BoardsPage() {
+/** `top`: espaço na barra do topo para os botões do filtro (item 59); sem ele, ficam na linha acima das fases. */
+export function BoardsPage({ top }: { top?: HTMLElement | null } = {}) {
   const me = useMe().data!;
   const boards = useQuery({ queryKey: ['boards'], queryFn: () => get<BoardTab[]>('/boards') });
   const [selected, setSelected] = useState<string | null>(rememberedBoard);
@@ -183,7 +184,7 @@ export function BoardsPage() {
       {boards.data && boards.data.length === 0 && (
         <div className="empty"><b>Você ainda não tem quadros.</b>Crie o primeiro e escolha as fases que fizerem sentido para você.</div>
       )}
-      {board.data && <FilterBar f={filter} onBoard />}
+      {board.data && <FilterBar f={filter} onBoard top={top} />}
       {board.data && matchIds && (
         <div className="filter-band" role="status">
           <Icon name="filter" />
