@@ -15,7 +15,8 @@ A especificação completa está em [`docs/especificacao.md`](docs/especificacao
 - **Capturar da web:** o botão **+ SyncTasks** (arrastado para a barra de favoritos) e o **Compartilhar** do Android criam uma tarefa com o título, o link e o trecho selecionado da página. Ela cai na Caixa de entrada marcada como “capturada da web”. Com um e-mail aberto no Gmail, o título é o assunto e o link abre a mensagem (“capturada do e-mail”).
 - **Transferir:** para um subordinado, um colega do mesmo nível ou o superior direto. Numa tarefa delegada, quem delegou continua acompanhando.
 - **Log:** registro imutável de tudo o que acontece com cada tarefa, garantido por trigger no banco. É visível para a administração, o CEO e a diretoria.
-- **Importar do Trello:** em Meus quadros, escolha o JSON exportado de um quadro do Trello. Ele vira um quadro novo seu, com listas, cartões, prazos, checklists e comentários. O arquivo é lido no navegador e só os dados necessários vão para o servidor. Ficam de fora os itens arquivados, as etiquetas e os anexos.
+- **Exportar tarefas (JSON):** no menu … do quadro, baixa um arquivo com todas as suas tarefas, de todos os quadros, sem falar com o Trello.
+- **Importar arquivo JSON:** lê o arquivo do Exportar tarefas ou o JSON exportado de um quadro do Trello. Cada quadro vira um quadro novo seu, com fases, tarefas, prazos, checklists e comentários. O arquivo é lido no navegador e só os dados necessários vão para o servidor. Ficam de fora os itens arquivados e, do Trello, as etiquetas e os anexos.
 - **Busca** por texto ou código. **Avisos** no app e por e-mail, com o código no assunto.
 - **Pessoas (administração):** cadastro com convite por e-mail, transferência de gestão (as delegações em aberto passam ao novo superior) e ativação ou desativação.
 - **Interface:** segue o visual aprovado na amostra. Tem controle de tamanho do texto (A− / A+), temas claro e escuro, funciona no celular e pode ser instalada como PWA.

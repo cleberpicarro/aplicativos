@@ -9,7 +9,7 @@ const SECTIONS: [string, string][] = [
   ['filtro-quadro', 'Filtro no quadro'],
   ['tabela', 'Tarefas: tabela e filtros'],
   ['arquivadas', 'Arquivadas'],
-  ['trello', 'Importar e exportar (Trello)'],
+  ['trello', 'Exportar e importar (JSON)'],
   ['capturar', 'Capturar da web'],
   ['entrada', 'Caixa de entrada'],
   ['delegar', 'Delegar'],
@@ -120,32 +120,31 @@ export function HelpPage({ isAdmin }: { isAdmin: boolean }) {
         </ul>
       </Sec>
 
-      <Sec id="trello" title="Importar e exportar (Trello)">
-        <p>Dá para trazer um quadro do Trello para os seus quadros. Cada quadro do Trello vira um quadro novo seu.</p>
+      <Sec id="trello" title="Exportar e importar (JSON)">
+        <h3>Exportar tarefas (JSON)</h3>
+        <p>Baixa um arquivo com <b>todas as suas tarefas</b>, de todos os seus quadros, para guardar uma cópia ou levar para outro lugar. Nada muda aqui no SyncTasks e nada é enviado ao Trello.</p>
         <ol>
-          <li>No Trello, abra o quadro, clique no menu <b>…</b> e escolha <b>Imprimir, exportar e compartilhar</b> → <b>Exportar como JSON</b>. Salve o arquivo.</li>
-          <li>Aqui, em <b>Tarefas</b> (vendo os quadros), abra o menu <b>…</b> do quadro (à direita das abas), clique em <b>Importar do Trello</b> e escolha o arquivo.</li>
-          <li>Confira a pré-visualização, ajuste o nome do quadro se quiser e clique em <b>Importar</b>.</li>
+          <li>Em <b>Tarefas</b>, abra o menu <b>…</b> do quadro (à direita das abas) e escolha <b>Exportar tarefas (JSON)</b>.</li>
+          <li>Confira o resumo e clique em <b>Baixar arquivo</b>. O arquivo <b>synctasks-tarefas-AAAA-MM-DD.json</b> vai para a pasta de downloads.</li>
         </ol>
         <ul>
-          <li><b>Vêm:</b> listas (viram fases), cartões com título, descrição e prazo, cartões marcados como entregues (chegam concluídos), checklists e comentários.</li>
-          <li><b>Comentários</b> entram em seu nome, com o autor e a data originais no texto.</li>
-          <li><b>Membros</b> dos cartões ficam anotados na descrição. Todas as tarefas ficam com você; para entregar a alguém da equipe, use <b>Delegar</b>.</li>
-          <li><b>Ficam de fora:</b> listas e cartões arquivados, etiquetas e anexos.</li>
-          <li>Cada tarefa importada ganha um número no quadro novo (1, 2, 3…), e o log registra que veio do Trello.</li>
+          <li><b>Vão:</b> todos os quadros (também os arquivados), a caixa de entrada, as fases e todas as tarefas, inclusive as arquivadas e as privadas, com número, título, descrição, prazo, se está concluída, cor, checklist, comentários (com autor e data) e a situação da delegação.</li>
+          <li>O log não vai. O arquivo é seu: guarde-o com cuidado, porque tem também as tarefas privadas.</li>
+          <li>Cada quadro vai no mesmo formato do arquivo do Trello, por isso o <b>Importar arquivo JSON</b> lê o arquivo de volta.</li>
         </ul>
-        <h3>Exportar para o Trello</h3>
-        <p>Faz o caminho inverso: cria no Trello um quadro novo com as fases e as tarefas do quadro aberto. Nada muda aqui no SyncTasks.</p>
+        <h3>Importar arquivo JSON</h3>
+        <p>Lê o arquivo baixado em <b>Exportar tarefas (JSON)</b> ou o arquivo de um quadro do Trello. Cada quadro do arquivo vira um <b>quadro novo</b> seu; os quadros que você já tem não mudam.</p>
         <ol>
-          <li>Abra o quadro, clique no menu <b>…</b> e escolha <b>Exportar para o Trello</b>.</li>
-          <li>Clique em <b>Conectar ao Trello</b>. Na janela do Trello, entre com a sua conta e clique em <b>Permitir</b>. Se a janela não voltar sozinha, use <b>Cole o código</b>.</li>
-          <li>Clique em <b>Exportar</b> e espere a contagem terminar. No fim, <b>Abrir o quadro no Trello</b>.</li>
+          <li><b>Arquivo do Trello:</b> no Trello, abra o quadro, clique no menu <b>…</b> e escolha <b>Imprimir, exportar e compartilhar</b> → <b>Exportar como JSON</b>. Salve o arquivo.</li>
+          <li>Aqui, em <b>Tarefas</b>, abra o menu <b>…</b> do quadro, clique em <b>Importar arquivo JSON</b> e escolha o arquivo.</li>
+          <li>No arquivo do SyncTasks, marque os quadros que quer trazer (vêm todos marcados). No do Trello, ajuste o nome do quadro se quiser. Depois clique em <b>Importar</b>.</li>
         </ol>
         <ul>
-          <li><b>Vão:</b> fases (viram listas, na mesma ordem) e tarefas com título, descrição, prazo, marca de concluída, checklist e comentários (com o autor e a data no texto).</li>
-          <li>No topo da descrição de cada cartão ficam o <b>número da tarefa</b>, a situação e, se houver, para quem foi delegada ou quem delegou.</li>
-          <li><b>Ficam de fora:</b> tarefas arquivadas e, a não ser que você marque, as privadas. O log não vai.</li>
-          <li>A permissão do Trello vale por 1 dia e fica só no seu navegador; o SyncTasks não guarda senha nem código do Trello.</li>
+          <li><b>Vêm:</b> fases (ou listas do Trello) na mesma ordem e tarefas com título, descrição, prazo, se está concluída, checklist e comentários. Do arquivo do SyncTasks vêm também a cor do quadro, a cor da tarefa e a marca de privada.</li>
+          <li><b>Comentários</b> entram em seu nome, com o autor e a data originais no texto.</li>
+          <li>Todas as tarefas ficam com você: delegações não voltam. Os <b>membros</b> dos cartões do Trello ficam anotados na descrição; para entregar a alguém da equipe, use <b>Delegar</b>.</li>
+          <li><b>Ficam de fora:</b> tarefas, fases e quadros arquivados; do Trello, também etiquetas e anexos.</li>
+          <li>Cada tarefa importada ganha um número novo no quadro novo (1, 2, 3…), e o log registra de onde veio.</li>
         </ul>
       </Sec>
 
@@ -341,15 +340,6 @@ export function HelpPage({ isAdmin }: { isAdmin: boolean }) {
         <p>A pessoa inativa continua na lista com a situação <b>Inativa</b>; marque <b>Esconder inativas</b> para tirá-la da vista. O e-mail continua com ela. Para reativar, use <b>Reativar</b> no mesmo menu: ela volta a entrar e encontra os quadros e as privadas como deixou, mas o que foi passado adiante não volta sozinho.</p>
         <h3>Senhas</h3>
         <p>Quem esquecer a senha usa <b>Esqueci minha senha</b> na tela de login e recebe um link por e-mail, válido por 2 horas. A administração não vê nem define senhas.</p>
-        <h3>Ligar a exportação para o Trello</h3>
-        <p>Feito uma única vez, por quem cuida do servidor. Enquanto não for feito, “Exportar para o Trello” avisa que ainda não está ligado.</p>
-        <ol>
-          <li>Com a conta do Trello, abra <b>trello.com/power-ups/admin</b> e clique em <b>Novo</b>. Preencha o nome (SyncTasks), a área de trabalho e o e-mail, e crie.</li>
-          <li>Na aba <b>Chave de API</b> (API key), clique em <b>Gerar uma nova chave de API</b>.</li>
-          <li>Em <b>Origens permitidas</b> (Allowed origins), adicione o endereço do SyncTasks, por exemplo <b>https://synctasks.onrender.com</b>.</li>
-          <li>Copie a chave. No Render, abra o serviço <b>synctasks</b> → <b>Environment</b>, preencha <b>TRELLO_API_KEY</b> com a chave e salve. O Render reinicia sozinho.</li>
-        </ol>
-        <p>A chave não é senha: ela só identifica o SyncTasks. Cada pessoa dá a própria permissão no Trello na hora de exportar.</p>
       </Sec>
 
       <Sec id="faq" title="Perguntas frequentes">

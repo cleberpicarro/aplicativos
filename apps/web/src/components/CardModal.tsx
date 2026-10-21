@@ -162,6 +162,7 @@ export function CardModal({ code, onClose }: { code: string; onClose: () => void
                 {card.source === 'web' && <span>· Capturada da web</span>}
                 {card.source === 'email' && <span>· Capturada do e-mail</span>}
                 {card.source === 'trello' && <span>· Importada do Trello</span>}
+                {card.source === 'arquivo' && <span>· Importada de arquivo do SyncTasks</span>}
                 {d?.parentNum != null && <span>· Desdobramento da tarefa <span className="code">{cardNo(d.parentNum)}</span> de {d.delegatorId === me.user.id ? 'você' : firstName(d.delegatorName)}</span>}
               </div>
 

@@ -63,6 +63,7 @@ export const SOURCE_VALUES = [
   { id: 'web', label: 'Capturada da web' },
   { id: 'email', label: 'Capturada do e-mail' },
   { id: 'trello', label: 'Importada do Trello' },
+  { id: 'arquivo', label: 'Importada de arquivo do SyncTasks' },
 ];
 
 /** Item 47: condições que não fazem sentido dentro de um quadro aberto (o servidor as ignora no quadro). */

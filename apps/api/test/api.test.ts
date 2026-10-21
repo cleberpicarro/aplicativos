@@ -443,6 +443,94 @@ describe('importação do Trello', () => {
   });
 });
 
+describe('exportar tarefas em JSON (item 62)', () => {
+  it('exporta todos os quadros e a caixa de entrada, e o Importar traz tudo de volta', async () => {
+    const { parseImportFile } = await import('../../web/src/lib/trello.js');
+    // Quadro 1 (Meu trabalho): tarefa completa, privada, concluída, arquivada e uma delegada
+    const t = await newTask(ctx, 'gest', 'Relatório mensal', day(3));
+    await call('gest', 'PATCH', `/api/cards/${t.id}`, { description: 'Detalhes do relatório', color: 'verde' });
+    const item = (await call('gest', 'POST', `/api/cards/${t.id}/checklist`, { text: 'Levantar dados' })).body;
+    await call('gest', 'PATCH', `/api/cards/${t.id}/checklist/${item.id}`, { done: true });
+    await call('gest', 'POST', `/api/cards/${t.id}/checklist`, { text: 'Revisar' });
+    await call('gest', 'POST', `/api/cards/${t.id}/comments`, { body: 'Primeira versão pronta.' });
+    const priv = await newTask(ctx, 'gest', 'Assunto pessoal');
+    await call('gest', 'PATCH', `/api/cards/${priv.id}`, { isPrivate: true });
+    const done = await newTask(ctx, 'gest', 'Já feita');
+    await call('gest', 'POST', `/api/cards/${done.id}/move`, { listId: t.lists[2].id });
+    await call('gest', 'POST', `/api/cards/${done.id}/complete`);
+    const old = await newTask(ctx, 'gest', 'Antiga');
+    await call('gest', 'POST', `/api/cards/${old.id}/complete`);
+    expect((await call('gest', 'POST', `/api/cards/${old.id}/archive`)).status).toBe(200);
+    const deleg = await newTask(ctx, 'gest', 'Para a equipe');
+    await delegateTask(ctx, 'gest', deleg.id, 'func');
+    // Quadro 2, com cor
+    const b2 = (await call('gest', 'POST', '/api/boards', { name: 'Projetos' })).body;
+    await call('gest', 'PATCH', `/api/boards/${b2.id}`, { color: 'azul' });
+    const b2d = (await call('gest', 'GET', `/api/boards/${b2.id}`)).body;
+    await call('gest', 'POST', '/api/cards', { listId: b2d.lists[1].id, title: 'Projeto novo' });
+    // Caixa de entrada: delegação recebida do diretor
+    const fromDir = await newTask(ctx, 'dir', 'Pedido do diretor');
+    await delegateTask(ctx, 'dir', fromDir.id, 'gest');
+
+    const r = await call('gest', 'GET', '/api/export');
+    expect(r.status).toBe(200);
+    const file = r.body;
+    expect(file).toMatchObject({ formato: 'synctasks-exportacao', versao: 1, pessoa: 'Gest Teste' });
+    expect(file.quadros.map((q: any) => q.name)).toEqual(['Meu trabalho', 'Projetos', 'Caixa de entrada']);
+    const q1 = file.quadros[0];
+    const rel = q1.cards.find((c: any) => c.name === 'Relatório mensal');
+    expect(rel).toMatchObject({ desc: 'Detalhes do relatório', due: `${day(3)}T15:00:00.000Z`, dueComplete: false, closed: false, synctasks: { numero: t.num, cor: 'verde', privada: false } });
+    expect(q1.cards.find((c: any) => c.name === 'Antiga').closed).toBe(true);
+    expect(q1.cards.find((c: any) => c.name === 'Assunto pessoal').synctasks.privada).toBe(true);
+    expect(q1.cards.find((c: any) => c.name === 'Para a equipe').synctasks).toMatchObject({ delegadaPara: 'Func Teste', situacaoDaDelegacao: 'Aguardando aceite' });
+    expect(file.quadros[2].cards[0]).toMatchObject({ name: 'Pedido do diretor', synctasks: { delegadaPor: 'Dir Teste' } });
+    // ninguém mais vê as tarefas de outra pessoa no arquivo
+    expect(JSON.stringify((await call('func', 'GET', '/api/export')).body)).not.toContain('Relatório mensal');
+    expect((await call('admin', 'GET', '/api/export')).status).toBe(403);
+
+    // Volta: o arquivo passa pelo JSON (como no download) e é lido pelo mesmo leitor do Importar
+    const parsed = parseImportFile(JSON.parse(JSON.stringify(file)));
+    expect(parsed.kind).toBe('synctasks');
+    expect(parsed.boards.map((b) => b.payload.boardName)).toEqual(['Meu trabalho', 'Projetos', 'Caixa de entrada']);
+    const ids: string[] = [];
+    for (const b of parsed.boards) {
+      const imp = await call('func2', 'POST', '/api/import/trello', b.payload);
+      expect(imp.status).toBe(200);
+      ids.push(imp.body.boardId);
+    }
+    const back = (await call('func2', 'GET', `/api/boards/${ids[0]}`)).body;
+    expect(back.lists.map((l: any) => l.name)).toEqual(q1.lists.map((l: any) => l.name));
+    expect(back.cards.map((c: any) => c.title).sort()).toEqual(['Assunto pessoal', 'Já feita', 'Para a equipe', 'Relatório mensal']);
+    const rb = back.cards.find((c: any) => c.title === 'Relatório mensal');
+    expect(rb).toMatchObject({ dueDate: day(3), color: 'verde', isPrivate: false, completedAt: null, checklist: { done: 1, total: 2 } });
+    expect(back.cards.find((c: any) => c.title === 'Assunto pessoal').isPrivate).toBe(true);
+    expect(back.cards.find((c: any) => c.title === 'Já feita')).toMatchObject({ listId: back.lists[2].id });
+    expect(back.cards.find((c: any) => c.title === 'Já feita').completedAt).not.toBeNull();
+    const detail = (await call('func2', 'GET', `/api/cards/${rb.id}`)).body;
+    expect(detail.card).toMatchObject({ description: 'Detalhes do relatório', source: 'arquivo' });
+    expect(detail.comments[0].body).toMatch(new RegExp(`^Comentário de ${'Gest Teste'} no SyncTasks em \\d\\d/\\d\\d/\\d{4} \\d\\d:\\d\\d:\nPrimeira versão pronta\\.$`));
+    const b2back = (await call('func2', 'GET', `/api/boards/${ids[1]}`)).body;
+    expect(b2back.color).toBe('azul');
+    expect(b2back.cards[0]).toMatchObject({ title: 'Projeto novo', listId: b2back.lists[1].id });
+    // o arquivo do Trello continua funcionando como antes
+    const { readFileSync } = await import('node:fs');
+    const trello = parseImportFile(JSON.parse(readFileSync(new URL('../../web/src/lib/__fixtures__/trello-board.json', import.meta.url), 'utf8')));
+    expect(trello.kind).toBe('trello');
+    expect(trello.boards).toHaveLength(1);
+  });
+
+  it('quadros arquivados vão no arquivo marcados e ficam de fora ao importar', async () => {
+    const { parseImportFile } = await import('../../web/src/lib/trello.js');
+    const b = (await call('func', 'POST', '/api/boards', { name: 'Velho' })).body;
+    expect((await call('func', 'POST', `/api/boards/${b.id}/archive`)).status).toBe(200);
+    const file = (await call('func', 'GET', '/api/export')).body;
+    expect(file.quadros.find((q: any) => q.name === 'Velho').closed).toBe(true);
+    const parsed = parseImportFile(file);
+    expect(parsed.boards.map((x) => x.payload.boardName)).not.toContain('Velho');
+    expect(parsed.skippedBoards).toBe(1);
+  });
+});
+
 describe('terceira rodada', () => {
   it('código ST- e links antigos com NT- continuam funcionando', async () => {
     const t = await newTask(ctx, 'func', 'Código novo');
