@@ -14,6 +14,7 @@ import * as deleg from './services/delegation.js';
 import * as admin from './services/admin.js';
 import * as misc from './services/misc.js';
 import { importTrello, trelloImportSchema } from './services/importer.js';
+import { exportAll } from './services/exporter.js';
 import { captureWeb } from './services/capture.js';
 import { dashboard } from './services/dashboard.js';
 import { listArchived } from './services/archived.js';
@@ -384,7 +385,10 @@ export async function buildApp({ pool, logger = false, serveWeb = false }: AppOp
   /* ---------------- painel (item 17) ---------------- */
   app.get('/api/dashboard', async (req) => dashboard(pool, need(req)));
 
-  /* ---------------- importação do Trello ---------------- */
+  /* ---------------- exportar tarefas em JSON (item 62) ---------------- */
+  app.get('/api/export', async (req) => exportAll(pool, need(req)));
+
+  /* ---------------- importação (arquivo do Trello ou do SyncTasks) ---------------- */
   app.post('/api/import/trello', { bodyLimit: 20 * 1024 * 1024 }, async (req) => {
     const data = trelloImportSchema.parse(req.body);
     return inTx((db) => importTrello(db, need(req), data));

@@ -3,12 +3,15 @@ import { one, type Db } from '../lib/db.js';
 import { badRequest, forbidden } from '../lib/errors.js';
 import type { Actor } from './actors.js';
 import { nextPosition } from './cards.js';
+import { BOARD_COLORS } from './boards.js';
 import { logEvent } from './events.js';
 import { isoDate } from '../lib/dates.js';
 
-/** Formato enviado pelo navegador depois de ler o JSON exportado do Trello. */
+/** Formato enviado pelo navegador depois de ler o JSON exportado do Trello (ou o arquivo do "Exportar tarefas", item 62). */
 export const trelloImportSchema = z.object({
+  source: z.enum(['Trello', 'SyncTasks']).default('Trello'),
   boardName: z.string().trim().min(1).max(80),
+  boardColor: z.enum(BOARD_COLORS).nullable().default(null),
   lists: z
     .array(
       z.object({
@@ -20,6 +23,9 @@ export const trelloImportSchema = z.object({
               description: z.string().max(20000),
               dueDate: isoDate.nullable(),
               completed: z.boolean(),
+              // Item 62: só no arquivo do SyncTasks.
+              isPrivate: z.boolean().default(false),
+              color: z.enum(BOARD_COLORS).nullable().default(null),
               members: z.array(z.string().max(120)).max(50),
               checklist: z.array(z.object({ text: z.string().trim().min(1).max(300), done: z.boolean() })).max(300),
               comments: z
@@ -57,8 +63,9 @@ export async function importTrello(db: Db, actor: Actor, data: TrelloImport) {
   if (total > MAX_CARDS) throw badRequest(`O arquivo tem ${total} cartões ativos; o limite por importação é ${MAX_CARDS}.`);
 
   const position = await nextPosition(db, 'SELECT max(position) AS max FROM boards WHERE owner_id = $1', [actor.id]);
-  const board = await one(db, 'INSERT INTO boards (owner_id, name, position) VALUES ($1, $2, $3) RETURNING id', [actor.id, data.boardName.trim(), position]);
+  const board = await one(db, 'INSERT INTO boards (owner_id, name, position, color) VALUES ($1, $2, $3, $4) RETURNING id', [actor.id, data.boardName.trim(), position, data.boardColor]);
 
+  const from = data.source === 'SyncTasks' ? 'SyncTasks' : 'Trello';
   let cards = 0, items = 0, comments = 0;
   for (let i = 0; i < data.lists.length; i++) {
     const l = data.lists[i];
@@ -72,11 +79,11 @@ export async function importTrello(db: Db, actor: Actor, data: TrelloImport) {
         : c.description;
       const card = await one(
         db,
-        `INSERT INTO cards (owner_id, list_id, position, title, description, due_date, completed_at, created_by, source)
-         VALUES ($1, $2, $3, $4, $5, $6, CASE WHEN $7 THEN now() END, $1, 'trello') RETURNING id`,
-        [actor.id, list.id, j + 1, c.title, description, c.dueDate, c.completed],
+        `INSERT INTO cards (owner_id, list_id, position, title, description, due_date, completed_at, created_by, source, is_private, color)
+         VALUES ($1, $2, $3, $4, $5, $6, CASE WHEN $7 THEN now() END, $1, $8, $9, $10) RETURNING id`,
+        [actor.id, list.id, j + 1, c.title, description, c.dueDate, c.completed, from === 'SyncTasks' ? 'arquivo' : 'trello', c.isPrivate, c.color],
       );
-      await logEvent(db, card.id, actor.id, 'imported', undefined, { source: 'Trello', board: data.boardName, list: listName });
+      await logEvent(db, card.id, actor.id, 'imported', undefined, { source: from, board: data.boardName, list: listName });
       for (let k = 0; k < c.checklist.length; k++) {
         await db.query('INSERT INTO checklist_items (card_id, text, done, position) VALUES ($1, $2, $3, $4)', [card.id, c.checklist[k].text, c.checklist[k].done, k + 1]);
       }
@@ -86,7 +93,7 @@ export async function importTrello(db: Db, actor: Actor, data: TrelloImport) {
         await db.query('INSERT INTO comments (card_id, author_id, body, created_at) VALUES ($1, $2, $3, clock_timestamp())', [
           card.id,
           actor.id,
-          `Comentário de ${cm.author || 'alguém'} no Trello em ${fmtDateTime(cm.date)}:\n${cm.text.trim()}`,
+          `Comentário de ${cm.author || 'alguém'} no ${from} em ${fmtDateTime(cm.date)}:\n${cm.text.trim()}`,
         ]);
         comments++;
       }

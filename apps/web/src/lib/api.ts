@@ -63,7 +63,7 @@ export interface Card {
   };
   child: null | { delegationId: string; cardId: string; code: string; num: number; ownerName: string; status: DelegationStatus; reopened: boolean; noPass: boolean };
   checklist: { done: number; total: number };
-  source: 'web' | 'email' | 'trello' | null;
+  source: 'web' | 'email' | 'trello' | 'arquivo' | null;
   createdAt: string;
 }
 
@@ -74,7 +74,6 @@ export interface Me {
   /** Item 46: resumo diário e avisos de prazo por e-mail (ligados por padrão). */
   prefs: { workspaceBg: string | null; emailDigest: boolean; emailDue: boolean };
   today: string;
-  trelloKey: string | null;
 }
 
 export interface CardDetail {

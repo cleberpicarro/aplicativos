@@ -7,8 +7,7 @@ import { CardStatusIcon, Dialog, Due, Menu, TipIcon, ErrorText, useMe, useToast 
 import { useQueryClient } from '@tanstack/react-query';
 import { Icon } from '../components/Icons';
 import { ConfirmDialog, NameDialog, useAction } from '../components/dialogs';
-import { ImportTrelloDialog } from '../components/ImportTrello';
-import { ExportTrelloDialog } from '../components/ExportTrello';
+import { ExportTasksDialog, ImportFileDialog } from '../components/ImportExport';
 import { asSingle, MAX_BATCH, MAX_TITLE, splitLines } from '../lib/lines';
 import { FilterBar, useTaskFilter } from '../components/TaskFilter';
 import { addPendingCard, changeCard, isPending } from '../lib/optimistic';
@@ -165,9 +164,9 @@ export function BoardsPage({ top }: { top?: HTMLElement | null } = {}) {
                 { label: 'Mover quadro para a direita', onClick: () => moveBoard(1), disabled: boardIndex === (boards.data?.length ?? 0) - 1 },
                 { label: 'Fundo da área de trabalho', onClick: () => setDialog('workspace') },
               ] : []),
-              // Item 31: importar e exportar ficam juntos no fim do menu.
-              { label: 'Importar do Trello', onClick: () => setDialog('import'), separator: !!board.data },
-              ...(board.data ? [{ label: 'Exportar para o Trello', onClick: () => setDialog('export') }] : []),
+              // Itens 31 e 62: importar e exportar ficam juntos no fim do menu.
+              { label: 'Importar arquivo JSON', onClick: () => setDialog('import'), separator: !!board.data },
+              ...(boards.data.length ? [{ label: 'Exportar tarefas (JSON)', onClick: () => setDialog('export') }] : []),
               // Item 42: arquivar quadro vazio, separado no fim.
               ...(board.data ? [{ label: 'Arquivar quadro', danger: true, separator: true, onClick: () => {
                 const n = board.data!.cards.length;
@@ -201,10 +200,10 @@ export function BoardsPage({ top }: { top?: HTMLElement | null } = {}) {
           onSave={async (name) => { const b = await post<{ id: string }>('/boards', { name }); select(b.id); return b; }} />
       )}
       {dialog === 'import' && (
-        <ImportTrelloDialog onClose={() => setDialog(null)}
-          onImported={(id) => { select(id); setDialog(null); toast('Quadro importado do Trello.'); }} />
+        <ImportFileDialog onClose={() => setDialog(null)}
+          onImported={(id, n) => { select(id); setDialog(null); toast(n === 1 ? 'Quadro importado.' : `${n} quadros importados.`); }} />
       )}
-      {dialog === 'export' && board.data && <ExportTrelloDialog board={board.data} onClose={() => setDialog(null)} />}
+      {dialog === 'export' && <ExportTasksDialog onClose={() => setDialog(null)} />}
       {dialog === 'renameBoard' && board.data && (
         <NameDialog title="Renomear quadro" label="Nome do quadro" confirm="Salvar" initial={board.data.name} onClose={() => setDialog(null)}
           onSave={(name) => patch(`/boards/${board.data!.id}`, { name })} />

@@ -1,3 +1,4 @@
+import fs from 'node:fs';
 import path from 'node:path';
 import { test, expect, entrar, irPara, dialogo, unico, criarTarefa } from './apoio';
 
@@ -28,44 +29,51 @@ test.describe('captura e importação', () => {
   test('importar um quadro do Trello', async ({ page }) => {
     await entrar(page, 'lucas');
     await page.getByRole('button', { name: 'Opções do quadro' }).click();
-    await page.getByRole('menuitem', { name: 'Importar do Trello' }).click();
-    const d = dialogo(page, 'Importar do Trello');
-    await d.getByLabel('Arquivo exportado do Trello (.json)').setInputFiles(path.resolve(__dirname, '../../apps/web/src/lib/__fixtures__/trello-board.json'));
+    await page.getByRole('menuitem', { name: 'Importar arquivo JSON' }).click();
+    const d = dialogo(page, 'Importar arquivo JSON');
+    await d.getByLabel('Arquivo JSON (do SyncTasks ou do Trello)').setInputFiles(path.resolve(__dirname, '../../apps/web/src/lib/__fixtures__/trello-board.json'));
     const nome = unico('Do Trello');
     await d.getByLabel('Nome do novo quadro').fill(nome);
     await d.getByRole('button', { name: /Importar/ }).click();
-    await expect(page.locator('.toast', { hasText: 'Quadro importado do Trello.' })).toBeVisible();
+    await expect(page.locator('.toast', { hasText: 'Quadro importado.' })).toBeVisible();
     await expect(page.getByRole('tab', { name: nome })).toHaveAttribute('aria-selected', 'true');
     await expect(page.locator('article.kc').first()).toBeVisible();
   });
 
-  test('exportar o quadro aberto para o Trello', async ({ page }) => {
-    // O Trello é simulado: guarda o que o SyncTasks pediu e responde como ele.
-    const pedidos: { caminho: string; dados: URLSearchParams }[] = [];
-    let n = 0;
-    await page.route('https://api.trello.com/**', async (route) => {
-      const caminho = new URL(route.request().url()).pathname.replace('/1', '');
-      pedidos.push({ caminho, dados: new URLSearchParams(route.request().postData() ?? '') });
-      await route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' },
-        body: JSON.stringify({ id: `t${++n}`, url: 'https://trello.com/b/teste/quadro' }) });
-    });
+  test('exportar todas as tarefas em JSON e importar o arquivo de volta', async ({ page }) => {
     await entrar(page, 'lucas');
-    const titulo = unico('Para o Trello');
+    const titulo = unico('Vai e volta');
     await criarTarefa(page, titulo);
     await page.getByRole('button', { name: 'Opções do quadro' }).click();
-    await page.getByRole('menuitem', { name: 'Exportar para o Trello' }).click();
-    const d = dialogo(page, 'Exportar para o Trello');
-    await expect(d.getByRole('button', { name: 'Conectar ao Trello' })).toBeVisible();
-    await d.getByText('A janela não voltou sozinha? Cole o código').click();
-    await d.getByLabel('Código do Trello').fill('a'.repeat(64));
-    await d.getByRole('button', { name: 'Usar código' }).click();
-    await d.getByRole('button', { name: /^Exportar \d+ tarefas?$/ }).click();
-    await expect(d.getByRole('link', { name: 'Abrir o quadro no Trello' })).toHaveAttribute('href', 'https://trello.com/b/teste/quadro');
-    expect(pedidos[0].caminho).toBe('/boards');
-    expect(pedidos.filter((p) => p.caminho === '/lists').length).toBeGreaterThanOrEqual(1);
-    const cartao = pedidos.find((p) => p.caminho === '/cards' && p.dados.get('name') === titulo);
-    expect(cartao?.dados.get('desc')).toMatch(/^Número no SyncTasks: #\d+/);
+    await page.getByRole('menuitem', { name: 'Exportar tarefas (JSON)' }).click();
+    const d = dialogo(page, 'Exportar tarefas (JSON)');
+    await expect(d.getByText(/vai ter todas as suas tarefas/)).toBeVisible();
+    const baixando = page.waitForEvent('download');
+    await d.getByRole('button', { name: 'Baixar arquivo' }).click();
+    const arquivo = await baixando;
+    expect(arquivo.suggestedFilename()).toMatch(/^synctasks-tarefas-\d{4}-\d{2}-\d{2}\.json$/);
+    const caminho = test.info().outputPath('exportacao.json');
+    await arquivo.saveAs(caminho);
+    const json = JSON.parse(fs.readFileSync(caminho, 'utf8'));
+    expect(json.formato).toBe('synctasks-exportacao');
+    expect(JSON.stringify(json)).toContain(titulo);
     await d.locator('.dialog-f').getByRole('button', { name: 'Fechar' }).click();
-    await expect(d).toHaveCount(0);
+
+    // Importa só o quadro onde a tarefa foi criada
+    await page.getByRole('button', { name: 'Opções do quadro' }).click();
+    await page.getByRole('menuitem', { name: 'Importar arquivo JSON' }).click();
+    const imp = dialogo(page, 'Importar arquivo JSON');
+    await imp.getByLabel('Arquivo JSON (do SyncTasks ou do Trello)').setInputFiles(caminho);
+    const quadro = json.quadros.find((q: any) => q.cards.some((c: any) => c.name === titulo)).name as string;
+    const caixas = imp.getByRole('checkbox');
+    for (let i = 0; i < await caixas.count(); i++) {
+      const caixa = caixas.nth(i);
+      const rotulo = (await caixa.locator('xpath=..').innerText()).trim();
+      if (!rotulo.startsWith(`${quadro} ·`)) await caixa.uncheck();
+    }
+    await imp.getByRole('button', { name: 'Importar 1 quadro' }).click();
+    await expect(page.locator('.toast', { hasText: 'Quadro importado.' })).toBeVisible();
+    await expect(page.getByRole('tab', { name: quadro, selected: true })).toBeVisible();
+    await expect(page.locator('article.kc', { hasText: titulo })).toBeVisible();
   });
 });

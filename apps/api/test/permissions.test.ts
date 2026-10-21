@@ -319,7 +319,7 @@ describe('permissões em massa (frente 2)', () => {
       'POST /api/cards/:id/accept-delegate', 'POST /api/inbox/discard', 'POST /api/inbox/restore',
       // só leem ou alteram os dados da própria pessoa (não recebem identificador de outra)
       'GET /api/me', 'PATCH /api/me/prefs', 'GET /api/boards', 'POST /api/boards', 'GET /api/inbox', 'GET /api/delegations', 'GET /api/dashboard',
-      'GET /api/search', 'GET /api/notifications', 'POST /api/notifications/read', 'POST /api/capture', 'POST /api/import/trello',
+      'GET /api/search', 'GET /api/notifications', 'POST /api/notifications/read', 'POST /api/capture', 'POST /api/import/trello', 'GET /api/export',
       'GET /api/archived', 'GET /api/boards/archived', 'GET /api/table', 'GET /api/table/options', 'GET /api/filters', 'POST /api/filters',
       // públicas por natureza
       'POST /api/auth/login', 'POST /api/auth/logout', 'POST /api/auth/password/forgot', 'POST /api/auth/password/set', 'GET /api/health', 'GET /compartilhar',
