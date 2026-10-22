@@ -41,6 +41,8 @@ const P: Record<string, ReactElement> = {
   self: <><circle cx="12" cy="8" r="3.4" /><path d="M5.5 20c.7-3.4 3.3-5.5 6.5-5.5s5.8 2.1 6.5 5.5" /></>,
   keyboard: <><rect x="2.5" y="6" width="19" height="12" rx="2" /><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10" /></>,
   table: <><rect x="3.5" y="4.5" width="17" height="15" rx="1.5" /><path d="M3.5 9.5h17M3.5 14.5h17M9.5 9.5v10" /></>,
+  columns: <><rect x="3.5" y="4.5" width="17" height="15" rx="1.5" /><path d="M9.2 4.5v15M14.8 4.5v15" /></>,
+  download: <><path d="M12 4v11M7.5 10.5L12 15l4.5-4.5" /><path d="M4.5 16.5v2a1.5 1.5 0 0 0 1.5 1.5h12a1.5 1.5 0 0 0 1.5-1.5v-2" /></>,
 };
 
 export type IconName = keyof typeof P;
