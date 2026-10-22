@@ -63,7 +63,7 @@ export interface Card {
   };
   child: null | { delegationId: string; cardId: string; code: string; num: number; ownerName: string; status: DelegationStatus; reopened: boolean; noPass: boolean };
   checklist: { done: number; total: number };
-  source: 'web' | 'email' | 'trello' | 'arquivo' | null;
+  source: 'web' | 'email' | 'trello' | 'arquivo' | 'assistente' | null;
   createdAt: string;
 }
 

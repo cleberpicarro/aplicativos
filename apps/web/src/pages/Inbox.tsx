@@ -10,8 +10,8 @@ import { AcceptDialog, DeclineDialog, DelegateDialog, acceptPlace, saveAcceptPla
 
 /** De onde a tarefa veio, como aparece na linha (e no "Selecionar de…"). */
 function origin(c: Card) {
-  const web = (c.source === 'web' || c.source === 'email') && !c.delegation && !c.transferredFrom;
-  const from = web ? (c.source === 'email' ? 'Capturada do e-mail' : 'Capturada da web') : c.transferredFrom?.name ?? c.delegation?.delegatorName ?? '';
+  const web = (c.source === 'web' || c.source === 'email' || c.source === 'assistente') && !c.delegation && !c.transferredFrom;
+  const from = web ? (c.source === 'email' ? 'Capturada do e-mail' : c.source === 'assistente' ? 'Criada pelo assistente' : 'Capturada da web') : c.transferredFrom?.name ?? c.delegation?.delegatorName ?? '';
   const how = web ? '' : c.transferredFrom ? 'Transferida por' : 'Delegada por';
   return { web, from, how };
 }

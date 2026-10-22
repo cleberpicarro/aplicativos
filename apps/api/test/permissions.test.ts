@@ -321,6 +321,10 @@ describe('permissões em massa (frente 2)', () => {
       'GET /api/me', 'PATCH /api/me/prefs', 'GET /api/boards', 'POST /api/boards', 'GET /api/inbox', 'GET /api/delegations', 'GET /api/dashboard',
       'GET /api/search', 'GET /api/notifications', 'POST /api/notifications/read', 'POST /api/capture', 'POST /api/import/trello', 'GET /api/export',
       'GET /api/archived', 'GET /api/boards/archived', 'GET /api/table', 'GET /api/table/options', 'GET /api/filters', 'POST /api/filters',
+      // item 65 (conector para assistentes): cobertas em conector.test.ts
+      'GET /api/oauth/request', 'POST /api/oauth/decide', 'GET /api/me/assistants', 'DELETE /api/me/assistants/:id', 'POST /mcp', 'GET /mcp', 'DELETE /mcp',
+      'GET /.well-known/oauth-protected-resource', 'GET /.well-known/oauth-protected-resource/mcp', 'GET /.well-known/oauth-authorization-server',
+      'POST /oauth/register', 'GET /oauth/authorize', 'POST /oauth/token',
       // públicas por natureza
       'POST /api/auth/login', 'POST /api/auth/logout', 'POST /api/auth/password/forgot', 'POST /api/auth/password/set', 'GET /api/health', 'GET /compartilhar',
     ]);

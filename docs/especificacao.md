@@ -866,6 +866,13 @@ Usa só as tarefas que a pessoa delegou, com a mesma visibilidade de Tarefas del
 - **E-mail do Gmail:** se a página é uma mensagem aberta no Gmail (`mail.google.com/...#<pasta>/<id>`), o título vira o assunto (sem “- nome@… - Gmail”), o link abre a mensagem e a origem é `email` (“capturada do e-mail”).
 - Extensão do Chrome fica para depois, conforme o uso.
 
+### Conector para assistentes de IA (item 65)
+
+- O SyncTasks é um **servidor MCP remoto** (Model Context Protocol, transporte HTTP “streamable”, só pedido e resposta, sem SSE) em `POST /mcp`. Qualquer assistente compatível (Claude, Gemini CLI e outros) pode se ligar; a tela “Permitir” mostra o nome informado pelo assistente e o domínio do endereço de volta.
+- **Autorização:** OAuth 2.1 com PKCE (S256) e cadastro dinâmico de cliente. Descoberta em `/.well-known/oauth-protected-resource[/mcp]` e `/.well-known/oauth-authorization-server`; `POST /oauth/register`; `GET /oauth/authorize` redireciona para a tela `#/conectar` do app (login antes, se preciso), que chama `GET /api/oauth/request` e `POST /api/oauth/decide`; `POST /oauth/token` (authorization_code e refresh_token). Endereço de volta só `https://` ou `http://localhost`/`127.0.0.1`. Código de uso único, 10 minutos. Chave de acesso de 1 hora e de renovação de 60 dias, as duas trocadas a cada renovação; o banco guarda só o hash (`oauth_clients`, `oauth_codes`, `oauth_grants`, migração 008).
+- **Ferramentas:** `listar_quadros`; `criar_tarefas` (1 a 20, título, descrição, prazo AAAA-MM-DD, quadro e fase pelo nome, sem diferenciar maiúsculas e acentos; tudo ou nada; sem quadro vai para a caixa de entrada); `ver_tarefas` (abertas, atrasadas, hoje, próximos 7 dias ou caixa de entrada, com busca no título e quadro). Tudo em nome da pessoa que permitiu, pelas mesmas funções do app: só os quadros e as tarefas dela. Tarefas criadas assim têm `cards.source = 'assistente'` (“criada pelo assistente”, também no filtro Origem).
+- **Meus dados:** mostra o endereço do conector (com Copiar) e os assistentes ligados, com data e último uso; **Desligar** corta na hora (`GET /api/me/assistants`, `DELETE /api/me/assistants/:id`). Pessoa desativada perde o acesso. Administrador fora da hierarquia não liga assistente (não tem quadros).
+
 ---
 
 ## 21. Fora do escopo e evoluções futuras
