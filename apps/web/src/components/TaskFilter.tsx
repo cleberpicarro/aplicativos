@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { del, get, patch, post } from '../lib/api';
 import { Dialog, ErrorText, useMe, useToast } from './ui';
@@ -68,8 +69,9 @@ export function useTaskFilter() {
 }
 export type TaskFilter = ReturnType<typeof useTaskFilter>;
 
-/** Barra do filtro: botão Filtro, atalhos de delegadas, etiquetas com × e Editar filtro. `children` vai à direita. */
-export function FilterBar({ f, onBoard = false, children }: { f: TaskFilter; onBoard?: boolean; children?: ReactNode }) {
+/** Barra do filtro: botão Filtro, atalhos de delegadas, etiquetas com × e Editar filtro. `children` vai à direita.
+ * Com `top` (o espaço na barra do topo), o botão Filtro, os atalhos e Condição vão para lá; a linha de baixo só aparece com etiquetas. */
+export function FilterBar({ f, onBoard = false, top, children }: { f: TaskFilter; onBoard?: boolean; top?: HTMLElement | null; children?: ReactNode }) {
   const me = useMe().data!;
   const qc = useQueryClient();
   const toast = useToast();
@@ -83,30 +85,37 @@ export function FilterBar({ f, onBoard = false, children }: { f: TaskFilter; onB
   // Item 47: "para mim" só faz sentido para quem tem superior; "por mim", para quem tem subordinados.
   const showToMe = !!me.user.managerId || quick.toMe;
   const showByMe = me.directReports.length > 0 || quick.byMe;
-  return (
-    <div className="tbl-bar">
-      <div className="menu">
-        <button className={`b fsel${f.hasConds ? ' on' : ''}`} aria-haspopup="menu" aria-expanded={picking} onClick={() => setPicking((p) => !p)}>
-          <Icon name="filter" /> Filtro: {cur.name} <Icon name="car" />
-        </button>
-        {picking && (
-          <FilterPicker saved={f.saved.data ?? []} current={cur} onClose={() => setPicking(false)}
-            onPick={(c) => { setCur(c); setPicking(false); }}
-            onNew={() => { setPicking(false); setEditing({ name: '', savedId: null, readyId: null, filter: { all: [newCondition()], any: [] } }); }} />
-        )}
-      </div>
-      {(showToMe || showByMe) && (
-        <span className="quick" role="group" aria-label="Atalhos de tarefas delegadas">
-          {showToMe && (
-            <button className={`b sm qk to-me${quick.toMe ? ' on' : ''}`} aria-pressed={quick.toMe} title="Só as tarefas que chegaram para você por delegação. Clique de novo para desligar."
-              onClick={() => setQuick((q) => ({ ...q, toMe: !q.toMe }))}><Icon name="into" />Delegadas para mim</button>
-          )}
-          {showByMe && (
-            <button className={`b sm qk by-me${quick.byMe ? ' on' : ''}`} aria-pressed={quick.byMe} title="Só as tarefas que você delegou e ainda estão em aberto. Clique de novo para desligar."
-              onClick={() => setQuick((q) => ({ ...q, byMe: !q.byMe }))}><Icon name="out" />Delegadas por mim</button>
-          )}
-        </span>
+  const picker = (
+    <div className="menu">
+      <button className={`b fsel${f.hasConds ? ' on' : ''}`} aria-haspopup="menu" aria-expanded={picking} onClick={() => setPicking((p) => !p)}>
+        <Icon name="filter" /> Filtro: {cur.name} <Icon name="car" />
+      </button>
+      {picking && (
+        <FilterPicker saved={f.saved.data ?? []} current={cur} onClose={() => setPicking(false)}
+          onPick={(c) => { setCur(c); setPicking(false); }}
+          onNew={() => { setPicking(false); setEditing({ name: '', savedId: null, readyId: null, filter: { all: [newCondition()], any: [] } }); }} />
       )}
+    </div>
+  );
+  const quickButtons = (showToMe || showByMe) && (
+    <span className="quick" role="group" aria-label="Atalhos de tarefas delegadas">
+      {showToMe && (
+        <button className={`b sm qk to-me${quick.toMe ? ' on' : ''}`} aria-pressed={quick.toMe} aria-label="Delegadas para mim" title="Só as tarefas que chegaram para você por delegação. Clique de novo para desligar."
+          onClick={() => setQuick((q) => ({ ...q, toMe: !q.toMe }))}><Icon name="into" /><span className="long">Delegadas para mim</span><span className="short">Para mim</span></button>
+      )}
+      {showByMe && (
+        <button className={`b sm qk by-me${quick.byMe ? ' on' : ''}`} aria-pressed={quick.byMe} aria-label="Delegadas por mim" title="Só as tarefas que você delegou e ainda estão em aberto. Clique de novo para desligar."
+          onClick={() => setQuick((q) => ({ ...q, byMe: !q.byMe }))}><Icon name="out" /><span className="long">Delegadas por mim</span><span className="short">Por mim</span></button>
+      )}
+    </span>
+  );
+  const condition = (
+    <button className="b sm" onClick={() => setEditing(f.hasConds ? cur : { ...cur, filter: { all: [newCondition()], any: [] } })}>
+      <Icon name="plus" /> {f.hasConds ? 'Editar filtro' : 'Condição'}
+    </button>
+  );
+  const chips = (
+    <>
       {quick.toMe && <span className="chip">Delegadas para mim<button aria-label="Desligar Delegadas para mim" onClick={() => setQuick((q) => ({ ...q, toMe: false }))}><Icon name="x" /></button></span>}
       {quick.byMe && <span className="chip">Delegadas por mim<button aria-label="Desligar Delegadas por mim" onClick={() => setQuick((q) => ({ ...q, byMe: false }))}><Icon name="x" /></button></span>}
       {cur.filter.all.map((c, i) => (
@@ -122,22 +131,38 @@ export function FilterBar({ f, onBoard = false, children }: { f: TaskFilter; onB
           ))}
         </span>
       )}
+    </>
+  );
+  const editor = editing && (
+    <FilterEditor
+      initial={editing}
+      options={f.options.data}
+      onBoard={onBoard}
+      onClose={() => setEditing(null)}
+      onApply={(c) => { setCur(c); setEditing(null); }}
+      onSaved={async (c) => { await qc.invalidateQueries({ queryKey: ['filters'] }); setCur(c); setEditing(null); toast(`Filtro “${c.name}” salvo.`); }}
+      onDeleted={async () => { await qc.invalidateQueries({ queryKey: ['filters'] }); setCur(NONE); setEditing(null); toast('Filtro excluído.'); }}
+    />
+  );
+  // Item 59: no Quadro, os botões sobem para a barra do topo e liberam a linha de cima das fases.
+  if (top) {
+    return (
+      <>
+        {createPortal(<span className="tbl-top">{picker}{quickButtons}{condition}</span>, top)}
+        {f.active && <div className="tbl-bar">{chips}{children}</div>}
+        {editor}
+      </>
+    );
+  }
+  return (
+    <div className="tbl-bar">
+      {picker}
+      {quickButtons}
+      {chips}
       <span className="grow" />
-      <button className="b sm" onClick={() => setEditing(f.hasConds ? cur : { ...cur, filter: { all: [newCondition()], any: [] } })}>
-        <Icon name="plus" /> {f.hasConds ? 'Editar filtro' : 'Condição'}
-      </button>
+      {condition}
       {children}
-      {editing && (
-        <FilterEditor
-          initial={editing}
-          options={f.options.data}
-          onBoard={onBoard}
-          onClose={() => setEditing(null)}
-          onApply={(c) => { setCur(c); setEditing(null); }}
-          onSaved={async (c) => { await qc.invalidateQueries({ queryKey: ['filters'] }); setCur(c); setEditing(null); toast(`Filtro “${c.name}” salvo.`); }}
-          onDeleted={async () => { await qc.invalidateQueries({ queryKey: ['filters'] }); setCur(NONE); setEditing(null); toast('Filtro excluído.'); }}
-        />
-      )}
+      {editor}
     </div>
   );
 }

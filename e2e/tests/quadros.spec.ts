@@ -245,9 +245,16 @@ test.describe('meus quadros', () => {
     await irPara(page, 'Tarefas');
     await expect(page.getByRole('tab').last()).toHaveText(nome);
   });
-  test('o mesmo filtro da tabela no quadro, com os atalhos de delegadas (item 47) @celular', async ({ page }) => {
+  test('o mesmo filtro da tabela no quadro, com os atalhos de delegadas (item 47) @celular', async ({ page, isMobile }) => {
     await entrar(page, 'marina');
     await irPara(page, 'Tarefas');
+    // Item 59: no computador, Filtro, atalhos e Condição ficam na barra do topo; no celular, acima das fases.
+    const topo = page.locator('.topbar');
+    for (const nome of [/^Filtro:/, /^Delegadas por mim$/, /^Condição$/]) {
+      await expect(topo.getByRole('button', { name: nome })).toHaveCount(isMobile ? 0 : 1);
+      await expect(page.getByRole('button', { name: nome })).toBeVisible();
+    }
+    if (!isMobile) await expect(page.locator('.tbl-bar')).toHaveCount(0);
     const alfa = unico('Filtro alfa');
     const beta = unico('Filtro beta');
     await criarTarefa(page, alfa);
@@ -289,4 +296,55 @@ test.describe('meus quadros', () => {
     await page.getByRole('button', { name: 'Desligar Delegadas por mim' }).click();
     await expect(cartao(alfa)).toBeVisible();
   });
+
+  test('atalhos de teclado: N cria, C conclui, Ctrl+Enter comenta, / busca e ? mostra a lista', async ({ page }) => {
+    await entrar(page, 'beatriz');
+    await expect(page.locator('.kanban')).toBeVisible();
+    const titulo = unico('Pelo teclado');
+    await page.keyboard.press('n');
+    const campo = page.getByRole('region', { name: 'A fazer', exact: true }).getByLabel('Título da nova tarefa');
+    await expect(campo).toBeFocused();
+    await campo.fill(titulo);
+    await campo.press('Enter');
+    await expect(campo).toHaveValue(''); // o campo já fica livre para a próxima
+    const card = page.locator('article.kc[data-id]', { hasText: titulo });
+    await expect(card).toBeVisible();
+    await campo.press('Escape');
+
+    await card.locator('button.t').click();
+    const dlg = page.getByRole('dialog', { name: /^Tarefa #\d+$/ });
+    await expect(dlg.getByLabel('Título', { exact: true })).toHaveValue(titulo);
+    await dlg.getByLabel('Novo comentário').fill('Feito pelo teclado');
+    await dlg.getByLabel('Novo comentário').press('Control+Enter');
+    await expect(dlg.locator('.cmt', { hasText: 'Feito pelo teclado' })).toBeVisible();
+    await dlg.getByRole('heading').click(); // sai do campo
+    await page.keyboard.press('c');
+    await aviso(page, 'Tarefa concluída.');
+    await expect(dlg.getByRole('button', { name: 'Desfazer conclusão' })).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(card.locator('button.ck.on')).toBeVisible();
+
+    await page.keyboard.press('/');
+    await expect(page.getByLabel('Buscar tarefa ou número')).toBeFocused();
+    await page.keyboard.press('Escape');
+    await page.locator('.topbar h1').click();
+    await page.keyboard.press('?');
+    await expect(dialogo(page, 'Atalhos de teclado')).toContainText('Nova tarefa na primeira fase do quadro');
+  });
+
+  test('arrastar e concluir mudam a tela antes da resposta do servidor', async ({ page }) => {
+    await entrar(page, 'beatriz');
+    const titulo = unico('Sem esperar');
+    await criarTarefa(page, titulo);
+    // O servidor passa a demorar 1,5 s para gravar: a tela tem de mudar antes disso.
+    await page.route('**/api/cards/*/move', async (r) => { await new Promise((x) => setTimeout(x, 1500)); await r.continue(); });
+    await page.route('**/api/cards/*/complete', async (r) => { await new Promise((x) => setTimeout(x, 1500)); await r.continue(); });
+    const fazendo = page.getByRole('region', { name: 'Fazendo', exact: true });
+    await page.locator('article.kc', { hasText: titulo }).dragTo(fazendo.locator('.col-list'));
+    await expect(fazendo.locator('article.kc', { hasText: titulo })).toBeVisible({ timeout: 700 });
+    await fazendo.locator('article.kc', { hasText: titulo }).locator('button.ck').click();
+    await expect(fazendo.locator('article.kc', { hasText: titulo }).locator('button.ck.on')).toBeVisible({ timeout: 700 });
+    await aviso(page, 'Tarefa concluída.');
+  });
 });
+

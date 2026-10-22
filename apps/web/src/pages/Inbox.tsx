@@ -1,12 +1,12 @@
 import { useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { get, type Card } from '../lib/api';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { get, post, type Card } from '../lib/api';
 import { go } from '../lib/router';
-import { Avatar, CardStatusIcon, Due, useMe } from '../components/ui';
+import { Avatar, CardStatusIcon, Due, useMe, useToast } from '../components/ui';
 import { Icon } from '../components/Icons';
 import { TIPS, cardNo, plural } from '../lib/format';
 import { BookmarkletButton } from './Capture';
-import { AcceptDialog, ConfirmDialog, DeclineDialog, DelegateDialog, useDiscard } from '../components/dialogs';
+import { AcceptDialog, DeclineDialog, DelegateDialog, acceptPlace, saveAcceptPlace, useAction, useDiscard } from '../components/dialogs';
 
 /** De onde a tarefa veio, como aparece na linha (e no "Selecionar de…"). */
 function origin(c: Card) {
@@ -25,9 +25,29 @@ export function InboxPage() {
   const [accepting, setAccepting] = useState<Card | null>(null);
   const [delegating, setDelegating] = useState<Card | null>(null);
   const [declining, setDeclining] = useState<Card | null>(null);
-  const [confirmBulk, setConfirmBulk] = useState(false);
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const discard = useDiscard();
+  const qc = useQueryClient();
+  const toast = useToast();
+  const { run } = useAction();
+
+  /**
+   * Item 57: Aceitar com um clique, no último quadro e fase usados (a linha sai da caixa na hora).
+   * Na primeira vez, ou se aquele lugar não existir mais, abre a janela para escolher.
+   */
+  const accept = async (c: Card) => {
+    const place = acceptPlace();
+    if (!place) { setAccepting(c); return; }
+    const before = qc.getQueryData<Card[]>(['inbox']);
+    const r = await run(() => post(`/cards/${c.id}/accept`, { listId: place.listId }), undefined, {
+      optimistic: () => {
+        qc.setQueryData<Card[]>(['inbox'], (list) => list?.filter((x) => x.id !== c.id));
+        return () => qc.setQueryData(['inbox'], before);
+      },
+    });
+    if (r === undefined) { saveAcceptPlace(null); setAccepting(c); return; }
+    toast(`Tarefa aceita em “${place.label}”.`, 'ok', { label: 'Abrir', onClick: () => go(`/tarefa/${c.id}`) });
+  };
   const reports = me.directReports.length > 0;
 
   const cards = q.data ?? [];
@@ -49,10 +69,9 @@ export function InboxPage() {
     return n;
   });
   const allPicked = canDiscard.length > 0 && selected.length === canDiscard.length;
+  // Item 58: sem janela de confirmação; o aviso traz Desfazer.
   const discardSelected = async () => {
-    const ok = await discard(selected);
-    if (ok) setPicked(new Set());
-    return ok ? true : undefined;
+    if (await discard(selected)) setPicked(new Set());
   };
 
   return (
@@ -77,7 +96,7 @@ export function InboxPage() {
           {selected.length > 0 && (
             <>
               <span className="muted">{selected.length} {plural(selected.length, 'selecionada', 'selecionadas')}</span>
-              <button className="b sm danger" title={TIPS.discard} onClick={() => setConfirmBulk(true)}><Icon name="archive" />Descartar selecionadas</button>
+              <button className="b sm danger" title={TIPS.discard} onClick={discardSelected}><Icon name="archive" />Descartar selecionadas</button>
               <button className="b sm" onClick={() => setPicked(new Set())}>Limpar seleção</button>
             </>
           )}
@@ -101,7 +120,10 @@ export function InboxPage() {
                 <span className="code">{cardNo(c.num)}</span>
                 <Due date={c.dueDate} today={me.today} />
                 <div className="acts">
-                  <button className="b pri" title={TIPS.accept} onClick={() => setAccepting(c)}>Aceitar</button>
+                  <span className="split">
+                    <button className="b pri" title={acceptPlace() ? `Aceitar em “${acceptPlace()!.label}” (o último lugar usado)` : TIPS.accept} onClick={() => accept(c)}>Aceitar</button>
+                    <button className="b pri" title="Escolher o quadro e a fase" aria-label={`Aceitar em…: ${c.title}`} onClick={() => setAccepting(c)}><Icon name="car" /></button>
+                  </span>
                   {reports && !c.delegation?.noPass && <button className="b" title={TIPS.delegateInbox} onClick={() => setDelegating(c)}>Delegar</button>}
                   {discardable(c) && <button className="b" title={TIPS.discard} onClick={() => discard([c.id])}>Descartar</button>}
                   {c.delegation && !c.transferredFrom && <button className="b" title={TIPS.decline} onClick={() => setDeclining(c)}>Devolver</button>}
@@ -118,16 +140,6 @@ export function InboxPage() {
       {accepting && <AcceptDialog card={accepting} onClose={() => setAccepting(null)} />}
       {delegating && <DelegateDialog card={delegating} fromInbox onClose={() => setDelegating(null)} />}
       {declining && <DeclineDialog card={declining} onClose={() => setDeclining(null)} />}
-      {confirmBulk && (
-        <ConfirmDialog
-          title={`Descartar ${selected.length} ${plural(selected.length, 'tarefa', 'tarefas')}?`}
-          text="Elas saem da caixa de entrada sem ser concluídas e vão para Arquivadas, de onde dá para desarquivar. Ninguém é avisado."
-          confirm="Descartar"
-          danger
-          onConfirm={discardSelected}
-          onClose={() => setConfirmBulk(false)}
-        />
-      )}
     </div>
   );
 }

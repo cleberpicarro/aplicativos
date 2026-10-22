@@ -190,7 +190,7 @@ export function conditionSql(sql: Sql, c: Condition): string {
     }
     case 'source': {
       const v = str(c);
-      if (!['manual', 'web', 'email', 'trello'].includes(v)) throw badRequest('Origem inválida.');
+      if (!['manual', 'web', 'email', 'trello', 'arquivo'].includes(v)) throw badRequest('Origem inválida.');
       const col = `coalesce(c.source, 'manual')`;
       return c.op === 'eq' ? `${col} = ${sql.p(v)}` : `${col} <> ${sql.p(v)}`;
     }

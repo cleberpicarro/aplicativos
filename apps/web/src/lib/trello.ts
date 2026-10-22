@@ -1,5 +1,6 @@
 /**
  * Lê o JSON exportado de um quadro do Trello (menu do quadro → Imprimir, exportar e compartilhar → Exportar como JSON)
+ * ou o arquivo do "Exportar tarefas (JSON)" do SyncTasks (item 62: vários quadros no mesmo formato do Trello)
  * e monta o que será importado. Tudo acontece no navegador: só o necessário vai para o servidor.
  */
 
@@ -8,13 +9,17 @@ export interface ImportCard {
   description: string;
   dueDate: string | null;
   completed: boolean;
+  isPrivate: boolean;
+  color: string | null;
   members: string[];
   checklist: { text: string; done: boolean }[];
   comments: { author: string; date: string; text: string }[];
 }
 
 export interface TrelloImport {
+  source: 'Trello' | 'SyncTasks';
   boardName: string;
+  boardColor: string | null;
   lists: { name: string; cards: ImportCard[] }[];
 }
 
@@ -36,11 +41,15 @@ export interface TrelloPreview {
 interface TList { id: string; name?: string; closed?: boolean; pos?: number }
 interface TCard {
   id: string; name?: string; desc?: string; due?: string | null; dueComplete?: boolean; closed?: boolean;
-  idList: string; pos?: number; idMembers?: string[]; idLabels?: string[]; labels?: unknown[]; attachments?: unknown[]; badges?: { attachments?: number };
+  idList: string; pos?: number; idMembers?: string[]; synctasks?: { privada?: boolean; cor?: string | null }; idLabels?: string[]; labels?: unknown[]; attachments?: unknown[]; badges?: { attachments?: number };
 }
 interface TChecklist { id: string; idCard: string; name?: string; pos?: number; checkItems?: { name?: string; state?: string; pos?: number }[] }
 interface TMember { id: string; fullName?: string; username?: string }
 interface TAction { type?: string; date?: string; data?: { text?: string; card?: { id?: string } }; memberCreator?: { fullName?: string; username?: string } }
+
+// Cores do SyncTasks (as mesmas do servidor); outra qualquer é ignorada.
+const COLORS = ['azul', 'verde', 'amarelo', 'laranja', 'vermelho', 'roxo', 'rosa', 'cinza'];
+const color = (c: unknown) => (typeof c === 'string' && COLORS.includes(c) ? c : null);
 
 const cut = (s: string, n: number) => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
 
@@ -52,8 +61,11 @@ function localDate(iso: string | null | undefined): string | null {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-export function parseTrello(raw: unknown): TrelloPreview {
-  const data = raw as { name?: string; lists?: TList[]; cards?: TCard[]; checklists?: TChecklist[]; members?: TMember[]; actions?: TAction[] };
+export function parseTrello(raw: unknown, source: TrelloImport['source'] = 'Trello'): TrelloPreview {
+  const data = raw as {
+    name?: string; lists?: TList[]; cards?: TCard[]; checklists?: TChecklist[]; members?: TMember[]; actions?: TAction[];
+    synctasks?: { cor?: string | null };
+  };
   if (!data || typeof data !== 'object' || !Array.isArray(data.lists) || !Array.isArray(data.cards)) {
     throw new Error('Este arquivo não parece ser um quadro exportado do Trello. Use “Exportar como JSON” no menu do quadro.');
   }
@@ -106,6 +118,8 @@ export function parseTrello(raw: unknown): TrelloPreview {
           description: cut(c.desc ?? '', 20000),
           dueDate: localDate(c.due),
           completed: !!c.dueComplete,
+          isPrivate: c.synctasks?.privada === true,
+          color: color(c.synctasks?.cor),
           members: (c.idMembers ?? []).map((id) => members.get(id) ?? '').filter(Boolean),
           checklist,
           comments: cmts,
@@ -117,5 +131,38 @@ export function parseTrello(raw: unknown): TrelloPreview {
   stats.archivedCards += data.cards.filter((c) => !activeIds.has(c.idList)).length;
 
   if (!lists.length) throw new Error('O quadro não tem listas ativas para importar.');
-  return { payload: { boardName: cut((data.name ?? '').trim() || 'Quadro do Trello', 80), lists }, stats };
+  return {
+    payload: { source, boardName: cut((data.name ?? '').trim() || 'Quadro do Trello', 80), boardColor: color(data.synctasks?.cor), lists },
+    stats,
+  };
+}
+
+/** Item 62: arquivo do "Exportar tarefas (JSON)" do SyncTasks. */
+export const EXPORT_FORMAT = 'synctasks-exportacao';
+
+export interface ImportFile {
+  kind: 'trello' | 'synctasks';
+  /** Quadros que dá para importar (no arquivo do Trello, sempre um). */
+  boards: TrelloPreview[];
+  /** Arquivo do SyncTasks: quadros arquivados ou sem fases ativas, que ficam de fora. */
+  skippedBoards: number;
+}
+
+/** Reconhece o arquivo (Trello ou SyncTasks) e monta a prévia de cada quadro. */
+export function parseImportFile(raw: unknown): ImportFile {
+  const data = raw as { formato?: string; quadros?: unknown[] };
+  if (!data || typeof data !== 'object' || data.formato !== EXPORT_FORMAT) return { kind: 'trello', boards: [parseTrello(raw)], skippedBoards: 0 };
+  if (!Array.isArray(data.quadros)) throw new Error('Este arquivo do SyncTasks está incompleto. Exporte as tarefas de novo.');
+  const boards: TrelloPreview[] = [];
+  let skippedBoards = 0;
+  for (const q of data.quadros as { closed?: boolean }[]) {
+    if (!q || q.closed) { skippedBoards++; continue; }
+    try {
+      boards.push(parseTrello(q, 'SyncTasks'));
+    } catch {
+      skippedBoards++;
+    }
+  }
+  if (!boards.length) throw new Error('O arquivo não tem quadros ativos para importar.');
+  return { kind: 'synctasks', boards, skippedBoards };
 }

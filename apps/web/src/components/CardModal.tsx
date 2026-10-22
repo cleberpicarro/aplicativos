@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { del, get, patch, post, type CardDetail } from '../lib/api';
 import { TIPS, cardNo, dateTime, delegationKey, firstName, fullDate, relative, statusOf } from '../lib/format';
 import { Avatar, Dialog, ErrorText, StatusPill, useMe, useToast } from './ui';
@@ -7,18 +7,42 @@ import { Icon } from './Icons';
 import { AcceptDialog, ConfirmDialog, DeclineDialog, DelegateDialog, RedelegateDialog, ReopenDialog, TransferDialog, useAction, useCancelDelegation, useDiscard } from './dialogs';
 import { go } from '../lib/router';
 import { BOARD_COLORS } from '../pages/Boards';
+import { cardFromBoards, changeCard, changeChecklistItem } from '../lib/optimistic';
+import { isCtrlEnter, isTyping } from '../lib/shortcuts';
 
 type Sub = null | 'delegate' | 'transfer' | 'decline' | 'reopen' | 'redelegate' | 'accept' | 'cancel' | 'cancelChild';
 
 export function CardModal({ code, onClose }: { code: string; onClose: () => void }) {
   const me = useMe().data!;
-  const q = useQuery({ queryKey: ['card', code], queryFn: () => get<CardDetail>(`/cards/by-code/${code}`), retry: false });
+  const qc = useQueryClient();
+  // Item 55: a janela abre na hora com o que o quadro já sabe da tarefa; checklist, comentários e o resto chegam em seguida.
+  const q = useQuery({
+    queryKey: ['card', code],
+    queryFn: () => get<CardDetail>(`/cards/by-code/${code}`),
+    retry: false,
+    placeholderData: () => {
+      const card = cardFromBoards(qc, code);
+      return card ? { card, role: 'owner' as const, canSeeLog: false, board: null, checklistItems: [], comments: [] } : undefined;
+    },
+  });
   const [tab, setTab] = useState<'details' | 'log'>('details');
   const [sub, setSub] = useState<Sub>(null);
   const { run, busy, error } = useAction();
   const toast = useToast();
   const cancelDelegation = useCancelDelegation();
   const discard = useDiscard();
+  const keys = useRef<{ c?: () => void; d?: () => void }>({});
+  // Item 56: C conclui e D delega a tarefa aberta (quando não há outra janela por cima e ninguém está escrevendo).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (isTyping(e) || sub) return;
+      const k = e.key.toLowerCase();
+      const act = k === 'c' ? keys.current.c : k === 'd' ? keys.current.d : undefined;
+      if (act) { e.preventDefault(); act(); }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [sub]);
 
   if (q.isLoading) return <Dialog title="Carregando…" onClose={onClose} wide><p className="loading">Carregando a tarefa…</p></Dialog>;
   if (q.error || !q.data) {
@@ -35,12 +59,17 @@ export function CardModal({ code, onClose }: { code: string; onClose: () => void
   const status = statusOf(card);
   const reports = me.directReports.length > 0;
   const childOpen = card.child && !['ACKED', 'CANCELED'].includes(card.child.status);
+  const loadingRest = q.isPlaceholderData;
 
   const toggleDone = () =>
     run(
       () => post(`/cards/${card.id}/${card.completedAt ? 'uncomplete' : 'complete'}`),
       card.completedAt ? 'Conclusão desfeita.' : d ? `Concluída. ${firstName(d.delegatorName)} foi avisado(a) para dar o ciente.` : 'Tarefa concluída.',
+      { optimistic: () => changeCard(qc, card.id, { completedAt: card.completedAt ? null : new Date().toISOString() }), scope: 'card' },
     );
+  const canToggle = owner && !archived && !card.inInbox && (!d || d.status === 'IN_PROGRESS' || d.status === 'AWAITING_ACK');
+  const canDelegate = owner && !archived && reports && !d?.noPass && (card.inInbox || (!childOpen && !card.completedAt));
+  keys.current = { c: canToggle && !busy ? toggleDone : undefined, d: canDelegate ? () => setSub('delegate') : undefined };
 
   const ownerActions = owner && !archived && (
     <>
@@ -133,6 +162,7 @@ export function CardModal({ code, onClose }: { code: string; onClose: () => void
                 {card.source === 'web' && <span>· Capturada da web</span>}
                 {card.source === 'email' && <span>· Capturada do e-mail</span>}
                 {card.source === 'trello' && <span>· Importada do Trello</span>}
+                {card.source === 'arquivo' && <span>· Importada de arquivo do SyncTasks</span>}
                 {d?.parentNum != null && <span>· Desdobramento da tarefa <span className="code">{cardNo(d.parentNum)}</span> de {d.delegatorId === me.user.id ? 'você' : firstName(d.delegatorName)}</span>}
               </div>
 
@@ -162,8 +192,12 @@ export function CardModal({ code, onClose }: { code: string; onClose: () => void
               )}
 
               <Description id={card.id} text={card.description} editable={owner && !archived} />
-              <Checklist cardId={card.id} items={checklistItems} editable={owner && !archived} />
-              <Comments cardId={card.id} comments={comments} canPost={!archived && role !== 'auditor'} />
+              {loadingRest ? <p className="loading">Carregando checklist e comentários…</p> : (
+                <>
+                  <Checklist cardId={card.id} items={checklistItems} editable={owner && !archived} />
+                  <Comments cardId={card.id} comments={comments} canPost={!archived && role !== 'auditor'} />
+                </>
+              )}
             </div>
 
             <aside className="card-side">
@@ -178,7 +212,7 @@ export function CardModal({ code, onClose }: { code: string; onClose: () => void
               {owner && !d && !card.child && !archived && (
                 <label className="check">
                   <input type="checkbox" checked={card.isPrivate}
-                    onChange={(e) => run(() => patch(`/cards/${card.id}`, { isPrivate: e.target.checked }), e.target.checked ? 'Tarefa privada: nenhum superior vê.' : 'Tarefa visível.')} />
+                    onChange={(e) => { const isPrivate = e.target.checked; run(() => patch(`/cards/${card.id}`, { isPrivate }), isPrivate ? 'Tarefa privada: nenhum superior vê.' : 'Tarefa visível.', { optimistic: () => changeCard(qc, card.id, { isPrivate }), scope: 'card' }); }} />
                   Privada
                 </label>
               )}
@@ -224,9 +258,11 @@ export function CardModal({ code, onClose }: { code: string; onClose: () => void
 function TitleEditor({ id, title }: { id: string; title: string }) {
   const [v, setV] = useState(title);
   const { run } = useAction();
+  const qc = useQueryClient();
   useEffect(() => setV(title), [title]);
   const save = () => {
-    if (v.trim() && v.trim() !== title) run(() => patch(`/cards/${id}`, { title: v.trim() }));
+    const t = v.trim();
+    if (t && t !== title) run(() => patch(`/cards/${id}`, { title: t }), undefined, { optimistic: () => changeCard(qc, id, { title: t }), scope: 'card' });
     else setV(title);
   };
   return (
@@ -238,30 +274,36 @@ function TitleEditor({ id, title }: { id: string; title: string }) {
 function Description({ id, text, editable }: { id: string; text: string; editable: boolean }) {
   const [v, setV] = useState(text);
   const { run } = useAction();
+  const qc = useQueryClient();
   useEffect(() => setV(text), [text]);
   if (!editable) return text ? <div><span className="label">Descrição</span><p style={{ margin: '4px 0 0', whiteSpace: 'pre-wrap' }}>{text}</p></div> : null;
   return (
     <div className="field">
       <label htmlFor="c-desc">Descrição</label>
-      <textarea id="c-desc" className="textarea" value={v} onChange={(e) => setV(e.target.value)} placeholder="Detalhes, contexto, links…"
-        onBlur={() => { if (v !== text) run(() => patch(`/cards/${id}`, { description: v }), 'Descrição salva.'); }} />
+      <textarea id="c-desc" className="textarea" value={v} onChange={(e) => setV(e.target.value)} placeholder="Detalhes, contexto, links… (Ctrl+Enter salva)"
+        onKeyDown={(e) => { if (isCtrlEnter(e)) { e.preventDefault(); e.currentTarget.blur(); } }}
+        onBlur={() => { if (v !== text) run(() => patch(`/cards/${id}`, { description: v }), 'Descrição salva.', { optimistic: () => changeCard(qc, id, { description: v }), scope: 'card' }); }} />
     </div>
   );
 }
 
 function DueEditor({ id, value }: { id: string; value: string | null }) {
   const { run } = useAction();
+  const qc = useQueryClient();
+  const set = (dueDate: string | null, msg: string) =>
+    run(() => patch(`/cards/${id}`, { dueDate }), msg, { optimistic: () => changeCard(qc, id, { dueDate }), scope: 'card' });
   return (
     <div style={{ display: 'flex', gap: 4 }}>
       <input type="date" className="input" aria-label="Prazo" value={value ?? ''}
-        onChange={(e) => run(() => patch(`/cards/${id}`, { dueDate: e.target.value || null }), 'Prazo atualizado.')} />
-      {value && <button className="b ghost icon" aria-label="Remover prazo" onClick={() => run(() => patch(`/cards/${id}`, { dueDate: null }), 'Prazo removido.')}><Icon name="x" /></button>}
+        onChange={(e) => set(e.target.value || null, 'Prazo atualizado.')} />
+      {value && <button className="b ghost icon" aria-label="Remover prazo" onClick={() => set(null, 'Prazo removido.')}><Icon name="x" /></button>}
     </div>
   );
 }
 
 function Checklist({ cardId, items, editable }: { cardId: string; items: CardDetail['checklistItems']; editable: boolean }) {
   const { run, error } = useAction();
+  const qc = useQueryClient();
   const [text, setText] = useState('');
   if (!editable && !items.length) return null;
   const done = items.filter((i) => i.done).length;
@@ -280,7 +322,7 @@ function Checklist({ cardId, items, editable }: { cardId: string; items: CardDet
         {items.map((i) => (
           <div key={i.id} className={`it${i.done ? ' done' : ''}`}>
             <input type="checkbox" checked={i.done} disabled={!editable} aria-label={i.text}
-              onChange={(e) => run(() => patch(`/cards/${cardId}/checklist/${i.id}`, { done: e.target.checked }))} />
+              onChange={(e) => { const done = e.target.checked; run(() => patch(`/cards/${cardId}/checklist/${i.id}`, { done }), undefined, { optimistic: () => changeChecklistItem(qc, cardId, i.id, done), scope: 'card' }); }} />
             <span>{i.text}</span>
             {editable && <button className="b ghost icon sm x" aria-label={`Remover “${i.text}”`} onClick={() => run(() => del(`/cards/${cardId}/checklist/${i.id}`))}><Icon name="x" /></button>}
           </div>
@@ -322,7 +364,8 @@ function Comments({ cardId, comments, canPost }: { cardId: string; comments: Car
       </div>
       {canPost && (
         <form onSubmit={send} style={{ display: 'grid', gap: 6 }}>
-          <textarea className="textarea" style={{ minHeight: '3.2rem' }} value={body} onChange={(e) => setBody(e.target.value)} placeholder="Escreva um comentário" aria-label="Novo comentário" />
+          <textarea className="textarea" style={{ minHeight: '3.2rem' }} value={body} onChange={(e) => setBody(e.target.value)} placeholder="Escreva um comentário (Ctrl+Enter envia)" aria-label="Novo comentário"
+            onKeyDown={(e) => { if (isCtrlEnter(e)) { e.preventDefault(); e.currentTarget.form?.requestSubmit(); } }} />
           <div><button className="b" type="submit" disabled={busy || !body.trim()}><Icon name="comment" />Comentar</button></div>
         </form>
       )}
@@ -351,6 +394,7 @@ function NoPassToggle({ delegationId, value, who }: { delegationId: string; valu
 function CardColor({ id, color }: { id: string; color: string | null }) {
   const [open, setOpen] = useState(false);
   const { run, error } = useAction();
+  const qc = useQueryClient();
   const ref = useRef<HTMLSpanElement>(null);
   useEffect(() => {
     if (!open) return;
@@ -362,7 +406,7 @@ function CardColor({ id, color }: { id: string; color: string | null }) {
   }, [open]);
   const pick = async (c: string | null) => {
     setOpen(false);
-    if (c !== color) await run(() => patch(`/cards/${id}`, { color: c }), c ? 'Cor do cartão alterada.' : 'Cartão sem cor.');
+    if (c !== color) await run(() => patch(`/cards/${id}`, { color: c }), c ? 'Cor do cartão alterada.' : 'Cartão sem cor.', { optimistic: () => changeCard(qc, id, { color: c }), scope: 'card' });
   };
   return (
     <span className="cc-wrap" ref={ref}>
@@ -457,6 +501,7 @@ function EventLog({ cardId }: { cardId: string }) {
 /** Itens 16 e 10: mover para qualquer quadro e fase da pessoa, ou para o topo/fim da fase atual. */
 function MoveTo({ cardId, boardId, listId }: { cardId: string; boardId: string; listId: string }) {
   const { run, busy } = useAction();
+  const qc = useQueryClient();
   const boards = useQuery({ queryKey: ['boards'], queryFn: () => get<{ id: string; name: string }[]>('/boards') });
   const [targetBoard, setTargetBoard] = useState(boardId);
   const lists = useQuery({ queryKey: ['board', targetBoard], queryFn: () => get<{ lists: { id: string; name: string }[] }>(`/boards/${targetBoard}`) });
@@ -478,13 +523,15 @@ function MoveTo({ cardId, boardId, listId }: { cardId: string; boardId: string; 
       </select>
       {changed ? (
         <button className="b" disabled={busy || !chosenList}
-          onClick={() => run(() => post(`/cards/${cardId}/move`, { listId: chosenList }), `Tarefa movida para ${targetBoard !== boardId ? `“${boardName}” · ` : ''}“${listName}”.`)}>
+          onClick={() => run(() => post(`/cards/${cardId}/move`, { listId: chosenList }), `Tarefa movida para ${targetBoard !== boardId ? `“${boardName}” · ` : ''}“${listName}”.`,
+            // Item 54: no mesmo quadro, o cartão já muda de fase na tela (vai para o fim dela, como no servidor).
+            targetBoard === boardId ? { optimistic: () => changeCard(qc, cardId, { listId: chosenList, position: Number.MAX_SAFE_INTEGER }) } : undefined)}>
           <Icon name="move" />Mover
         </button>
       ) : (
         <div style={{ display: 'flex', gap: 4 }}>
-          <button className="b sm" style={{ flex: 1 }} disabled={busy} onClick={() => run(() => post(`/cards/${cardId}/move`, { listId, place: 'top' }), 'Tarefa no topo da fase.')}>Para o topo</button>
-          <button className="b sm" style={{ flex: 1 }} disabled={busy} onClick={() => run(() => post(`/cards/${cardId}/move`, { listId, place: 'end' }), 'Tarefa no fim da fase.')}>Para o fim</button>
+          <button className="b sm" style={{ flex: 1 }} disabled={busy} onClick={() => run(() => post(`/cards/${cardId}/move`, { listId, place: 'top' }), 'Tarefa no topo da fase.', { optimistic: () => changeCard(qc, cardId, { position: -Number.MAX_SAFE_INTEGER }), scope: 'card' })}>Para o topo</button>
+          <button className="b sm" style={{ flex: 1 }} disabled={busy} onClick={() => run(() => post(`/cards/${cardId}/move`, { listId, place: 'end' }), 'Tarefa no fim da fase.', { optimistic: () => changeCard(qc, cardId, { position: Number.MAX_SAFE_INTEGER }), scope: 'card' })}>Para o fim</button>
         </div>
       )}
     </div>

@@ -9,7 +9,7 @@ const SECTIONS: [string, string][] = [
   ['filtro-quadro', 'Filtro no quadro'],
   ['tabela', 'Tarefas: tabela e filtros'],
   ['arquivadas', 'Arquivadas'],
-  ['trello', 'Importar e exportar (Trello)'],
+  ['trello', 'Exportar e importar (JSON)'],
   ['capturar', 'Capturar da web'],
   ['entrada', 'Caixa de entrada'],
   ['delegar', 'Delegar'],
@@ -18,6 +18,7 @@ const SECTIONS: [string, string][] = [
   ['concluir', 'Concluir, ciente e reabrir'],
   ['devolver', 'Devolver e transferir'],
   ['codigo', 'Código, busca e avisos'],
+  ['atalhos', 'Atalhos de teclado'],
   ['privacidade', 'Privacidade e log'],
   ['icones', 'Ícones'],
   ['glossario', 'Glossário'],
@@ -59,7 +60,7 @@ export function HelpPage({ isAdmin }: { isAdmin: boolean }) {
       <Sec id="inicio" title="Primeiros passos">
         <ol>
           <li>Você recebe um e-mail com o link para <b>definir sua senha</b>. Depois, entre com seu e-mail e senha. O <b>olho</b> no fim do campo de senha mostra o que você digitou; clique de novo para ocultar.</li>
-          <li>No menu à esquerda ficam o <b>Painel</b> e as <b>Tarefas delegadas</b> (só para quem tem equipe), <b>Tarefas</b>, a <b>Caixa de entrada</b>, as <b>Arquivadas</b> e <b>Avisos</b>. Quem tem equipe começa pelo Painel.</li>
+          <li>No menu à esquerda ficam o <b>Painel</b> e as <b>Tarefas delegadas</b> (só para quem tem equipe), <b>Tarefas</b>, a <b>Caixa de entrada</b>, as <b>Arquivadas</b> e <b>Avisos</b>. Todo mundo começa pelas próprias <b>Tarefas</b>; o Painel fica a um clique, no menu.</li>
           <li>O menu pode ser recolhido pelo botão <b>Recolher menu</b>, no rodapé dele. Recolhido, ele mostra só os ícones.</li>
           <li>No topo, à direita, ficam a <b>busca</b>, o tamanho do texto (<b>A−</b> / <b>A+</b>) e o botão de <b>tema</b>: automático (segue o Windows), claro ou escuro. Cada clique troca o tema.</li>
         </ol>
@@ -85,7 +86,7 @@ export function HelpPage({ isAdmin }: { isAdmin: boolean }) {
       </Sec>
 
             <Sec id="filtro-quadro" title="Filtro no quadro">
-        <p>No quadro aberto, a barra acima das fases tem o mesmo <b>Filtro</b> da tabela, com os filtros prontos, os seus filtros salvos e os atalhos <b>Delegadas para mim</b> e <b>Delegadas por mim</b>.</p>
+        <p>No quadro aberto, no alto da tela, à esquerda de <b>Quadro / Tabela</b>, ficam o mesmo <b>Filtro</b> da tabela (com os filtros prontos e os seus filtros salvos), os atalhos <b>Delegadas para mim</b> e <b>Delegadas por mim</b> (no notebook e no celular, <b>Para mim</b> e <b>Por mim</b>) e <b>Condição</b>. As etiquetas do filtro ligado aparecem acima das fases. No celular, esses botões ficam acima das fases.</p>
         <ul>
           <li>Com o filtro ligado, o quadro <b>esconde as tarefas que não atendem a ele</b>; as fases continuam no lugar, cada uma com a contagem, por exemplo “3 de 10”. A faixa azul mostra “Filtro ligado: mostrando 12 de 40 tarefas” e tem o botão <b>Limpar filtro</b>.</li>
           <li>Arrastar, criar e abrir tarefas continua igual. Se uma tarefa deixar de atender ao filtro (por exemplo, concluída num filtro de abertas) ou for criada sem atender a ele, ela some da vista e um aviso explica.</li>
@@ -119,32 +120,31 @@ export function HelpPage({ isAdmin }: { isAdmin: boolean }) {
         </ul>
       </Sec>
 
-      <Sec id="trello" title="Importar e exportar (Trello)">
-        <p>Dá para trazer um quadro do Trello para os seus quadros. Cada quadro do Trello vira um quadro novo seu.</p>
+      <Sec id="trello" title="Exportar e importar (JSON)">
+        <h3>Exportar tarefas (JSON)</h3>
+        <p>Baixa um arquivo com <b>todas as suas tarefas</b>, de todos os seus quadros, para guardar uma cópia ou levar para outro lugar. Nada muda aqui no SyncTasks e nada é enviado ao Trello.</p>
         <ol>
-          <li>No Trello, abra o quadro, clique no menu <b>…</b> e escolha <b>Imprimir, exportar e compartilhar</b> → <b>Exportar como JSON</b>. Salve o arquivo.</li>
-          <li>Aqui, em <b>Tarefas</b> (vendo os quadros), abra o menu <b>…</b> do quadro (à direita das abas), clique em <b>Importar do Trello</b> e escolha o arquivo.</li>
-          <li>Confira a pré-visualização, ajuste o nome do quadro se quiser e clique em <b>Importar</b>.</li>
+          <li>Em <b>Tarefas</b>, abra o menu <b>…</b> do quadro (à direita das abas) e escolha <b>Exportar tarefas (JSON)</b>.</li>
+          <li>Confira o resumo e clique em <b>Baixar arquivo</b>. O arquivo <b>synctasks-tarefas-AAAA-MM-DD.json</b> vai para a pasta de downloads.</li>
         </ol>
         <ul>
-          <li><b>Vêm:</b> listas (viram fases), cartões com título, descrição e prazo, cartões marcados como entregues (chegam concluídos), checklists e comentários.</li>
-          <li><b>Comentários</b> entram em seu nome, com o autor e a data originais no texto.</li>
-          <li><b>Membros</b> dos cartões ficam anotados na descrição. Todas as tarefas ficam com você; para entregar a alguém da equipe, use <b>Delegar</b>.</li>
-          <li><b>Ficam de fora:</b> listas e cartões arquivados, etiquetas e anexos.</li>
-          <li>Cada tarefa importada ganha um número no quadro novo (1, 2, 3…), e o log registra que veio do Trello.</li>
+          <li><b>Vão:</b> todos os quadros (também os arquivados), a caixa de entrada, as fases e todas as tarefas, inclusive as arquivadas e as privadas, com número, título, descrição, prazo, se está concluída, cor, checklist, comentários (com autor e data) e a situação da delegação.</li>
+          <li>O log não vai. O arquivo é seu: guarde-o com cuidado, porque tem também as tarefas privadas.</li>
+          <li>Cada quadro vai no mesmo formato do arquivo do Trello, por isso o <b>Importar arquivo JSON</b> lê o arquivo de volta.</li>
         </ul>
-        <h3>Exportar para o Trello</h3>
-        <p>Faz o caminho inverso: cria no Trello um quadro novo com as fases e as tarefas do quadro aberto. Nada muda aqui no SyncTasks.</p>
+        <h3>Importar arquivo JSON</h3>
+        <p>Lê o arquivo baixado em <b>Exportar tarefas (JSON)</b> ou o arquivo de um quadro do Trello. Cada quadro do arquivo vira um <b>quadro novo</b> seu; os quadros que você já tem não mudam.</p>
         <ol>
-          <li>Abra o quadro, clique no menu <b>…</b> e escolha <b>Exportar para o Trello</b>.</li>
-          <li>Clique em <b>Conectar ao Trello</b>. Na janela do Trello, entre com a sua conta e clique em <b>Permitir</b>. Se a janela não voltar sozinha, use <b>Cole o código</b>.</li>
-          <li>Clique em <b>Exportar</b> e espere a contagem terminar. No fim, <b>Abrir o quadro no Trello</b>.</li>
+          <li><b>Arquivo do Trello:</b> no Trello, abra o quadro, clique no menu <b>…</b> e escolha <b>Imprimir, exportar e compartilhar</b> → <b>Exportar como JSON</b>. Salve o arquivo.</li>
+          <li>Aqui, em <b>Tarefas</b>, abra o menu <b>…</b> do quadro, clique em <b>Importar arquivo JSON</b> e escolha o arquivo.</li>
+          <li>No arquivo do SyncTasks, marque os quadros que quer trazer (vêm todos marcados). No do Trello, ajuste o nome do quadro se quiser. Depois clique em <b>Importar</b>.</li>
         </ol>
         <ul>
-          <li><b>Vão:</b> fases (viram listas, na mesma ordem) e tarefas com título, descrição, prazo, marca de concluída, checklist e comentários (com o autor e a data no texto).</li>
-          <li>No topo da descrição de cada cartão ficam o <b>número da tarefa</b>, a situação e, se houver, para quem foi delegada ou quem delegou.</li>
-          <li><b>Ficam de fora:</b> tarefas arquivadas e, a não ser que você marque, as privadas. O log não vai.</li>
-          <li>A permissão do Trello vale por 1 dia e fica só no seu navegador; o SyncTasks não guarda senha nem código do Trello.</li>
+          <li><b>Vêm:</b> fases (ou listas do Trello) na mesma ordem e tarefas com título, descrição, prazo, se está concluída, checklist e comentários. Do arquivo do SyncTasks vêm também a cor do quadro, a cor da tarefa e a marca de privada.</li>
+          <li><b>Comentários</b> entram em seu nome, com o autor e a data originais no texto.</li>
+          <li>Todas as tarefas ficam com você: delegações não voltam. Os <b>membros</b> dos cartões do Trello ficam anotados na descrição; para entregar a alguém da equipe, use <b>Delegar</b>.</li>
+          <li><b>Ficam de fora:</b> tarefas, fases e quadros arquivados; do Trello, também etiquetas e anexos.</li>
+          <li>Cada tarefa importada ganha um número novo no quadro novo (1, 2, 3…), e o log registra de onde veio.</li>
         </ul>
       </Sec>
 
@@ -169,12 +169,12 @@ export function HelpPage({ isAdmin }: { isAdmin: boolean }) {
       <Sec id="entrada" title="Caixa de entrada">
         <p>Tarefas que alguém delegou ou transferiu para você, e páginas que você capturou da web, chegam aqui primeiro. Para cada uma:</p>
         <ul>
-          <li><b>Aceitar:</b> escolha o quadro e a fase. A tarefa vai para lá.</li>
+          <li><b>Aceitar:</b> na primeira vez, escolha o quadro e a fase. Depois disso, um clique em <b>Aceitar</b> coloca a tarefa no mesmo lugar da última vez (o aviso mostra onde e tem <b>Abrir</b>). Para escolher outro lugar, use a setinha ao lado do Aceitar (“Aceitar em…”).</li>
           <li><b>Delegar</b> (para quem tem equipe): numa janela só, escolha o quadro e a fase onde fica a sua tarefa, para acompanhar, e o subordinado direto que vai fazer. É o mesmo que aceitar e depois delegar.</li>
           <li><b>Descartar:</b> tira a tarefa da caixa sem concluir. Ela vai para <b>Arquivadas</b>, marcada como “Descartada”, e o aviso traz <b>Desfazer</b>. Ninguém é avisado. Para trazer de volta depois, clique em <b>Desarquivar</b> em Arquivadas: ela volta para a caixa de entrada, com o mesmo número.</li>
           <li><b>Devolver:</b> para tarefas que chegaram por delegação, no lugar de Descartar, porque quem delegou espera por elas. Escreva a justificativa (obrigatória). A tarefa volta para quem delegou.</li>
         </ul>
-        <p><b>Várias de uma vez:</b> marque as caixinhas à esquerda (ou <b>Selecionar todas</b>, ou <b>Selecionar de…</b> para pegar todas que vieram da mesma pessoa) e clique em <b>Descartar selecionadas</b>.</p>
+        <p><b>Várias de uma vez:</b> marque as caixinhas à esquerda (ou <b>Selecionar todas</b>, ou <b>Selecionar de…</b> para pegar todas que vieram da mesma pessoa) e clique em <b>Descartar selecionadas</b>. Não há janela de confirmação: o aviso traz <b>Desfazer</b>.</p>
         <p>O prazo vem sugerido por quem delegou. Você pode ajustá-lo dentro da tarefa, e quem delegou recebe um aviso.</p>
       </Sec>
 
@@ -253,6 +253,18 @@ export function HelpPage({ isAdmin }: { isAdmin: boolean }) {
         </ul>
       </Sec>
 
+      <Sec id="atalhos" title="Atalhos de teclado">
+        <p>Funcionam quando você não está escrevendo num campo. A lista também abre com a tecla <kbd>?</kbd> ou em <b>Atalhos</b>, embaixo no menu.</p>
+        <ul>
+          <li><kbd>N</kbd>: nova tarefa na primeira fase do quadro aberto.</li>
+          <li><kbd>/</kbd>: vai para a busca.</li>
+          <li><kbd>C</kbd>: conclui (ou desfaz a conclusão) da tarefa aberta. <kbd>D</kbd>: delega a tarefa aberta.</li>
+          <li><kbd>Ctrl</kbd> + <kbd>Enter</kbd>: envia o comentário, salva a descrição ou confirma a janela aberta (Delegar, Devolver, Reabrir…).</li>
+          <li><kbd>Esc</kbd>: fecha a janela ou o menu.</li>
+        </ul>
+        <p>As mudanças aparecem na tela na hora em que você clica ou solta o cartão; o app grava por trás. Se o servidor recusar, a tela volta como estava e aparece um aviso com o motivo.</p>
+      </Sec>
+
       <Sec id="privacidade" title="Privacidade e log">
         <ul>
           <li>Seus quadros são só seus. Quem está acima de você vê <b>apenas as tarefas que delegou a você</b> e quantas tarefas próprias você tem.</li>
@@ -328,15 +340,6 @@ export function HelpPage({ isAdmin }: { isAdmin: boolean }) {
         <p>A pessoa inativa continua na lista com a situação <b>Inativa</b>; marque <b>Esconder inativas</b> para tirá-la da vista. O e-mail continua com ela. Para reativar, use <b>Reativar</b> no mesmo menu: ela volta a entrar e encontra os quadros e as privadas como deixou, mas o que foi passado adiante não volta sozinho.</p>
         <h3>Senhas</h3>
         <p>Quem esquecer a senha usa <b>Esqueci minha senha</b> na tela de login e recebe um link por e-mail, válido por 2 horas. A administração não vê nem define senhas.</p>
-        <h3>Ligar a exportação para o Trello</h3>
-        <p>Feito uma única vez, por quem cuida do servidor. Enquanto não for feito, “Exportar para o Trello” avisa que ainda não está ligado.</p>
-        <ol>
-          <li>Com a conta do Trello, abra <b>trello.com/power-ups/admin</b> e clique em <b>Novo</b>. Preencha o nome (SyncTasks), a área de trabalho e o e-mail, e crie.</li>
-          <li>Na aba <b>Chave de API</b> (API key), clique em <b>Gerar uma nova chave de API</b>.</li>
-          <li>Em <b>Origens permitidas</b> (Allowed origins), adicione o endereço do SyncTasks, por exemplo <b>https://synctasks.onrender.com</b>.</li>
-          <li>Copie a chave. No Render, abra o serviço <b>synctasks</b> → <b>Environment</b>, preencha <b>TRELLO_API_KEY</b> com a chave e salve. O Render reinicia sozinho.</li>
-        </ol>
-        <p>A chave não é senha: ela só identifica o SyncTasks. Cada pessoa dá a própria permissão no Trello na hora de exportar.</p>
       </Sec>
 
       <Sec id="faq" title="Perguntas frequentes">

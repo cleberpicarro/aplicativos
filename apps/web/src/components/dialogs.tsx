@@ -4,22 +4,39 @@ import { get, post, type Card } from '../lib/api';
 import { cardNo, firstName } from '../lib/format';
 import { Dialog, ErrorText, useMe, useToast } from './ui';
 
-/** Executa uma ação, mostra o resultado e recarrega os dados da tela. */
+/** Item 54: o que não precisa ser baixado de novo quando só uma tarefa mudou. */
+const CARD_SCOPE_SKIP = new Set(['boards', 'table-options', 'filters']);
+const isCardQuery = (key: readonly unknown[]) => key[0] === 'board' || key[0] === 'card';
+
+/**
+ * Executa uma ação, mostra o resultado e recarrega os dados da tela.
+ * Item 54: com `optimistic`, a mudança aparece na tela antes da resposta do servidor (e volta se ele recusar);
+ * a recarga então corre por trás, sem segurar a tela. `scope: 'card'` recarrega só o que depende da tarefa.
+ */
 export function useAction() {
   const qc = useQueryClient();
   const toast = useToast();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
-  async function run<T>(fn: () => Promise<T>, success?: string): Promise<T | undefined> {
+  async function run<T>(fn: () => Promise<T>, success?: string, opts?: { optimistic?: () => () => void; scope?: 'card' }): Promise<T | undefined> {
     setBusy(true);
     setError(null);
+    let undo: (() => void) | undefined;
+    if (opts?.optimistic) {
+      // Uma recarga já em andamento traria os dados de antes da mudança por cima dela.
+      await qc.cancelQueries({ predicate: (q) => isCardQuery(q.queryKey) });
+      undo = opts.optimistic();
+    }
     try {
       const r = await fn();
-      await qc.invalidateQueries();
+      const reload = qc.invalidateQueries(opts?.scope === 'card' ? { predicate: (q) => !CARD_SCOPE_SKIP.has(String(q.queryKey[0])) } : undefined);
+      if (!opts?.optimistic) await reload;
       if (success) toast(success);
       return r;
     } catch (err) {
+      undo?.();
       setError(err);
+      if (undo) toast((err as Error).message, 'error');
       return undefined;
     } finally {
       setBusy(false);
@@ -95,6 +112,7 @@ function useBoardList() {
   const lists: { id: string; name: string }[] = board.data?.lists ?? [];
   const lId = lists.some((l) => l.id === listId) ? listId : lists[0]?.id ?? '';
   const listName = lists.find((l) => l.id === lId)?.name;
+  const boardName = boards.data?.find((b) => b.id === bId)?.name;
   const fields = (
     <div className="row2">
       <div className="field">
@@ -111,7 +129,7 @@ function useBoardList() {
       </div>
     </div>
   );
-  return { lId, listName, fields };
+  return { lId, listName, boardName, fields };
 }
 
 /** Item 50: com fromInbox, a janela também pede o quadro e a fase onde fica a sua tarefa, e aceita e delega de uma vez. */
@@ -293,12 +311,28 @@ export function TransferDialog({ card, onClose }: { card: Card; onClose: Close }
   );
 }
 
+/** Item 57: o último quadro e fase escolhidos ao aceitar; o botão Aceitar da caixa de entrada usa direto. */
+const ACCEPT_KEY = 'synctasks.aceitar.destino';
+export interface AcceptPlace { listId: string; label: string }
+export function acceptPlace(): AcceptPlace | null {
+  try {
+    const v = JSON.parse(localStorage.getItem(ACCEPT_KEY) ?? 'null');
+    return v && typeof v.listId === 'string' && typeof v.label === 'string' ? v : null;
+  } catch { return null; }
+}
+export function saveAcceptPlace(p: AcceptPlace | null) {
+  try { if (p) localStorage.setItem(ACCEPT_KEY, JSON.stringify(p)); else localStorage.removeItem(ACCEPT_KEY); } catch { /* sem armazenamento: pergunta toda vez */ }
+}
+
 export function AcceptDialog({ card, onClose }: { card: Card; onClose: Close }) {
   const { run, busy, error } = useAction();
   const place = useBoardList();
   const submit = async (e: FormEvent) => {
     e.preventDefault();
-    if (await run(() => post(`/cards/${card.id}/accept`, { listId: place.lId }), `Tarefa colocada em “${place.listName}”.`)) onClose();
+    if (await run(() => post(`/cards/${card.id}/accept`, { listId: place.lId }), `Tarefa colocada em “${place.listName}”.`)) {
+      saveAcceptPlace({ listId: place.lId, label: `${place.boardName} · ${place.listName}` });
+      onClose();
+    }
   };
   return (
     <Dialog title="Aceitar e organizar" onClose={onClose} footer={<Footer busy={busy || !place.lId} onClose={onClose} label="Aceitar" />}>

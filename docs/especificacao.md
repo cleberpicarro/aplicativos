@@ -429,7 +429,7 @@ Saem sozinhos, sem aviso no app. O servidor (sempre ligado no plano Starter) con
 
 Menu lateral, **nesta ordem**:
 
-1. **Painel** (só para quem tem subordinados; é a tela inicial dessas pessoas)
+1. **Painel** (só para quem tem subordinados; desde o item 58 a tela inicial de todos na hierarquia é **Tarefas**)
 2. **Tarefas** (antes “Meus quadros”; quadros ou tabela, item 36)
 3. **Caixa de entrada** (com contador)
 4. **Arquivadas** (item 35)
@@ -439,12 +439,17 @@ Menu lateral, **nesta ordem**:
 
 No topo de cada tela: título, campo de **busca** (texto ou código) e controle **A− / A+**. No celular, o menu vira uma barra horizontal rolável.
 
+**Resposta imediata (item 54):** concluir, desfazer, arrastar, mover pela tarefa, criar, renomear, prazo, descrição, cor, privada, checklist e aceitar com um clique aparecem na tela antes da resposta do servidor; se ele recusar, a tela volta e um aviso mostra o motivo. Depois de uma mudança numa tarefa, o app recarrega só o que depende dela. A tarefa aberta a partir do quadro aparece na hora com os dados do cartão (item 55); checklist, comentários e log chegam em seguida.
+
+**Atalhos de teclado (item 56):** fora de campos de texto, **N** (nova tarefa na primeira fase do quadro), **/** (busca), **?** (lista de atalhos, também em **Atalhos** no menu); na tarefa aberta, **C** (concluir ou desfazer) e **D** (delegar); **Ctrl+Enter** envia o comentário, salva a descrição ou confirma a janela com formulário; **Esc** fecha.
+
 ### 12.2 Tarefas: quadros
 
 - No topo, à direita, a chave **Quadro / Tabela** (item 36) troca entre os quadros (kanban, descritos abaixo) e a tabela (12.2a). A escolha fica guardada no navegador.
 
-- Abas com os quadros da pessoa à esquerda; à direita, discretos, **+ Quadro** e o menu **…** do quadro (renomear, **cor do quadro**, nova fase, mover o quadro para a esquerda/direita, **fundo da área de trabalho**, separados **Importar do Trello** e **Exportar para o Trello** e, por último, **Arquivar quadro** (item 42, RN-03a), com confirmação e **Desfazer** no aviso).
-- **Exportar para o Trello** (item 31): cria no Trello um quadro novo com as fases (listas, na mesma ordem) e as tarefas não arquivadas do quadro aberto: título, descrição com o número da tarefa, situação e delegação no topo, prazo, marca de concluída, checklist e comentários (autor e data no texto). Privadas só se a pessoa marcar. A pessoa autoriza no Trello (permissão de 1 dia, só no navegador); o envio sai do navegador direto para o Trello, sem passar o código de acesso pelo servidor. Precisa da variável `TRELLO_API_KEY` no servidor; sem ela, o diálogo avisa. Nada muda no SyncTasks.
+- Abas com os quadros da pessoa à esquerda; à direita, discretos, **+ Quadro** e o menu **…** do quadro (renomear, **cor do quadro**, nova fase, mover o quadro para a esquerda/direita, **fundo da área de trabalho**, separados **Importar arquivo JSON** e **Exportar tarefas (JSON)** e, por último, **Arquivar quadro** (item 42, RN-03a), com confirmação e **Desfazer** no aviso).
+- **Exportar tarefas (JSON)** (item 62, substitui o “Exportar para o Trello” do item 31): baixa o arquivo `synctasks-tarefas-AAAA-MM-DD.json` com **todas** as tarefas da pessoa: todos os quadros (os arquivados marcados como arquivados), a caixa de entrada (como um quadro à parte), as fases e as tarefas, inclusive arquivadas e privadas. Cada quadro segue o formato do JSON que o Trello exporta (listas, cartões, checklists e comentários); o que só existe no SyncTasks (número, privada, cor, datas, delegação, transferência) vai no campo `synctasks` de cada cartão. O log não vai. Não fala com o Trello e nada muda no SyncTasks (rota `GET /api/export`, só as tarefas da própria pessoa).
+- **Importar arquivo JSON** (itens 31 e 62): lê o JSON de um quadro do Trello ou o arquivo do Exportar tarefas; cada quadro escolhido vira um quadro novo de quem importa, com fases, tarefas, prazo, concluída, checklist e comentários (em nome de quem importa, com autor e data no texto); do arquivo do SyncTasks vêm também a cor do quadro e da tarefa e a marca de privada. Delegações não voltam; tarefas, fases e quadros arquivados ficam de fora; cada tarefa ganha número novo (RN-47) e origem “Importada do Trello” ou “Importada de arquivo do SyncTasks”.
 - **Zoom do quadro** (item 34): à direita das abas, botões **−**, **porcentagem** e **+**; de 70% a 130%, de 10 em 10; clicar na porcentagem volta a 100%. Muda só o tamanho das fases e dos cartões (menu, abas e a janela da tarefa ficam iguais). Fica guardado no navegador (vale para todos os quadros naquele computador).
 - **Ordem dos quadros:** arrastando a aba (uma linha mostra onde vai entrar) ou pelo menu do quadro. Fica gravada no servidor.
 - **Fundo da área de trabalho:** padrão (branco) ou 7 cores mais firmes (cinza-azulado, azul, verde-água, verde, areia, lilás, rosa), com versões para o tema escuro. Vale para todas as telas e fica gravado na conta da pessoa. Fases e cartões continuam claros; a cor do quadro, se houver, fica por cima, só na área do quadro.
@@ -454,7 +459,7 @@ No topo de cada tela: título, campo de **busca** (texto ou código) e controle 
 - No cartão aberto, **Mover para** escolhe quadro e fase, ou leva a tarefa **para o topo / para o fim** da fase. Mudar de quadro fica no log com o quadro e a fase de origem.
 - **+ Fase** ao final.
 - **Cartão no quadro:** botão de concluir (círculo), título (até 2 linhas), número (#12), prazo, progresso do checklist, **etiquetas de delegação** (opção A, decidida em 17/10: roxa **De [nome]** na tarefa recebida, verde-azulada **Para [nome]** na tarefa que a pessoa delegou, com o primeiro nome) e ícones (privada, **não pode ser repassada** (item 41), aguardando ciente, reaberta).
-- **Filtro no quadro** (item 47): acima das fases, a mesma barra de filtro da tabela (12.2a), com os atalhos **Delegadas para mim** e **Delegadas por mim**. Com filtro ligado, os cartões que não atendem somem e as fases ficam no lugar, cada uma com a contagem “3 de 10”; a faixa “Filtro ligado: mostrando 12 de 40 tarefas deste quadro” tem o botão **Limpar filtro**. O filtro vale para o quadro aberto; as condições Quadro e Arquivada ficam fora da lista de campos ali e, num filtro que as tenha, aparecem riscadas e são ignoradas, com um aviso. O servidor diz quais tarefas do quadro atendem ao filtro (`GET /api/boards/:id/match`), com as mesmas regras da tabela. Quando um cartão deixa de atender (por exemplo, concluído num filtro de abertas) ou é criado sem atender, ele some e um aviso explica.
+- **Filtro no quadro** (item 47): a mesma barra de filtro da tabela (12.2a), com os atalhos **Delegadas para mim** e **Delegadas por mim**. No computador e no notebook (item 59), o botão **Filtro**, os atalhos e **Condição** ficam na barra do topo, à esquerda de Quadro / Tabela; até 1.440 pixels de largura, e no celular, os atalhos aparecem como **Para mim** e **Por mim**. A linha acima das fases só aparece com filtro ligado, com as etiquetas com ×. No celular (até 820 pixels), os botões ficam acima das fases. Com filtro ligado, os cartões que não atendem somem e as fases ficam no lugar, cada uma com a contagem “3 de 10”; a faixa “Filtro ligado: mostrando 12 de 40 tarefas deste quadro” tem o botão **Limpar filtro**. O filtro vale para o quadro aberto; as condições Quadro e Arquivada ficam fora da lista de campos ali e, num filtro que as tenha, aparecem riscadas e são ignoradas, com um aviso. O servidor diz quais tarefas do quadro atendem ao filtro (`GET /api/boards/:id/match`), com as mesmas regras da tabela. Quando um cartão deixa de atender (por exemplo, concluído num filtro de abertas) ou é criado sem atender, ele some e um aviso explica.
 - Arrastar e soltar entre fases. No celular, usar "Mover para" dentro do cartão.
 - **Arquivar tarefa concluída:** ícone de arquivo no cartão concluído (só em tarefa própria), **Arquivar** dentro da tarefa e **Arquivar as concluídas** no menu da fase, sempre com **Desfazer** no aviso. A arquivada continua na busca e pode ser **desarquivada** (volta à mesma fase, ou à primeira fase do quadro se a fase foi arquivada). Arquivar e desarquivar entram no log.
 - **Estado vazio:** "Você ainda não tem quadros…", com o botão de criar.
@@ -475,8 +480,8 @@ No topo de cada tela: título, campo de **busca** (texto ou código) e controle 
 ### 12.3 Caixa de entrada
 
 - Lista com ícone, título, código, origem ("Delegada por…" ou "Transferida por…"), prazo sugerido e observação.
-- Ações em cada linha (item 50): **Aceitar** (escolher quadro e fase), **Delegar** (para quem tem equipe e se a tarefa não está marcada como “não pode ser repassada”; RN-24a), **Descartar** (só tarefa própria; RN-24b) e **Devolver** (só delegações, com justificativa obrigatória).
-- **Várias de uma vez** (item 50): caixinha em cada tarefa que pode ser descartada, **Selecionar todas**, **Selecionar de…** (agrupa pela origem: a pessoa que transferiu, “Capturada da web”, “Capturada do e-mail”) e **Descartar selecionadas**, com confirmação. O aviso de descarte traz **Desfazer**.
+- Ações em cada linha (item 50): **Aceitar** (escolher quadro e fase; desde o item 57, depois da primeira vez, um clique repete o último quadro e fase usados, guardados no navegador, e a setinha **Aceitar em…** abre a escolha), **Delegar** (para quem tem equipe e se a tarefa não está marcada como “não pode ser repassada”; RN-24a), **Descartar** (só tarefa própria; RN-24b) e **Devolver** (só delegações, com justificativa obrigatória).
+- **Várias de uma vez** (item 50): caixinha em cada tarefa que pode ser descartada, **Selecionar todas**, **Selecionar de…** (agrupa pela origem: a pessoa que transferiu, “Capturada da web”, “Capturada do e-mail”) e **Descartar selecionadas**, sem confirmação desde o item 58. O aviso de descarte traz **Desfazer**.
 - **Estado vazio:** "Nada novo por aqui…".
 
 ### 12.3a Arquivadas (item 35)
@@ -534,7 +539,7 @@ Visual de referência: a amostra aprovada.
 
 ### 12.9 Tela inicial
 
-Em aberto (seção 20). Proposta: funcionário abre em Meus quadros; quem tem subordinados abre em Tarefas delegadas.
+Item 58: todos na hierarquia abrem em **Tarefas**; o administrador fora da hierarquia abre em **Pessoas**.
 
 ---
 
