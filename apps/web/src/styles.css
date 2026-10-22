@@ -756,6 +756,18 @@ button.who:hover { background: var(--hover); }
 .my-mail .check { align-items: flex-start; }
 .my-mail .check input { margin-top: 3px; }
 .my-mail .check small { display: block; color: var(--muted); font-size: 0.8rem; margin-top: 2px; }
+/* Item 65: assistente de IA em Meus dados e tela "Permitir" */
+.copy-line { display: flex; gap: 6px; align-items: center; min-width: 0; }
+.copy-line code { flex: 1; min-width: 0; overflow-wrap: anywhere; padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; font-size: 0.85rem; user-select: all; }
+.ai-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.ai-list li { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.ai-list small { display: block; color: var(--muted); font-size: 0.8rem; }
+.connect { display: grid; gap: 12px; }
+.connect h1 { margin: 0; }
+.connect-can { border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; }
+.connect-can p { margin: 4px 0; }
+.connect-can ul { margin: 4px 0; padding-left: 20px; }
+.connect-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 
 /* Item 56: lista de atalhos de teclado. */
 .keys-list { display: grid; gap: 6px; margin: 0; }

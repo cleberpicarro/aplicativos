@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { get, patch, post, type Card } from './lib/api';
+import { del, get, patch, post, type Card } from './lib/api';
 import { go, useRoute } from './lib/router';
 import { STATUS, cardNo, type StatusKey } from './lib/format';
 import { Avatar, CardStatusIcon, Dialog, ErrorText, StatusIcon, TipIcon, useMe } from './components/ui';
@@ -12,7 +12,7 @@ import { InboxPage } from './pages/Inbox';
 import { DelegatedPage } from './pages/Delegated';
 import { NotificationsPage } from './pages/Notifications';
 import { PeoplePage } from './pages/People';
-import { ForgotPage, LoginPage, SetPasswordPage } from './pages/Auth';
+import { ConnectPage, ForgotPage, LoginPage, SetPasswordPage } from './pages/Auth';
 import { HelpPage } from './pages/Help';
 import { CapturePage } from './pages/Capture';
 import { DashboardPage } from './pages/Dashboard';
@@ -49,6 +49,7 @@ export function App() {
   if (me.isLoading) return <div className="auth"><p className="loading">Carregando…</p></div>;
   if (me.error || !me.data) return <LoginPage />;
   if (route.path === '/capturar') return <CapturePage params={route.params} />;
+  if (route.path === '/conectar') return <ConnectPage params={route.params} />;
   return <Shell />;
 }
 
@@ -337,8 +338,55 @@ function MyDataDialog({ onClose }: { onClose: () => void }) {
           <p className="hint" style={{ margin: 0 }}>Os avisos de delegação (delegar, aceitar, devolver, concluir, ciente…) continuam chegando sempre.</p>
         </fieldset>
       )}
+      {me.user.inHierarchy && <AssistantsBox />}
       <ErrorText error={error} />
     </Dialog>
+  );
+}
+
+interface Assistant { id: string; name: string; host: string; createdAt: string; lastUsedAt: string | null }
+const brDay = (iso: string) => new Date(iso).toLocaleDateString('pt-BR');
+
+/** Item 65: como ligar o Claude (ou outro assistente compatível) e quais estão ligados, com Desligar. */
+function AssistantsBox() {
+  const q = useQuery({ queryKey: ['assistants'], queryFn: () => get<Assistant[]>('/me/assistants') });
+  const qc = useQueryClient();
+  const { run } = useAction();
+  const [copied, setCopied] = useState(false);
+  const address = `${window.location.origin}/mcp`;
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(address);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch { /* sem área de transferência: o endereço continua à vista para copiar à mão */ }
+  };
+  const off = (a: Assistant) =>
+    run(async () => {
+      await del(`/me/assistants/${a.id}`);
+      await qc.invalidateQueries({ queryKey: ['assistants'] });
+    }, `${a.name} desligado.`);
+  return (
+    <fieldset className="my-mail my-ai">
+      <legend>Assistente de IA (Claude)</legend>
+      <p className="hint" style={{ margin: 0 }}>
+        Para o Claude criar e consultar as suas tarefas: no Claude, abra <b>Configurações › Conectores › Adicionar conector personalizado</b>, cole o endereço abaixo e clique em <b>Permitir</b> quando o SyncTasks perguntar.
+      </p>
+      <div className="copy-line">
+        <code>{address}</code>
+        <button type="button" className="b" onClick={copy}>{copied ? 'Copiado' : 'Copiar'}</button>
+      </div>
+      {q.data && (q.data.length ? (
+        <ul className="ai-list">
+          {q.data.map((a) => (
+            <li key={a.id}>
+              <span><b>{a.name}</b> <span className="hint">({a.host})</span><small>Ligado em {brDay(a.createdAt)}{a.lastUsedAt ? ` · usado por último em ${brDay(a.lastUsedAt)}` : ''}</small></span>
+              <button type="button" className="b" onClick={() => off(a)}>Desligar</button>
+            </li>
+          ))}
+        </ul>
+      ) : <p className="hint" style={{ margin: 0 }}>Nenhum assistente ligado à sua conta.</p>)}
+    </fieldset>
   );
 }
 

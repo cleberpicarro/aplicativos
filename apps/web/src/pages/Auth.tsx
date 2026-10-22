@@ -1,8 +1,8 @@
 import { useState, type FormEvent } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
-import { post } from '../lib/api';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { get, post } from '../lib/api';
 import { go } from '../lib/router';
-import { ErrorText, PasswordInput } from '../components/ui';
+import { ErrorText, PasswordInput, useMe } from '../components/ui';
 
 function Shell({ children }: { children: React.ReactNode }) {
   return (
@@ -39,6 +39,7 @@ export function LoginPage() {
     <Shell>
       <form onSubmit={submit}>
         <h1>Entrar</h1>
+        {window.location.hash.startsWith('#/conectar') && <p className="hint" style={{ margin: 0 }}>Entre no SyncTasks para ligar o assistente à sua conta.</p>}
         <div className="field"><label htmlFor="l-e">E-mail</label><input id="l-e" type="email" className="input" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} required autoFocus /></div>
         <div className="field"><label htmlFor="l-p">Senha</label><PasswordInput id="l-p" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required /></div>
         <ErrorText error={error} />
@@ -114,6 +115,67 @@ export function SetPasswordPage({ token }: { token: string }) {
           </>
         )}
       </form>
+    </Shell>
+  );
+}
+
+/**
+ * Item 65: tela "Permitir" do conector para assistentes de IA (Claude e outros compatíveis com MCP).
+ * Chega pelo /oauth/authorize, com os parâmetros do OAuth; a pessoa já entrou no SyncTasks.
+ */
+export function ConnectPage({ params }: { params: URLSearchParams }) {
+  const me = useMe().data!;
+  const query = params.toString();
+  const req = useQuery({
+    queryKey: ['oauth-request', query],
+    queryFn: () => get<{ name: string; host: string; problem: string | null }>(`/oauth/request?${query}`),
+    retry: false,
+  });
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<unknown>(null);
+  const decide = async (allow: boolean) => {
+    setBusy(true);
+    setError(null);
+    try {
+      const r = await post<{ redirect: string }>('/oauth/decide', { ...Object.fromEntries(params), allow });
+      window.location.assign(r.redirect);
+    } catch (err) {
+      setError(err);
+      setBusy(false);
+    }
+  };
+  return (
+    <Shell>
+      <div className="connect">
+        <h1>Ligar assistente ao SyncTasks</h1>
+        {req.isLoading && <p className="loading">Carregando…</p>}
+        {req.error ? (
+          <>
+            <ErrorText error={req.error} />
+            <p className="hint" style={{ margin: 0 }}>Volte ao assistente e tente conectar de novo.</p>
+            <button type="button" className="link" onClick={() => go('/')}>Abrir o SyncTasks</button>
+          </>
+        ) : req.data && (
+          <>
+            <p style={{ margin: 0 }}><b>{req.data.name}</b> <span className="hint">({req.data.host})</span> quer acesso à sua conta do SyncTasks, <b>{me.user.name}</b>.</p>
+            <div className="connect-can">
+              <p>Ele vai poder:</p>
+              <ul>
+                <li>ver os seus quadros e fases;</li>
+                <li>ver as suas tarefas abertas;</li>
+                <li>criar tarefas nos seus quadros ou na sua caixa de entrada.</li>
+              </ul>
+              <p>Ele não vai poder apagar, concluir, delegar nem ver tarefas de outras pessoas.</p>
+            </div>
+            <p className="hint" style={{ margin: 0 }}>Só permita se foi você que pediu agora, no assistente. Dá para desligar quando quiser em <b>Meus dados</b>.</p>
+            <ErrorText error={error} />
+            <div className="connect-actions">
+              <button type="button" className="b pri" disabled={busy} onClick={() => decide(true)}>Permitir</button>
+              <button type="button" className="b" disabled={busy} onClick={() => decide(false)}>Agora não</button>
+            </div>
+          </>
+        )}
+      </div>
     </Shell>
   );
 }

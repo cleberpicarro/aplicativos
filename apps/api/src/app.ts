@@ -21,6 +21,8 @@ import { listArchived } from './services/archived.js';
 import * as table from './services/table.js';
 import { cardDetail, cardIdByCode, loadCard } from './services/cards.js';
 import { canSeeLog } from './services/actors.js';
+import * as oauth from './services/oauth.js';
+import { handleRpc } from './services/mcp.js';
 import { isoDate } from './lib/dates.js';
 
 declare module 'fastify' {
@@ -527,6 +529,107 @@ export async function buildApp({ pool, logger = false, serveWeb = false }: AppOp
       if (!u) throw notFound('Pessoa não encontrada.');
       await admin.sendInvite(db, u);
     });
+    return { ok: true };
+  });
+
+  /* ---------------- conector para assistentes de IA: OAuth + MCP (item 65) ---------------- */
+  // O formulário do /oauth/token chega como application/x-www-form-urlencoded.
+  app.addContentTypeParser('application/x-www-form-urlencoded', { parseAs: 'string' }, (_req, body, done) => {
+    done(null, Object.fromEntries(new URLSearchParams(body as string)));
+  });
+  // Estas rotas não usam o cookie do app (só a chave do assistente), então podem ser chamadas de qualquer origem.
+  const OPEN = /^\/(mcp|oauth\/(token|register)|\.well-known\/)/;
+  app.addHook('onRequest', async (req, reply) => {
+    if (!OPEN.test(req.url)) return;
+    reply.header('Access-Control-Allow-Origin', '*');
+    reply.header('Access-Control-Expose-Headers', 'WWW-Authenticate, Mcp-Session-Id');
+    if (req.method === 'OPTIONS') {
+      reply.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+      reply.header('Access-Control-Allow-Headers', 'Authorization, Content-Type, Mcp-Protocol-Version, Mcp-Session-Id');
+      return reply.status(204).send();
+    }
+  });
+  const base = (req: FastifyRequest) => `${req.protocol}://${req.host}`;
+  const oauthFail = (reply: any, err: unknown) => {
+    if (err instanceof oauth.OAuthError) return reply.status(err.status).send({ error: err.code, error_description: err.message });
+    throw err;
+  };
+  const resourceMeta = async (req: FastifyRequest) => ({
+    resource: `${base(req)}/mcp`,
+    authorization_servers: [base(req)],
+    bearer_methods_supported: ['header'],
+    resource_name: 'SyncTasks',
+  });
+  app.get('/.well-known/oauth-protected-resource', resourceMeta);
+  app.get('/.well-known/oauth-protected-resource/mcp', resourceMeta);
+  app.get('/.well-known/oauth-authorization-server', async (req) => ({
+    issuer: base(req),
+    authorization_endpoint: `${base(req)}/oauth/authorize`,
+    token_endpoint: `${base(req)}/oauth/token`,
+    registration_endpoint: `${base(req)}/oauth/register`,
+    response_types_supported: ['code'],
+    grant_types_supported: ['authorization_code', 'refresh_token'],
+    code_challenge_methods_supported: ['S256'],
+    token_endpoint_auth_methods_supported: ['none'],
+    scopes_supported: ['tarefas'],
+  }));
+  app.post('/oauth/register', async (req, reply) => {
+    try {
+      return reply.status(201).send(await inTx((db) => oauth.registerClient(db, req.body)));
+    } catch (err) {
+      return oauthFail(reply, err);
+    }
+  });
+  // Leva à tela "Permitir" do app (que pede o login antes, se preciso), com os mesmos parâmetros.
+  app.get('/oauth/authorize', async (req, reply) => {
+    const q = z.record(z.string()).parse(req.query);
+    return reply.redirect(`/#/conectar?${new URLSearchParams(q).toString()}`);
+  });
+  app.post('/oauth/token', async (req, reply) => {
+    reply.header('Cache-Control', 'no-store');
+    try {
+      const body = z.record(z.string().max(4000)).catch({}).parse(req.body ?? {});
+      return await inTx((db) => oauth.token(db, body));
+    } catch (err) {
+      return oauthFail(reply, err);
+    }
+  });
+  app.post('/mcp', { bodyLimit: 1024 * 1024 }, async (req, reply) => {
+    const actor = await oauth.actorFromAccessToken(pool, req.headers.authorization);
+    if (!actor) {
+      reply.header('WWW-Authenticate', `Bearer resource_metadata="${base(req)}/.well-known/oauth-protected-resource/mcp"`);
+      return reply.status(401).send({ error: 'invalid_token', error_description: 'Conecte o SyncTasks de novo no assistente.' });
+    }
+    const body = req.body as any;
+    if (Array.isArray(body)) {
+      const out = (await Promise.all(body.map((m) => handleRpc(pool, actor, m)))).filter(Boolean);
+      return out.length ? out : reply.status(202).send();
+    }
+    const res = await handleRpc(pool, actor, body);
+    return res ?? reply.status(202).send();
+  });
+  // Sem canal de eventos (SSE): tudo é pedido e resposta.
+  app.get('/mcp', async (_req, reply) => reply.status(405).header('Allow', 'POST').send({ error: 'Use POST.' }));
+  app.delete('/mcp', async (_req, reply) => reply.status(405).header('Allow', 'POST').send({ error: 'Use POST.' }));
+
+  // A tela "Permitir": quem está pedindo acesso, e a decisão da pessoa logada.
+  app.get('/api/oauth/request', async (req) => {
+    need(req);
+    const p = oauth.authorizeSchema.parse(req.query);
+    const { client, problem } = await oauth.checkAuthorize(pool, p);
+    return { name: client.name, host: client.host, problem };
+  });
+  app.post('/api/oauth/decide', async (req) => {
+    const a = need(req);
+    const body = oauth.authorizeSchema.extend({ allow: z.boolean() }).parse(req.body);
+    const { allow, ...p } = body;
+    return inTx((db) => oauth.decide(db, a, p, allow));
+  });
+  // Meus dados: assistentes ligados à conta.
+  app.get('/api/me/assistants', async (req) => oauth.listGrants(pool, need(req)));
+  app.delete('/api/me/assistants/:id', async (req) => {
+    const { id } = z.object({ id: uuid }).parse(req.params);
+    await oauth.revokeGrant(pool, need(req), id);
     return { ok: true };
   });
 

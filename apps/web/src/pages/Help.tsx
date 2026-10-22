@@ -11,6 +11,7 @@ const SECTIONS: [string, string][] = [
   ['arquivadas', 'Arquivadas'],
   ['trello', 'Exportar e importar (JSON)'],
   ['capturar', 'Capturar da web'],
+  ['assistente', 'Claude e outros assistentes'],
   ['entrada', 'Caixa de entrada'],
   ['delegar', 'Delegar'],
   ['painel', 'Painel'],
@@ -164,6 +165,26 @@ export function HelpPage({ isAdmin }: { isAdmin: boolean }) {
           <li>Em qualquer página ou app, toque em <b>Compartilhar</b> e escolha <b>SyncTasks</b>.</li>
         </ol>
         <p>Depois, na caixa de entrada, escolha o quadro e a fase para organizar a tarefa.</p>
+      </Sec>
+
+      <Sec id="assistente" title="Claude e outros assistentes">
+        <p>Ligue o SyncTasks ao seu <b>Claude</b> e peça em português: “cria no SyncTasks uma tarefa para ligar ao Marcelo na sexta”, “o que está atrasado?”, “põe estas cinco coisas no quadro Comercial”. O assistente cria e consulta as <b>suas</b> tarefas, com as mesmas regras do app.</p>
+        <h3>Ligar (uma vez só)</h3>
+        <ol>
+          <li>No SyncTasks, abra <b>Meus dados</b> e clique em <b>Copiar</b> ao lado do endereço do conector (termina em <code>/mcp</code>).</li>
+          <li>No Claude (site, aplicativo do computador ou do celular), abra <b>Configurações › Conectores › Adicionar conector personalizado</b>, dê o nome <b>SyncTasks</b> e cole o endereço.</li>
+          <li>Clique em <b>Conectar</b>. Abre a tela do SyncTasks (entre com seu e-mail e senha, se pedir). Confira o nome e clique em <b>Permitir</b>.</li>
+        </ol>
+        <p>Se a Nerus usar um plano do Claude para empresas, o administrador do Claude pode adicionar o conector uma vez para todos; cada pessoa só clica em <b>Conectar</b> e <b>Permitir</b>. Conectores personalizados dependem do plano do Claude de cada um.</p>
+        <h3>O que ele pode fazer</h3>
+        <ul>
+          <li>Ver os seus quadros e fases e as suas tarefas abertas (atrasadas, de hoje, dos próximos 7 dias, da caixa de entrada).</li>
+          <li>Criar tarefas, até 20 de uma vez, com descrição e prazo. Sem quadro, elas vão para a <b>Caixa de entrada</b>, marcadas como “criada pelo assistente”.</li>
+        </ul>
+        <p>Ele <b>não</b> apaga, não conclui, não delega e não vê tarefas de outras pessoas.</p>
+        <h3>Desligar</h3>
+        <p>Em <b>Meus dados</b>, na lista de assistentes ligados, clique em <b>Desligar</b>. O acesso para na hora. Pessoa desativada também perde o acesso.</p>
+        <p>Outros assistentes que usam o mesmo padrão (MCP), como o Gemini CLI, podem se ligar do mesmo jeito; a tela <b>Permitir</b> mostra o nome e o endereço de quem está pedindo.</p>
       </Sec>
 
       <Sec id="entrada" title="Caixa de entrada">
