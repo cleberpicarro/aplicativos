@@ -273,8 +273,15 @@ test.describe('meus quadros', () => {
     await expect(page.locator('.col-h .n').first()).toHaveText(/^1 de \d+$/);
 
     // Um filtro só: na Tabela ele continua ligado, e volta ao Quadro do mesmo jeito.
+    const chave = page.getByRole('group', { name: 'Ver as tarefas em' });
+    const antes = await chave.boundingBox();
     await page.getByRole('button', { name: 'Ver em tabela' }).click();
     await expect(page.getByRole('button', { name: 'Filtro: Filtro avulso' })).toBeVisible();
+    // Item 64: na Tabela, a mesma barra do topo, com Colunas e Exportar planilha no fim; Quadro/Tabela não sai do lugar.
+    for (const nome of [/^Filtro:/, /^Delegadas por mim$/, /^Editar filtro$/, /^Colunas$/, /^Exportar planilha$/]) {
+      await expect(topo.getByRole('button', { name: nome })).toHaveCount(isMobile ? 0 : 1);
+    }
+    if (!isMobile) expect((await chave.boundingBox())!.x).toBeCloseTo(antes!.x, 0);
     await expect(page.locator('table.tasks tbody tr')).toHaveCount(1);
     await page.getByRole('button', { name: 'Ver em quadros' }).click();
     await expect(cartao(beta)).toHaveCount(0);

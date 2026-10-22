@@ -70,7 +70,7 @@ export function useTaskFilter() {
 export type TaskFilter = ReturnType<typeof useTaskFilter>;
 
 /** Barra do filtro: botão Filtro, atalhos de delegadas, etiquetas com × e Editar filtro. `children` vai à direita.
- * Com `top` (o espaço na barra do topo), o botão Filtro, os atalhos e Condição vão para lá; a linha de baixo só aparece com etiquetas. */
+ * Com `top` (o espaço na barra do topo), o botão Filtro, os atalhos, Condição e `children` vão para lá; a linha de baixo só aparece com etiquetas. */
 export function FilterBar({ f, onBoard = false, top, children }: { f: TaskFilter; onBoard?: boolean; top?: HTMLElement | null; children?: ReactNode }) {
   const me = useMe().data!;
   const qc = useQueryClient();
@@ -145,11 +145,12 @@ export function FilterBar({ f, onBoard = false, top, children }: { f: TaskFilter
     />
   );
   // Item 59: no Quadro, os botões sobem para a barra do topo e liberam a linha de cima das fases.
+  // Item 64: na Tabela também; Colunas e Exportar planilha (`children`) ficam no fim do grupo, antes de Quadro/Tabela.
   if (top) {
     return (
       <>
-        {createPortal(<span className="tbl-top">{picker}{quickButtons}{condition}</span>, top)}
-        {f.active && <div className="tbl-bar">{chips}{children}</div>}
+        {createPortal(<span className="tbl-top">{picker}{quickButtons}{condition}{children}</span>, top)}
+        {f.active && <div className="tbl-bar">{chips}</div>}
         {editor}
       </>
     );

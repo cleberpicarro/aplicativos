@@ -108,6 +108,7 @@ function Shell() {
 
   // Item 36: "Tarefas" em quadro (kanban) ou tabela. A escolha fica lembrada no navegador.
   // Item 59: no Quadro, o filtro sobe para a barra do topo (no celular continua acima das fases).
+  // Item 64: na Tabela também, no mesmo lugar, para o botão Quadro/Tabela não mudar de posição.
   const [filterSlot, setFilterSlot] = useState<HTMLElement | null>(null);
   const wide = useWide();
   const [view, setViewState] = useState<'quadro' | 'tabela'>(() => stored('synctasks.visao', ['quadro', 'tabela'] as const, 'quadro'));
@@ -204,7 +205,7 @@ function Shell() {
         <div className="topbar">
           <h1>{PAGES[page]?.title}</h1>
           <div className="tools">
-            {page === '/quadros' && view === 'quadro' && wide && <span className="filter-slot" ref={setFilterSlot} />}
+            {page === '/quadros' && wide && <span className="filter-slot" ref={setFilterSlot} />}
             {page === '/quadros' && (
               <span className="view-switch" role="group" aria-label="Ver as tarefas em">
                 <button aria-pressed={view === 'quadro'} onClick={() => setView('quadro')} title="Quadros (kanban)" aria-label="Ver em quadros"><Icon name="board" />Quadro</button>
@@ -222,7 +223,7 @@ function Shell() {
           </div>
         </div>
         {page === '/painel' && <DashboardPage />}
-        {page === '/quadros' && (view === 'tabela' ? <TablePage /> : <BoardsPage top={wide ? filterSlot : null} />)}
+        {page === '/quadros' && (view === 'tabela' ? <TablePage top={wide ? filterSlot : null} /> : <BoardsPage top={wide ? filterSlot : null} />)}
         {page === '/arquivadas' && <ArchivedPage />}
         {page === '/entrada' && <InboxPage />}
         {page === '/delegadas' && <DelegatedPage />}

@@ -737,6 +737,10 @@ table.t .desc { display: inline-block; max-width: 20rem; overflow: hidden; text-
 /* No notebook, os atalhos encurtam para “Para mim” e “Por mim” para caber na mesma linha (o nome inteiro aparece ao passar o mouse). */
 @media (max-width: 1440px) { .tbl-top .qk .long { display: none; } .tbl-top .qk .short { display: inline; } }
 @media (max-width: 820px) { .qk .long { display: none; } .qk .short { display: inline; } }
+/* Item 64: a Tabela usa a mesma barra do topo; Colunas e Exportar planilha vêm no fim do grupo, só na Tabela. */
+.tbl-top > :not(.tt) + .tt { margin-left: 6px; }
+/* No notebook, os dois viram só ícone para caber na mesma linha (o nome aparece ao passar o mouse). */
+@media (max-width: 1440px) { .tbl-top .b.tt .lbl { display: none; } }
 
 /* Item 48: cancelar a delegação de dentro da tarefa original. */
 .child-cancel { margin-top: 8px; display: flex; }

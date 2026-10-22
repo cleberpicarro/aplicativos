@@ -28,7 +28,7 @@ function delegationText(r: Row): { text: string; kind: 'del' | 'rec' } | null {
 const statusText = (r: Row) => (r.archivedAt ? 'Arquivada' : r.completedAt ? 'Concluída' : 'Aberta');
 const whereText = (r: Row) => (r.inInbox || !r.boardName ? 'Caixa de entrada' : `${r.boardName} · ${r.listName}`);
 
-export function TablePage() {
+export function TablePage({ top }: { top?: HTMLElement | null }) {
   const me = useMe().data!;
   const toast = useToast();
   const f = useTaskFilter();
@@ -79,9 +79,11 @@ export function TablePage() {
 
   return (
     <div className="page wide tbl-page">
-      <FilterBar f={f}>
-        <button className="b sm" onClick={() => setChoosingCols(true)}>Colunas</button>
-        <button className="b sm" disabled={exporting || total === 0} onClick={exportCsv}>{exporting ? 'Gerando…' : 'Exportar planilha'}</button>
+      <FilterBar f={f} top={top}>
+        <button className="b sm tt" aria-label="Colunas" title="Escolher as colunas da tabela" onClick={() => setChoosingCols(true)}><Icon name="columns" /><span className="lbl">Colunas</span></button>
+        <button className="b sm tt" aria-label="Exportar planilha" title="Baixar as tarefas desta tabela numa planilha (CSV)" disabled={exporting || total === 0} onClick={exportCsv}>
+          <Icon name="download" /><span className="lbl">{exporting ? 'Gerando…' : 'Exportar planilha'}</span>
+        </button>
       </FilterBar>
 
       <ErrorText error={rows.error} />
