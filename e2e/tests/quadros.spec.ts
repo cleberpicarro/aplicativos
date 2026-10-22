@@ -346,5 +346,36 @@ test.describe('meus quadros', () => {
     await expect(fazendo.locator('article.kc', { hasText: titulo }).locator('button.ck.on')).toBeVisible({ timeout: 700 });
     await aviso(page, 'Tarefa concluída.');
   });
-});
 
+  test('cartões do mesmo tamanho e balão com a tarefa completa ao parar o mouse (itens 60 e 61)', async ({ page }) => {
+    await entrar(page, 'lucas');
+    const curto = unico('Ligar');
+    const longo = unico('Preparar a apresentação de resultados do trimestre para a reunião com a diretoria e todos os gestores da área');
+    const idCurto = await criarTarefa(page, curto);
+    const idLongo = await criarTarefa(page, longo);
+    await api(page, 'PATCH', `/cards/${idLongo}`, { description: 'Juntar números de vendas e custos.\nPedir a planilha ao financeiro.', isPrivate: true, dueDate: '2030-01-10' });
+    for (const t of ['Vendas', 'Custos']) await api(page, 'POST', `/cards/${idLongo}/checklist`, { text: t });
+    await page.reload();
+    const cardCurto = page.locator(`article.kc[data-id="${idCurto}"]`);
+    const cardLongo = page.locator(`article.kc[data-id="${idLongo}"]`);
+    await expect(cardLongo.locator('.cl')).toBeVisible();
+    const altura = async (l: typeof cardCurto) => Math.round((await l.boundingBox())!.height);
+    expect(await altura(cardCurto)).toBe(await altura(cardLongo));
+    // O título não tem mais a dica comum do navegador: quem mostra o texto inteiro é o balão.
+    await expect(cardLongo.locator('.t')).not.toHaveAttribute('title');
+
+    await cardLongo.scrollIntoViewIfNeeded();
+    const box = (await cardLongo.boundingBox())!;
+    await page.mouse.move(box.x + 60, box.y + 12);
+    const balao = page.getByRole('tooltip');
+    await expect(balao).toBeVisible();
+    await expect(balao).toContainText(longo);
+    await expect(balao).toContainText('Pedir a planilha ao financeiro.');
+    await expect(balao).toContainText('Checklist: 0 de 2 feitos');
+    await expect(balao).toContainText('Prazo: 10/01/2030');
+    await expect(balao).toContainText('Privada');
+    // Sai do cartão: o balão some. Clicar no cartão também fecha.
+    await page.mouse.move(box.x + box.width + 300, box.y + box.height + 300);
+    await expect(balao).toHaveCount(0);
+  });
+});

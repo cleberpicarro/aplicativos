@@ -1,13 +1,17 @@
 import { test, expect, entrar, criarTarefa, abrirTarefa, aviso, unico } from './apoio';
 
 test.describe('uso no celular', () => {
-  test('as telas principais cabem na largura, sem rolar para o lado @celular', async ({ page }) => {
+  test('as telas principais cabem na largura, sem rolar para o lado @celular', async ({ page, isMobile }) => {
     await entrar(page, 'marina');
     for (const rota of ['/painel', '/quadros', '/entrada', '/delegadas', '/avisos', '/ajuda']) {
       await page.goto(`/#${rota}`);
       await expect(page.locator('.topbar h1')).toBeVisible();
       const sobra = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
       expect(sobra, `a tela ${rota} passou da largura`).toBeLessThanOrEqual(1);
+      // A3 da revisão de UX: em tela com pouco conteúdo, a barra de cima não estica (antes ocupava 1/3 da tela).
+      if (!isMobile) continue;
+      const barra = await page.locator('.side').evaluate((el) => el.getBoundingClientRect().height);
+      expect(barra, `a barra de cima de ${rota} esticou`).toBeLessThan(80);
     }
   });
 

@@ -12,6 +12,7 @@ import { asSingle, MAX_BATCH, MAX_TITLE, splitLines } from '../lib/lines';
 import { FilterBar, useTaskFilter } from '../components/TaskFilter';
 import { addPendingCard, changeCard, isPending } from '../lib/optimistic';
 import { NEW_TASK_EVENT, takeNewTaskRequest } from '../lib/shortcuts';
+import { CardPeek, setDragActive, useFitMeta, usePeek } from '../components/CardPeek';
 
 const STORE_KEY = 'synctasks.board';
 const ZOOM_KEY = 'synctasks.zoom';
@@ -467,33 +468,41 @@ function Tile({ card, today, dragging, onDragStart, onDragEnd, onDragOver, onDro
     if ((await run(() => post(`/cards/${card.id}/archive`), undefined, { optimistic: () => changeCard(qc, card.id, null), scope: 'card' })) === undefined) return;
     toast('Tarefa arquivada.', 'ok', { label: 'Desfazer', onClick: () => run(() => post(`/cards/${card.id}/unarchive`), 'Tarefa de volta ao quadro.') });
   };
+  const self = useRef<HTMLElement>(null);
+  const meta = useRef<HTMLDivElement>(null);
+  const peek = usePeek(self, pending || dragging);
+  useFitMeta(meta, [card]);
+  const child = card.child && card.child.status !== 'CANCELED' ? card.child : null;
   return (
-    <article data-id={pending ? undefined : card.id} aria-busy={pending || undefined}
-      className={`kc${done ? ' done' : ''}${dragging ? ' dragging' : ''}${pending ? ' pending' : ''}${card.color ? ` painted bc-${card.color}` : ''}`} draggable={!pending} onDragStart={onDragStart} onDragEnd={onDragEnd}
-      onDragOver={onDragOver} onDrop={onDrop}>
+    <article ref={self} data-id={pending ? undefined : card.id} aria-busy={pending || undefined}
+      className={`kc${done ? ' done' : ''}${dragging ? ' dragging' : ''}${pending ? ' pending' : ''}${card.color ? ` painted bc-${card.color}` : ''}`} draggable={!pending}
+      onDragStart={(e) => { peek.close(); setDragActive(true); onDragStart(e); }} onDragEnd={() => { setDragActive(false); onDragEnd(); }}
+      onDragOver={onDragOver} onDrop={onDrop} {...peek.handlers}>
       <button className={`ck${done ? ' on' : ''}`} onClick={toggle} disabled={!canToggle} aria-label={done ? `Desfazer conclusão de ${card.title}` : `Concluir ${card.title}`}>
         {done && <Icon name="check" />}
       </button>
-      <button className="t" onClick={() => go(`/tarefa/${card.id}`)} title={card.title} disabled={pending}>{card.title}</button>
-      <div className="meta">
+      {/* Item 61: o título inteiro aparece no balão (CardPeek), por isso o cartão não usa mais a dica comum do navegador. */}
+      <button className="t" onClick={() => go(`/tarefa/${card.id}`)} disabled={pending}>{card.title}</button>
+      {/* Item 60: uma linha só. Primeiro o que importa (número, prazo, De/Para, situação); as opcionais (data-opt) saem se não couberem. */}
+      <div className="meta" ref={meta}>
         <span className="code">{pending ? 'criando…' : cardNo(card.num)}</span>
         <Due date={card.dueDate} done={done} today={today} />
-        {card.checklist.total > 0 && <span className="cl" title="Checklist"><Icon name="checks" />{card.checklist.done}/{card.checklist.total}</span>}
         {/* Opção A do ícone de delegada: etiqueta com o nome (roxa = recebida de alguém; verde-azulada = você delegou). */}
-        {d && <span className="dtag from" title={`Delegada por ${d.delegatorName}`}><Icon name="into" />De {firstName(d.delegatorName)}</span>}
-        {card.child && !['CANCELED'].includes(card.child.status) && (
-          <span className="dtag to" title={`Repassada para ${card.child.ownerName}`}><Icon name="out" />Para {firstName(card.child.ownerName)}</span>
-        )}
-        {card.isPrivate && <TipIcon name="lock" tip="Privada: nenhum superior vê" />}
-        {d?.noPass && <TipIcon name="self" tip={`Não pode ser repassada: ${firstName(d.delegatorName)} pediu que você mesmo faça`} />}
-        {card.child?.noPass && !['ACKED', 'CANCELED'].includes(card.child.status) && <TipIcon name="self" tip={`Não pode ser repassada por ${firstName(card.child.ownerName)}`} />}
+        {d && <span className="dtag from" title={`Delegada por ${d.delegatorName}`}><Icon name="into" /><span className="nm">De {firstName(d.delegatorName)}</span></span>}
+        {child && <span className="dtag to" title={`Repassada para ${child.ownerName}`}><Icon name="out" /><span className="nm">Para {firstName(child.ownerName)}</span></span>}
         {showStatus && <CardStatusIcon card={card} />}
+        {card.checklist.total > 0 && <span className="cl" data-opt={`Checklist ${card.checklist.done}/${card.checklist.total}`} title="Checklist"><Icon name="checks" />{card.checklist.done}/{card.checklist.total}</span>}
+        {card.isPrivate && <span className="opt" data-opt="Privada"><TipIcon name="lock" tip="Privada: nenhum superior vê" /></span>}
+        {d?.noPass && <span className="opt" data-opt="Não pode ser repassada"><TipIcon name="self" tip={`Não pode ser repassada: ${firstName(d.delegatorName)} pediu que você mesmo faça`} /></span>}
+        {child?.noPass && child.status !== 'ACKED' && <span className="opt" data-opt="Não pode ser repassada"><TipIcon name="self" tip={`Não pode ser repassada por ${firstName(child.ownerName)}`} /></span>}
+        <span className="more" style={{ display: 'none' }} tabIndex={0} />
         {archivable(card) && (
           <button className="arch" onClick={archive} aria-label={`Arquivar ${card.title}`} data-tip="Arquivar">
             <Icon name="archive" />
           </button>
         )}
       </div>
+      {peek.rect && <CardPeek card={card} rect={peek.rect} today={today} />}
     </article>
   );
 }
