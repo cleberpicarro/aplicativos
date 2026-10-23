@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { get, patch, post } from '../lib/api';
 import { Avatar, Dialog, ErrorText, Menu, useMe, useToast } from '../components/ui';
 import { Icon } from '../components/Icons';
@@ -28,7 +28,14 @@ export function PeoplePage() {
   const me = useMe().data!;
   const q = useQuery({ queryKey: ['people'], queryFn: () => get<Person[]>('/admin/users') });
   const [dlg, setDlg] = useState<null | { kind: 'new' } | { kind: 'edit' | 'toggle' | 'deactivate'; person: Person }>(null);
-  const [hideInactive, setHideInactive] = useState(false);
+  const qc = useQueryClient();
+  /** Item 66: a escolha fica gravada na conta; a tela muda na hora e o servidor guarda em seguida. */
+  const [hideChoice, setHideChoice] = useState<boolean | null>(null);
+  const hideInactive = hideChoice ?? me.prefs.hideInactive;
+  const setHideInactive = (v: boolean) => {
+    setHideChoice(v);
+    patch('/me/prefs', { hideInactive: v }).then(() => qc.invalidateQueries({ queryKey: ['me'] }), () => { /* não gravou: vale só nesta visita */ });
+  };
   const { run, error } = useAction();
   const toast = useToast();
   if (!me.user.isAdmin) return <div className="page"><div className="empty">Somente a administração acessa esta tela.</div></div>;

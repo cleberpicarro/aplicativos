@@ -81,9 +81,16 @@ test.describe('administração de pessoas', () => {
     await expect(lg).toContainText('Inativa');
     await expect(page.locator('tr').filter({ has: page.getByRole('button', { name: `Ações para ${func}` }) })).toContainText('Paulo Ribeiro');
     // esconder inativas
-    await page.getByRole('checkbox', { name: /Esconder inativas/ }).check();
+    const gravou = () => page.waitForResponse((r) => r.url().includes('/api/me/prefs'));
+    await Promise.all([gravou(), page.getByRole('checkbox', { name: /Esconder inativas/ }).check()]);
     await expect(lg).toHaveCount(0);
-    await page.getByRole('checkbox', { name: /Esconder inativas/ }).uncheck();
+    // item 66: a escolha fica gravada e volta ao abrir a tela de novo
+    await page.reload();
+    await expect(page.getByRole('checkbox', { name: /Esconder inativas/ })).toBeChecked();
+    await expect(lg).toHaveCount(0);
+    await Promise.all([gravou(), page.getByRole('checkbox', { name: /Esconder inativas/ }).uncheck()]);
+    await page.reload();
+    await expect(page.getByRole('checkbox', { name: /Esconder inativas/ })).not.toBeChecked();
     // reativar
     await lg.getByRole('button', { name: `Ações para ${gestor}` }).click();
     await page.getByRole('menuitem', { name: 'Reativar' }).click();

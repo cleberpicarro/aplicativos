@@ -121,11 +121,12 @@ export async function buildApp({ pool, logger = false, serveWeb = false }: AppOp
   app.get('/api/me', async (req) => misc.me(pool, need(req)));
   app.patch('/api/me/prefs', async (req) => {
     const body = z
-      .object({ workspaceBg: z.string().max(20).nullable().optional(), emailDigest: z.boolean().optional(), emailDue: z.boolean().optional() })
+      .object({ workspaceBg: z.string().max(20).nullable().optional(), emailDigest: z.boolean().optional(), emailDue: z.boolean().optional(), hideInactive: z.boolean().optional() })
       .parse(req.body);
     const a = need(req);
     if (body.workspaceBg !== undefined) await misc.setWorkspaceBg(pool, a, body.workspaceBg);
     if (body.emailDigest !== undefined || body.emailDue !== undefined) await misc.setEmailPrefs(pool, a, body);
+    if (body.hideInactive !== undefined) await misc.setHideInactive(pool, a, body.hideInactive);
     return { ok: true };
   });
 

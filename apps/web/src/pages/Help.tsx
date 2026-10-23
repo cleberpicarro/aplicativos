@@ -360,7 +360,7 @@ export function HelpPage({ isAdmin }: { isAdmin: boolean }) {
             </ul>
           </li>
         </ol>
-        <p>A pessoa inativa continua na lista com a situação <b>Inativa</b>; marque <b>Esconder inativas</b> para tirá-la da vista. O e-mail continua com ela. Para reativar, use <b>Reativar</b> no mesmo menu: ela volta a entrar e encontra os quadros e as privadas como deixou, mas o que foi passado adiante não volta sozinho.</p>
+        <p>A pessoa inativa continua na lista com a situação <b>Inativa</b>; marque <b>Esconder inativas</b> para tirá-la da vista (a escolha fica gravada na sua conta e vale da próxima vez que abrir a tela). O e-mail continua com ela. Para reativar, use <b>Reativar</b> no mesmo menu: ela volta a entrar e encontra os quadros e as privadas como deixou, mas o que foi passado adiante não volta sozinho.</p>
         <h3>Senhas</h3>
         <p>Quem esquecer a senha usa <b>Esqueci minha senha</b> na tela de login e recebe um link por e-mail, válido por 2 horas. A administração não vê nem define senhas.</p>
       </Sec>
