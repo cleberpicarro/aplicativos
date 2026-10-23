@@ -713,6 +713,14 @@ describe('quinta rodada', () => {
     expect((await call('func', 'PATCH', '/api/me/prefs', { workspaceBg: 'neon' })).status).toBe(422);
     expect((await call('func', 'PATCH', '/api/me/prefs', { workspaceBg: null })).status).toBe(200);
     expect((await call('func', 'GET', '/api/me')).body.prefs.workspaceBg).toBe(null);
+    // item 66: "Esconder inativas" fica gravado na conta de cada pessoa
+    expect((await call('func', 'GET', '/api/me')).body.prefs.hideInactive).toBe(false);
+    expect((await call('func', 'PATCH', '/api/me/prefs', { hideInactive: true })).status).toBe(200);
+    expect((await call('func', 'GET', '/api/me')).body.prefs).toMatchObject({ hideInactive: true, workspaceBg: null });
+    expect((await call('func2', 'GET', '/api/me')).body.prefs.hideInactive).toBe(false);
+    expect((await call('func', 'PATCH', '/api/me/prefs', { hideInactive: 'sim' })).status).toBe(422);
+    expect((await call('func', 'PATCH', '/api/me/prefs', { hideInactive: false })).status).toBe(200);
+    expect((await call('func', 'GET', '/api/me')).body.prefs.hideInactive).toBe(false);
   });
 
   it('editar dados de uma pessoa (item 25)', async () => {

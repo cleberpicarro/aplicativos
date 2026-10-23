@@ -20,6 +20,11 @@ export async function setEmailPrefs(db: Db, actor: Actor, prefs: { emailDigest?:
   );
 }
 
+/** Item 66: lembrar a caixa "Esconder inativas" da tela Pessoas, na conta da pessoa. */
+export async function setHideInactive(db: Db, actor: Actor, hide: boolean) {
+  await db.query('UPDATE users SET hide_inactive = $2, updated_at = now() WHERE id = $1', [actor.id, hide]);
+}
+
 export async function me(db: Db, actor: Actor) {
   const reports = actor.level === null ? [] : await directReports(db, actor.id);
   const counts = await one(
@@ -33,6 +38,7 @@ export async function me(db: Db, actor: Actor) {
        (SELECT workspace_bg FROM users WHERE id = $1) AS workspace_bg,
        (SELECT email_digest FROM users WHERE id = $1) AS email_digest,
        (SELECT email_due FROM users WHERE id = $1) AS email_due,
+       (SELECT hide_inactive FROM users WHERE id = $1) AS hide_inactive,
        (now() AT TIME ZONE 'America/Sao_Paulo')::date AS today`,
     [actor.id],
   );
@@ -40,7 +46,7 @@ export async function me(db: Db, actor: Actor) {
     user: { ...actor, inHierarchy: actor.level !== null },
     directReports: reports.map((r) => ({ id: r.id, name: r.name, roleTitle: r.role_title })),
     counts: { inbox: counts.inbox, needAction: counts.need_action, unread: counts.unread },
-    prefs: { workspaceBg: counts.workspace_bg as string | null, emailDigest: counts.email_digest as boolean, emailDue: counts.email_due as boolean },
+    prefs: { workspaceBg: counts.workspace_bg as string | null, emailDigest: counts.email_digest as boolean, emailDue: counts.email_due as boolean, hideInactive: counts.hide_inactive as boolean },
     today: counts.today,
   };
 }

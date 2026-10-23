@@ -72,7 +72,7 @@ export interface Me {
   directReports: { id: string; name: string; roleTitle: string }[];
   counts: { inbox: number; needAction: number; unread: number };
   /** Item 46: resumo diário e avisos de prazo por e-mail (ligados por padrão). */
-  prefs: { workspaceBg: string | null; emailDigest: boolean; emailDue: boolean };
+  prefs: { workspaceBg: string | null; emailDigest: boolean; emailDue: boolean; hideInactive: boolean };
   today: string;
 }
 
