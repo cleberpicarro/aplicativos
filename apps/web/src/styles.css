@@ -384,7 +384,9 @@ table.t tr.off td { color: var(--faint); }
   .group .hint { padding-left: 8px; }
   .card-grid { grid-template-columns: minmax(0, 1fr); }
   .row2 { grid-template-columns: 1fr; }
-  .col { max-height: none; }
+  /* Item 69: cada fase tem no máximo a altura da tela e rola por dentro. Antes crescia sem limite e a página
+     ficava com a altura da fase mais comprida, mesmo fora da tela, deixando uma rolagem longa e vazia. */
+  .kanban .col { max-height: calc((100dvh - 7rem) / var(--zoom, 1)); }
   .scrim { padding: 0; }
   .dialog { border-radius: 0; min-height: 100%; }
   .dialog:not(.card) { min-height: auto; margin-top: 10vh; border-radius: 10px; }

@@ -443,3 +443,13 @@ O número 22 ficou com o **site comercial** (registrado junto com o site, no ram
 ### Como ficou (campo depois do lote)
 
 67. Depois de **Criar N tarefas** ou **Criar 1 tarefa**, o campo vazio volta ao tamanho de uma linha, pronto para a próxima tarefa. Enquanto se digita ou cola, ele continua crescendo com o texto, até o limite de sempre (com barra de rolagem depois disso). **Por dentro:** em `Boards.tsx` (`AddCard`), a altura do campo passou a ser ajustada sempre que o texto muda, e não só ao digitar. Roteiro de tela `quadros.spec.ts` (texto com várias linhas) confere que o campo cresce ao colar e volta a uma linha depois de criar em lote e depois de “Criar 1 tarefa”.
+
+## Rolagem longa e vazia no Quadro do celular (implementado)
+
+| # | Ponto | Tela | Status |
+|---|---|---|---|
+| 69 | **Defeito: no celular a rolagem da tela fica “infinita”**, achado pelo Cleber (25/10): “A rolagem de tela deveria ir no máximo até o último cartão do quadro. Nunca além disso.” **Causa:** no celular as fases ficam lado a lado e cada uma crescia até mostrar todos os cartões; a página ficava com a altura da fase **mais comprida**, mesmo fora da tela, à direita. No teste, com “A fazer” (7 cartões) na tela e “Feito” (31) ao lado, a página tinha 3.052 pixels e sobravam cerca de 2.000 pixels de tela vazia. **Proposta:** como no computador, cada fase ter no máximo a altura da tela e rolar por dentro. **Build:** o Cleber disse “build” (25/10), junto com o item 68, pedindo para não esquecer a rolagem. | Tarefas (Quadro, celular) | Implementado |
+
+### Como ficou (rolagem no celular)
+
+69. No celular, cada fase ocupa no máximo a altura da tela (menos a barra de cima) e os cartões rolam dentro dela; a página termina logo depois das fases, sem espaço vazio. No mesmo teste, a página caiu de 3.052 para 1.129 pixels. Fases curtas continuam do tamanho dos seus cartões. **Por dentro:** em `styles.css`, regra do celular `.kanban .col { max-height: calc((100dvh - 7rem) / var(--zoom, 1)) }` (antes `max-height: none`), compensando o zoom do quadro. Roteiro de tela `celular.spec.ts`: cria 30 tarefas em “Feito” e confere que a fase não passa da altura da tela e a página não fica muito mais comprida que ela (sem a correção, a fase media 2.581 pixels numa tela de 839). Prints em `rolagem-celular/` nos arquivos do projeto.
