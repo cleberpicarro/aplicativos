@@ -528,6 +528,14 @@ function AddCard({ listId, first }: { listId: string; first?: boolean }) {
   const { run, busy, error, setError } = useAction();
   const toast = useToast();
   useEffect(() => { if (!open) { setText(''); setAsking(null); } }, [open]);
+  // Item 67: o campo cresce com o texto e volta a uma linha quando o app o esvazia (depois de criar em lote).
+  const field = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => {
+    const el = field.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    if (text) el.style.height = `${el.scrollHeight + 2}px`;
+  }, [text, open]);
 
   const done = () => { setText(''); setAsking(null); };
   const tooLong = (titles: string[]) => {
@@ -570,8 +578,8 @@ function AddCard({ listId, first }: { listId: string; first?: boolean }) {
   if (!open) return <button className="add-card" onClick={() => setOpen(true)}><Icon name="plus" />Adicionar tarefa</button>;
   return (
     <form className="add-form" onSubmit={submit}>
-      <textarea className="input add-text" autoFocus rows={1} value={text} placeholder="Título da tarefa" aria-label="Título da nova tarefa"
-        onChange={(e) => { setText(e.target.value); e.target.style.height = 'auto'; e.target.style.height = `${e.target.scrollHeight + 2}px`; }}
+      <textarea ref={field} className="input add-text" autoFocus rows={1} value={text} placeholder="Título da tarefa" aria-label="Título da nova tarefa"
+        onChange={(e) => setText(e.target.value)}
         onKeyDown={(e) => {
           if (e.key === 'Escape') setOpen(false);
           else if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); submit(); }
