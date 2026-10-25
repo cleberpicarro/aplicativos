@@ -98,7 +98,6 @@ function useTheme() {
 function Shell() {
   const route = useRoute();
   const me = useMe().data!;
-  const qc = useQueryClient();
   const font = useFontSize();
   const theme = useTheme();
   const [legend, setLegend] = useState(false);
@@ -116,6 +115,33 @@ function Shell() {
   const setView = (v: 'quadro' | 'tabela') => { store('synctasks.visao', v); setViewState(v); };
 
   const toggleSide = () => setCollapsed((c) => { store('synctasks.side', c ? 'open' : 'closed'); return !c; });
+
+  // Item 68: no celular o menu fica atrás do botão ☰ e abre como um painel pela esquerda.
+  // Abrir cria um passo no histórico, para o botão Voltar do celular fechar o menu sem sair da tela.
+  const [menu, setMenu] = useState(false);
+  const openMenu = () => { history.pushState({ synctasksMenu: true }, ''); setMenu(true); };
+  const closeMenu = (then?: () => void) => {
+    setMenu(false);
+    if (!(history.state as { synctasksMenu?: boolean } | null)?.synctasksMenu) { then?.(); return; }
+    if (then) window.addEventListener('popstate', () => then(), { once: true });
+    history.back();
+  };
+  useEffect(() => {
+    if (!menu) return;
+    const onPop = () => setMenu(false);
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.preventDefault(); closeMenu(); } };
+    window.addEventListener('popstate', onPop);
+    document.addEventListener('keydown', onKey);
+    document.body.style.overflow = 'hidden';
+    document.querySelector<HTMLElement>('.drawer .x')?.focus();
+    return () => {
+      window.removeEventListener('popstate', onPop);
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = '';
+    };
+  }, [menu]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Virou tela larga (celular deitado, janela maior): o menu volta a ser a barra lateral.
+  useEffect(() => { if (wide && menu) closeMenu(); }, [wide]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const hasReports = me.directReports.length > 0;
   // Item 58: todo mundo da hierarquia abre nas próprias tarefas (o Painel fica a um clique, no menu).
@@ -166,40 +192,55 @@ function Shell() {
     { path: '/pessoas', label: 'Pessoas', icon: 'shield', show: me.user.isAdmin },
   ];
 
+  // O número no ☰ soma os contadores do menu (caixa de entrada, delegadas que pedem ação, avisos não lidos).
+  const waiting = nav.filter((n) => n.show).reduce((sum, n) => sum + (n.n ?? 0), 0);
+
   const logout = async () => {
     await post('/auth/logout');
-    qc.clear();
+    // Recarregar já apaga os dados da memória. Limpar o cache antes fazia as telas abertas desenharem
+    // sem a pessoa por um instante (erro na página ao sair com o menu do celular aberto, item 68).
     go('/entrar');
     window.location.reload();
   };
 
   return (
-    <div className={`app${collapsed ? ' collapsed' : ''}`}>
+    <div className={`app${collapsed ? ' collapsed' : ''}${menu ? ' menu-open' : ''}`}>
       <aside className="side">
-        <button className="brand" onClick={toggleSide} title={collapsed ? 'Expandir menu' : 'Recolher menu'} aria-expanded={!collapsed} aria-label={`SyncTasks: ${collapsed ? 'expandir' : 'recolher'} menu`}><img src="/icon.svg" alt="" /><span>SyncTasks</span></button>
-        <button className="who" onClick={() => setMyData(true)} title={collapsed ? `${me.user.name} · ${me.user.roleTitle}. Meus dados` : 'Meus dados'}>
-          <Avatar name={me.user.name} large /><div style={{ minWidth: 0 }}><b>{me.user.name}</b><small>{me.user.roleTitle}</small></div>
+        <button className="hb" onClick={openMenu} aria-label={waiting ? `Abrir menu (${waiting} esperando por você)` : 'Abrir menu'} aria-expanded={menu} aria-controls="menu">
+          <Icon name="menu" />{!!waiting && <span className="dot">{waiting > 99 ? '99+' : waiting}</span>}
         </button>
-        <nav className="nav" aria-label="Principal">
-          {nav.filter((n) => n.show).map((n) => (
-            <a key={n.path} href={`#${n.path}`} aria-current={page === n.path ? 'page' : undefined} title={collapsed ? n.label : undefined}>
-              <span className="ico"><Icon name={n.icon} /></span>
-              <span>{n.label}</span>
-              {!!n.n && <span className={`n${n.attn ? ' attn' : ''}`}>{n.n}</span>}
-            </a>
-          ))}
-        </nav>
-        <div className="foot">
-          <button onClick={() => go('/ajuda')} title="Ajuda e manual" aria-current={page === '/ajuda' ? 'page' : undefined}>
-            <span className="ico"><Icon name="book" /></span><span className="lbl">Ajuda</span>
+        <button className="brand" onClick={toggleSide} title={collapsed ? 'Expandir menu' : 'Recolher menu'} aria-expanded={!collapsed} aria-label={`SyncTasks: ${collapsed ? 'expandir' : 'recolher'} menu`}><img src="/icon.svg" alt="" /><span>SyncTasks</span></button>
+        {menu && <div className="menu-scrim" onClick={() => closeMenu()} />}
+        <div className="drawer" id="menu">
+          <div className="dh">
+            <span className="brand"><img src="/icon.svg" alt="" /><span>SyncTasks</span></span>
+            <button className="x" onClick={() => closeMenu()} aria-label="Fechar menu" title="Fechar menu"><Icon name="x" /></button>
+          </div>
+          <button className="who" onClick={() => closeMenu(() => setMyData(true))} title={collapsed ? `${me.user.name} · ${me.user.roleTitle}. Meus dados` : 'Meus dados'}>
+            <Avatar name={me.user.name} large /><div style={{ minWidth: 0 }}><b>{me.user.name}</b><small>{me.user.roleTitle}</small></div>
           </button>
-          <button onClick={() => setLegend(true)} title="Legenda dos ícones"><span className="ico"><Icon name="help" /></span><span className="lbl">Legenda</span></button>
-          <button className="keys-btn" onClick={() => setKeysHelp(true)} title="Atalhos de teclado (tecla ?)"><span className="ico"><Icon name="keyboard" /></span><span className="lbl">Atalhos</span></button>
-          <button className="my-data" onClick={() => setMyData(true)} title="Meus dados"><span className="ico"><Icon name="self" /></span><span className="lbl">Meus dados</span></button>
-          <button className="collapse" onClick={toggleSide} title={collapsed ? 'Expandir menu' : 'Recolher menu'} aria-expanded={!collapsed}>
-            <span className="ico"><Icon name={collapsed ? 'sideOpen' : 'sideClose'} /></span><span className="lbl">Recolher menu</span>
-          </button>
-          <button onClick={logout} title="Sair"><span className="ico"><Icon name="logout" /></span><span className="lbl">Sair</span></button>
+          <nav className="nav" aria-label="Principal">
+            {nav.filter((n) => n.show).map((n) => (
+              <a key={n.path} href={`#${n.path}`} aria-current={page === n.path ? 'page' : undefined} title={collapsed ? n.label : undefined}
+                onClick={menu ? (e) => { e.preventDefault(); setMenu(false); window.location.replace(`#${n.path}`); } : undefined}>
+                <span className="ico"><Icon name={n.icon} /></span>
+                <span>{n.label}</span>
+                {!!n.n && <span className={`n${n.attn ? ' attn' : ''}`}>{n.n}</span>}
+              </a>
+            ))}
+          </nav>
+          <div className="foot">
+            <button onClick={() => closeMenu(() => go('/ajuda'))} title="Ajuda e manual" aria-current={page === '/ajuda' ? 'page' : undefined}>
+              <span className="ico"><Icon name="book" /></span><span className="lbl">Ajuda</span>
+            </button>
+            <button onClick={() => closeMenu(() => setLegend(true))} title="Legenda dos ícones"><span className="ico"><Icon name="help" /></span><span className="lbl">Legenda</span></button>
+            <button className="keys-btn" onClick={() => setKeysHelp(true)} title="Atalhos de teclado (tecla ?)"><span className="ico"><Icon name="keyboard" /></span><span className="lbl">Atalhos</span></button>
+            <button className="my-data" onClick={() => closeMenu(() => setMyData(true))} title="Meus dados"><span className="ico"><Icon name="self" /></span><span className="lbl">Meus dados</span></button>
+            <button className="collapse" onClick={toggleSide} title={collapsed ? 'Expandir menu' : 'Recolher menu'} aria-expanded={!collapsed}>
+              <span className="ico"><Icon name={collapsed ? 'sideOpen' : 'sideClose'} /></span><span className="lbl">Recolher menu</span>
+            </button>
+            <button onClick={logout} title="Sair"><span className="ico"><Icon name="logout" /></span><span className="lbl">Sair</span></button>
+          </div>
         </div>
       </aside>
       <main className={me.prefs.workspaceBg ? `ws ws-${me.prefs.workspaceBg}` : undefined}>

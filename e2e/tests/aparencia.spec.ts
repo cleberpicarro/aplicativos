@@ -1,4 +1,4 @@
-import { test, expect, entrar, irPara, dialogo, aviso, unico } from './apoio';
+import { test, expect, entrar, irPara, abrirMenu, dialogo, aviso, unico } from './apoio';
 
 test.describe('aparência e preferências', () => {
   test('tema escuro, tamanho do texto e barra lateral ficam lembrados', async ({ page }) => {
@@ -62,14 +62,17 @@ test.describe('aparência e preferências', () => {
 
   test('ajuda e legenda abrem sem erro @celular', async ({ page }) => {
     await entrar(page, 'joao');
+    await abrirMenu(page);
     await page.getByRole('button', { name: 'Legenda' }).click();
     await expect(dialogo(page, 'Legenda')).toBeVisible();
     await page.keyboard.press('Escape');
+    await abrirMenu(page);
     await page.getByRole('button', { name: 'Ajuda' }).click();
     await expect(page.locator('.topbar h1')).toHaveText('Ajuda');
   });
   test('Meus dados: desligar e religar o resumo diário e os avisos de prazo por e-mail (item 46) @celular', async ({ page }) => {
     await entrar(page, 'beatriz');
+    await abrirMenu(page);
     await page.getByRole('button', { name: 'Meus dados' }).last().click();
     const dlg = dialogo(page, 'Meus dados');
     await expect(dlg.getByText('beatriz@nerus.com.br')).toBeVisible();
@@ -81,6 +84,7 @@ test.describe('aparência e preferências', () => {
     await aviso(page, 'Resumo diário desligado.');
     await expect(resumo).not.toBeChecked();
     await page.reload();
+    await abrirMenu(page);
     await page.getByRole('button', { name: 'Meus dados' }).last().click();
     await expect(dialogo(page, 'Meus dados').getByLabel(/Receber resumo diário/)).not.toBeChecked();
     await expect(dialogo(page, 'Meus dados').getByLabel(/Receber avisos de prazo/)).toBeChecked();
