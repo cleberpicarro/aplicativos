@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from 'node:crypto';
-import { test, expect, entrar, irPara, dialogo, unico } from './apoio';
+import { test, expect, entrar, irPara, abrirMenu, dialogo, unico } from './apoio';
 
 /** Item 65: o Claude (ou outro assistente) liga-se ao SyncTasks pelo "Permitir" e cria tarefas. */
 test.describe('conector para assistentes de IA', () => {
@@ -47,6 +47,7 @@ test.describe('conector para assistentes de IA', () => {
     await expect(page.locator('.row.inbox', { hasText: titulo })).toContainText('Criada pelo assistente');
 
     // Meus dados: o endereço para colar no Claude e o assistente ligado, com Desligar.
+    await abrirMenu(page);
     await page.getByRole('button', { name: 'Meus dados' }).last().click();
     const dlg = dialogo(page, 'Meus dados');
     await expect(dlg.locator('.copy-line code')).toHaveText(/\/mcp$/);

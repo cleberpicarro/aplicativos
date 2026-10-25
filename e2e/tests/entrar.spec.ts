@@ -1,8 +1,9 @@
 import type { Page } from '@playwright/test';
-import { test, expect, entrar, EQUIPE } from './apoio';
+import { test, expect, entrar, abrirMenu, EQUIPE } from './apoio';
 
 /** Sair recarrega a página: espera o recarregamento terminar. */
 async function sair(page: Page) {
+  await abrirMenu(page);
   await Promise.all([page.waitForEvent('load'), page.getByRole('button', { name: 'Sair' }).click()]);
   await expect(page.getByRole('heading', { name: 'Entrar' })).toBeVisible();
 }
@@ -39,6 +40,7 @@ test.describe('entrar e sair', () => {
 
     await entrar(page, 'marina');
     await expect(page.locator('.topbar h1')).toHaveText('Tarefas'); // item 58: quem tem equipe também abre nas tarefas
+    await abrirMenu(page);
     await expect(page.getByRole('link', { name: /Painel/ })).toBeVisible();
     await sair(page);
 

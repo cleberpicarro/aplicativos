@@ -63,6 +63,7 @@ export function HelpPage({ isAdmin }: { isAdmin: boolean }) {
           <li>Você recebe um e-mail com o link para <b>definir sua senha</b>. Depois, entre com seu e-mail e senha. O <b>olho</b> no fim do campo de senha mostra o que você digitou; clique de novo para ocultar.</li>
           <li>No menu à esquerda ficam o <b>Painel</b> e as <b>Tarefas delegadas</b> (só para quem tem equipe), <b>Tarefas</b>, a <b>Caixa de entrada</b>, as <b>Arquivadas</b> e <b>Avisos</b>. Todo mundo começa pelas próprias <b>Tarefas</b>; o Painel fica a um clique, no menu.</li>
           <li>O menu pode ser recolhido pelo botão <b>Recolher menu</b>, no rodapé dele. Recolhido, ele mostra só os ícones.</li>
+          <li>No celular, o menu fica no botão <b>☰</b> (3 barrinhas), no alto à esquerda. Um número laranja nele mostra quanta coisa espera por você. Toque para abrir; ele fecha no <b>X</b>, tocando fora dele, com o botão <b>Voltar</b> do celular ou ao escolher uma tela.</li>
           <li>No topo, à direita, ficam a <b>busca</b>, o tamanho do texto (<b>A−</b> / <b>A+</b>) e o botão de <b>tema</b>: automático (segue o Windows), claro ou escuro. Cada clique troca o tema.</li>
         </ol>
       </Sec>
@@ -272,7 +273,7 @@ export function HelpPage({ isAdmin }: { isAdmin: boolean }) {
           <li><b>Avisos</b> chegam no app e por e-mail quando: uma tarefa é delegada a você, aceita, devolvida, concluída, reaberta, arquivada com ciente, cancelada (ou o cancelamento é desfeito), transferida para você, ou quando o prazo de uma tarefa que você delegou muda.</li>
           <li><b>Avisos de prazo por e-mail:</b> na <b>véspera</b> do prazo (“Prazo amanhã”) e no <b>dia seguinte</b>, se a tarefa continuar aberta (“Prazo vencido”), uma vez cada. Vão para quem está com a tarefa; numa tarefa delegada, quem delegou recebe também o de vencido. Se o prazo mudar, o aviso vale para a nova data.</li>
           <li><b>Resumo diário por e-mail:</b> às <b>7h</b>, de segunda a sexta, com o que vence hoje, o que está atrasado, as delegações aguardando o seu aceite e as tarefas aguardando o seu ciente, cada uma com o número e o link. Dia sem nada, sem e-mail.</li>
-          <li><b>Meus dados:</b> clique no seu nome, no alto do menu à esquerda (ou em <b>Meus dados</b>, embaixo), para desligar o resumo diário ou os avisos de prazo. Os avisos de delegação continuam chegando sempre.</li>
+          <li><b>Meus dados:</b> clique no seu nome, no alto do menu à esquerda (ou em <b>Meus dados</b>, embaixo; no celular, dentro do <b>☰</b>), para desligar o resumo diário ou os avisos de prazo. Os avisos de delegação continuam chegando sempre.</li>
         </ul>
       </Sec>
 

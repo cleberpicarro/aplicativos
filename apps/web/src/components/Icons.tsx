@@ -13,6 +13,7 @@ const P: Record<string, ReactElement> = {
   refresh: <><path d="M20 12a8 8 0 1 1-2.4-5.7" /><path d="M20 4v5h-5" /></>,
   archive: <><rect x="3.5" y="4.5" width="17" height="4" rx="1" /><path d="M5.5 8.5v10a1 1 0 0 0 1 1h11a1 1 0 0 0 1-1v-10M10 12.5h4" /></>,
   x: <path d="M6 6l12 12M18 6L6 18" />,
+  menu: <path d="M4 7h16M4 12h16M4 17h16" />,
   xc: <><circle cx="12" cy="12" r="8.5" /><path d="M9 9l6 6M15 9l-6 6" /></>,
   out: <><path d="M7 7l10 10" /><path d="M17 9v8H9" /></>,
   into: <><path d="M17 7L7 17" /><path d="M7 9v8h8" /></>,

@@ -46,7 +46,17 @@ export async function outraPessoa(browser: Browser, quem: Pessoa, opts: Paramete
   return { page, fechar: () => ctx.close() };
 }
 
+/** Item 68: no celular o menu fica atrás do botão ☰; no computador ele já está à vista e isto não faz nada. */
+export async function abrirMenu(page: Page) {
+  const botao = page.getByRole('button', { name: /^Abrir menu/ });
+  if (await botao.isVisible() && !(await page.getByRole('button', { name: 'Fechar menu' }).isVisible())) {
+    await botao.click();
+    await expect(page.getByRole('button', { name: 'Fechar menu' })).toBeVisible();
+  }
+}
+
 export async function irPara(page: Page, menu: string) {
+  await abrirMenu(page);
   const link = page.getByRole('navigation', { name: 'Principal' }).getByRole('link', { name: new RegExp(`^${menu}(\\s*\\d+)?$`) });
   await link.click();
   await expect(page.locator('.topbar h1')).toHaveText(menu);
