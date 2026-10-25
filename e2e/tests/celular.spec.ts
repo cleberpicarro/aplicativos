@@ -1,4 +1,4 @@
-import { test, expect, entrar, criarTarefa, abrirTarefa, aviso, unico } from './apoio';
+import { test, expect, entrar, criarTarefa, abrirTarefa, aviso, unico, dialogo } from './apoio';
 
 test.describe('uso no celular', () => {
   test('as telas principais cabem na largura, sem rolar para o lado @celular', async ({ page, isMobile }) => {
@@ -13,6 +13,24 @@ test.describe('uso no celular', () => {
       const barra = await page.locator('.side').evaluate((el) => el.getBoundingClientRect().height);
       expect(barra, `a barra de cima de ${rota} esticou`).toBeLessThan(80);
     }
+  });
+
+  test('a página termina perto da fase visível, mesmo com outra fase comprida @celular', async ({ page, isMobile }) => {
+    test.skip(!isMobile, 'só no celular');
+    await entrar(page, 'beatriz');
+    // Enche a fase "Feito" (fora da tela, à direita) com muitas tarefas.
+    const col = page.getByRole('region', { name: 'Feito', exact: true });
+    await col.getByRole('button', { name: 'Adicionar tarefa' }).click();
+    await col.getByLabel('Título da nova tarefa').fill(Array.from({ length: 30 }, (_, i) => unico(`Antiga ${i + 1}`)).join('\n'));
+    await col.getByLabel('Título da nova tarefa').press('Enter');
+    await dialogo(page, 'O texto tem 30 linhas').getByRole('button', { name: 'Criar 30 tarefas' }).click();
+    await expect(page.locator('.toast', { hasText: '30 tarefas criadas.' })).toBeVisible();
+    await page.keyboard.press('Escape');
+    // Item 69: a fase longa rola por dentro; a página não fica com a altura dela.
+    const fase = await col.evaluate((el) => el.getBoundingClientRect().height);
+    const m = await page.evaluate(() => ({ pagina: document.documentElement.scrollHeight, tela: window.innerHeight }));
+    expect(fase, 'a fase passou da altura da tela').toBeLessThanOrEqual(m.tela);
+    expect(m.pagina, 'a página ficou muito mais comprida que a tela').toBeLessThan(m.tela * 1.6);
   });
 
   test('criar tarefa e mudar de fase pelo “Mover para” @celular', async ({ page }) => {
