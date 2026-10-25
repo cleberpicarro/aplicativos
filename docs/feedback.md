@@ -433,3 +433,13 @@ O número 22 ficou com o **site comercial** (registrado junto com o site, no ram
 ### Como ficou (Esconder inativas)
 
 66. Ao marcar ou desmarcar **Esconder inativas**, a escolha é gravada na conta de quem marcou e volta assim da próxima vez que a tela Pessoas for aberta, em qualquer aparelho. Cada administrador tem a sua escolha. A tela muda na hora; se a gravação falhar (sem internet), vale só naquela visita. **Por dentro:** migração `009_esconder_inativas.sql` (coluna `users.hide_inactive`, desmarcada por padrão), `PATCH /api/me/prefs` aceita `hideInactive` e `GET /api/me` devolve em `prefs.hideInactive`. Testes: na API (`api.test.ts`, gravar, valor só da própria pessoa, valor inválido recusado) e no roteiro de tela `administracao.spec.ts` (marcar, recarregar a página e continuar marcada; desmarcar e continuar desmarcada). Ajuda atualizada.
+
+## Campo “Título da tarefa” grande depois de criar em lote (implementado)
+
+| # | Ponto | Tela | Status |
+|---|---|---|---|
+| 67 | **Defeito: depois de incluir tarefas em lote, o campo “Título da tarefa” fica aberto e grande**, achado pelo Cleber (25/10), com print da fase Priorização: “Quando incluo uma tarefa em lote (várias linhas com enter ao final) ele deixa a última tarefa aberta com o texto expandido.” **Causa:** o campo cresce para mostrar todas as linhas, mas só recalculava a altura quando a pessoa mexia no texto; quando o app esvaziava o campo sozinho, depois de criar as tarefas, ele ficava do tamanho do texto colado (de 31 para 153 pixels no teste). O mesmo acontecia com “Criar 1 tarefa” num texto de várias linhas. **Proposta:** recalcular a altura sempre que o texto mudar, inclusive quando o app o esvazia. **Build:** o Cleber disse “build” (25/10). | Tarefas (Quadro, Adicionar tarefa) | Implementado |
+
+### Como ficou (campo depois do lote)
+
+67. Depois de **Criar N tarefas** ou **Criar 1 tarefa**, o campo vazio volta ao tamanho de uma linha, pronto para a próxima tarefa. Enquanto se digita ou cola, ele continua crescendo com o texto, até o limite de sempre (com barra de rolagem depois disso). **Por dentro:** em `Boards.tsx` (`AddCard`), a altura do campo passou a ser ajustada sempre que o texto muda, e não só ao digitar. Roteiro de tela `quadros.spec.ts` (texto com várias linhas) confere que o campo cresce ao colar e volta a uma linha depois de criar em lote e depois de “Criar 1 tarefa”.
