@@ -241,12 +241,22 @@ h2 .c.attn { color: var(--attn); }
 .kc .meta .more { position: relative; font: 500 0.74rem var(--mono); color: var(--muted); padding: 0 4px; border-radius: 4px; background: var(--hover); cursor: help; }
 /* Item 61: balão com a tarefa completa ao parar o mouse sobre o cartão. */
 .peek { position: fixed; z-index: 70; background: var(--bg); color: var(--fg); border: 1px solid var(--edge); border-radius: 8px; box-shadow: var(--shadow);
-  padding: 10px 12px; pointer-events: none; font-size: 0.86rem; line-height: 1.4; display: flex; flex-direction: column; gap: 6px; }
+  padding: 10px 12px; font-size: 0.86rem; line-height: 1.4; display: flex; flex-direction: column; gap: 6px; }
 .peek-t { font-weight: 600; font-size: 0.92rem; overflow-wrap: anywhere; }
 .peek-d { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--fg); display: -webkit-box; -webkit-line-clamp: 15; -webkit-box-orient: vertical; overflow: hidden; }
 .peek-more { margin: 0; color: var(--muted); font-style: italic; font-size: 0.8rem; }
 .peek-l { margin: 0; padding: 6px 0 0; list-style: none; border-top: 1px solid var(--line); color: var(--muted); display: flex; flex-direction: column; gap: 2px; }
 .peek-l .late { color: var(--late); }
+/* Itens 70 e 71: links no texto e botão de copiar no balão. */
+.peek-h { display: flex; align-items: flex-start; gap: 8px; }
+.peek-h .peek-t { flex: 1; min-width: 0; }
+.peek-copy { flex: none; display: inline-flex; align-items: center; gap: 4px; height: 1.6rem; min-width: 1.6rem; justify-content: center; margin: -3px -5px 0 0;
+  padding: 0 4px; border: 0; border-radius: 5px; background: none; color: var(--muted); cursor: pointer; font-size: 0.78rem; }
+.peek-copy:hover { background: var(--hover); color: var(--fg); }
+.peek-copy.on { color: var(--accent); }
+.peek-copy .i { width: 1rem; height: 1rem; }
+.tlink { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; overflow-wrap: anywhere; }
+.tlink:hover { text-decoration-thickness: 2px; }
 .kc .meta .ico { width: 1rem; height: 1rem; }
 .kc.done .t { text-decoration: line-through; color: var(--muted); }
 /* Item 54: cartão que o servidor ainda está criando. */
@@ -812,3 +822,13 @@ kbd { display: inline-block; min-width: 1.6em; padding: 1px 6px; border: 1px sol
   .drawer .foot { margin-top: auto; padding-top: 8px; border-top: 1px solid var(--line); flex-direction: column; gap: 2px; }
   .drawer .foot .collapse { display: none; }
 }
+
+/* Item 70: descrição da tarefa aberta como texto, com links clicáveis; clicar abre a edição. */
+.desc-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.desc-view { margin: 4px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.45; font-size: 0.92rem; min-height: 2.6rem; padding: 7px 10px;
+  border: 1px solid transparent; border-radius: 6px; cursor: text; }
+.desc-view:not(.ro):hover { border-color: var(--line); background: var(--hover); }
+.desc-view.ro { min-height: 0; padding: 0; cursor: auto; }
+.desc-view.empty { padding: 0; border: 0; }
+.desc-add { width: 100%; min-height: 3rem; text-align: left; border: 1px dashed var(--line); border-radius: 6px; background: none; color: var(--muted); padding: 7px 10px; cursor: text; font-size: 0.92rem; }
+.desc-add:hover { background: var(--hover); color: var(--fg); }

@@ -25,6 +25,8 @@ test.describe('meus quadros', () => {
     await expect(page.locator('article.kc', { hasText: segunda }).locator('.code')).toHaveText('#2');
 
     const dlg = await abrirTarefa(page, codigo);
+    // Item 70: a descrição aparece como texto; clicar nela abre a caixa para editar.
+    await dlg.getByRole('button', { name: /Adicionar descrição/ }).click();
     await dlg.getByLabel('Descrição').fill('Dados do trimestre');
     await dlg.getByLabel('Novo item do checklist').click(); // sai da descrição: salva
     await aviso(page, 'Descrição salva.');
@@ -188,7 +190,7 @@ test.describe('meus quadros', () => {
     await expect.poll(altura).toBe(umaLinha);
     const codigo = (await col.locator('article.kc').getAttribute('data-id'))!;
     const dlg = await abrirTarefa(page, codigo);
-    await expect(dlg.getByLabel('Descrição')).toHaveValue('pauta: metas');
+    await expect(dlg.getByTestId('descricao')).toHaveText('pauta: metas');
   });
 
   test('tarefa privada não aparece para a gestora', async ({ page, browser }) => {
@@ -390,5 +392,64 @@ test.describe('meus quadros', () => {
     // Sai do cartão: o balão some. Clicar no cartão também fecha.
     await page.mouse.move(box.x + box.width + 300, box.y + box.height + 300);
     await expect(balao).toHaveCount(0);
+  });
+
+  test('links clicáveis no balão e na tarefa, e copiar pelo balão (itens 70 e 71)', async ({ page, context }) => {
+    await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+    await entrar(page, 'lucas');
+    const titulo = unico('Ver proposta');
+    const id = await criarTarefa(page, titulo);
+    const desc = 'Proposta em https://example.com/proposta?id=7.\nDúvidas: ana@nerus.com.br';
+    await api(page, 'PATCH', `/cards/${id}`, { description: desc });
+    await page.reload();
+    const card = page.locator(`article.kc[data-id="${id}"]`);
+    await card.scrollIntoViewIfNeeded();
+    const box = (await card.boundingBox())!;
+    await page.mouse.move(box.x + 60, box.y + 12);
+    const balao = page.getByRole('tooltip');
+    await expect(balao).toBeVisible();
+
+    // O mouse vai do cartão até o balão (passando pelo espaço entre eles) e o balão continua aberto.
+    const link = balao.getByRole('link', { name: 'https://example.com/proposta?id=7' });
+    await expect(link).toHaveAttribute('href', 'https://example.com/proposta?id=7');
+    await expect(link).toHaveAttribute('target', '_blank');
+    await expect(balao.getByRole('link', { name: 'ana@nerus.com.br' })).toHaveAttribute('href', 'mailto:ana@nerus.com.br');
+    const lb = (await link.boundingBox())!;
+    await page.mouse.move(lb.x + lb.width / 2, lb.y + lb.height / 2, { steps: 8 });
+    await expect(balao).toBeVisible();
+
+    // Clicar no link abre o destino numa aba nova, sem abrir a tarefa.
+    await context.route('https://example.com/**', (r) => r.fulfill({ body: '<title>Proposta</title>ok', contentType: 'text/html' }));
+    const [aba] = await Promise.all([context.waitForEvent('page'), link.click()]);
+    await expect(aba).toHaveURL('https://example.com/proposta?id=7');
+    await aba.close();
+    await expect(page).not.toHaveURL(/tarefa/);
+
+    // Copiar: o ícone copia a descrição e mostra “Copiado”, sem fechar o balão.
+    await page.mouse.move(box.x + 60, box.y + 12);
+    await expect(balao).toBeVisible();
+    await balao.getByRole('button', { name: 'Copiar a descrição' }).click();
+    await expect(balao).toContainText('Copiado');
+    expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(desc);
+    await expect(balao).toBeVisible();
+    // Tirar o mouse do balão e do cartão: some.
+    await page.mouse.move(5, 5);
+    await expect(balao).toHaveCount(0);
+
+    // Na tarefa aberta, a descrição mostra os links; clicar no texto (fora do link) abre a edição.
+    const dlg = await abrirTarefa(page, id);
+    const texto = dlg.getByTestId('descricao');
+    await expect(texto.getByRole('link', { name: 'https://example.com/proposta?id=7' })).toHaveAttribute('target', '_blank');
+    await texto.click({ position: { x: 3, y: 3 } }); // no texto, fora do link
+    await expect(dlg.getByLabel('Descrição')).toHaveValue(desc);
+    await expect(dlg.getByLabel('Descrição')).toBeFocused();
+    await dlg.getByLabel('Descrição').fill('Só texto agora, www.nerus.com.br');
+    await dlg.getByLabel('Novo item do checklist').click();
+    await aviso(page, 'Descrição salva.');
+    await expect(texto.getByRole('link', { name: 'www.nerus.com.br' })).toHaveAttribute('href', 'https://www.nerus.com.br');
+    // Comentário com link também fica clicável.
+    await dlg.getByLabel('Novo comentário').fill('Ver http://example.com/ata');
+    await dlg.getByRole('button', { name: 'Comentar' }).click();
+    await expect(dlg.locator('.cmt').getByRole('link', { name: 'http://example.com/ata' })).toBeVisible();
   });
 });
