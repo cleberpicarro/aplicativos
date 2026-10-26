@@ -9,6 +9,7 @@ import { go } from '../lib/router';
 import { BOARD_COLORS } from '../pages/Boards';
 import { cardFromBoards, changeCard, changeChecklistItem } from '../lib/optimistic';
 import { isCtrlEnter, isTyping } from '../lib/shortcuts';
+import { Linked } from './Linked';
 
 type Sub = null | 'delegate' | 'transfer' | 'decline' | 'reopen' | 'redelegate' | 'accept' | 'cancel' | 'cancelChild';
 
@@ -141,7 +142,7 @@ export function CardModal({ code, onClose }: { code: string; onClose: () => void
           </span>
         }
       >
-        {owner && !archived ? <TitleEditor id={card.id} title={card.title} /> : <div style={{ fontSize: '1.1rem', fontWeight: 600 }}>{card.title}</div>}
+        {owner && !archived ? <TitleEditor id={card.id} title={card.title} /> : <div style={{ fontSize: '1.1rem', fontWeight: 600 }}><Linked text={card.title} /></div>}
 
         {canSeeLog && (
           <div className="subtabs" role="tablist">
@@ -272,18 +273,36 @@ function TitleEditor({ id, title }: { id: string; title: string }) {
   );
 }
 
+/* Item 70 (opção A): a descrição aparece como texto, com os links clicáveis; clicar fora de um link (ou em Editar) abre a caixa. */
 function Description({ id, text, editable }: { id: string; text: string; editable: boolean }) {
   const [v, setV] = useState(text);
+  const [editing, setEditing] = useState(false);
   const { run } = useAction();
   const qc = useQueryClient();
   useEffect(() => setV(text), [text]);
-  if (!editable) return text ? <div><span className="label">Descrição</span><p style={{ margin: '4px 0 0', whiteSpace: 'pre-wrap' }}>{text}</p></div> : null;
+  if (!editable) return text ? <div><span className="label">Descrição</span><p className="desc-view ro"><Linked text={text} /></p></div> : null;
+  if (!editing) {
+    return (
+      <div className="field">
+        <div className="desc-head">
+          <span className="label">Descrição</span>
+          {text.trim() && <button type="button" className="link" onClick={() => setEditing(true)}>Editar</button>}
+        </div>
+        {/* Clicar num link abre o link; clicar no resto do texto (sem estar selecionando) abre a edição. */}
+        <div className={`desc-view${text.trim() ? '' : ' empty'}`} data-testid="descricao"
+          onClick={(e) => { if (!(e.target as HTMLElement).closest('a') && !window.getSelection()?.toString()) setEditing(true); }}>
+          {text.trim() ? <Linked text={text} /> : <button type="button" className="desc-add" onClick={() => setEditing(true)}>Adicionar descrição: detalhes, contexto, links…</button>}
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="field">
       <label htmlFor="c-desc">Descrição</label>
-      <textarea id="c-desc" className="textarea" value={v} onChange={(e) => setV(e.target.value)} placeholder="Detalhes, contexto, links… (Ctrl+Enter salva)"
+      <textarea id="c-desc" className="textarea" value={v} autoFocus onChange={(e) => setV(e.target.value)} placeholder="Detalhes, contexto, links… (Ctrl+Enter salva)"
+        onFocus={(e) => { const n = e.currentTarget.value.length; e.currentTarget.setSelectionRange(n, n); }}
         onKeyDown={(e) => { if (isCtrlEnter(e)) { e.preventDefault(); e.currentTarget.blur(); } }}
-        onBlur={() => { if (v !== text) run(() => patch(`/cards/${id}`, { description: v }), 'Descrição salva.', { optimistic: () => changeCard(qc, id, { description: v }), scope: 'card' }); }} />
+        onBlur={() => { setEditing(false); if (v !== text) run(() => patch(`/cards/${id}`, { description: v }), 'Descrição salva.', { optimistic: () => changeCard(qc, id, { description: v }), scope: 'card' }); }} />
     </div>
   );
 }
@@ -358,7 +377,7 @@ function Comments({ cardId, comments, canPost }: { cardId: string; comments: Car
             <Avatar name={c.authorName} />
             <div>
               <div className="who2"><b>{c.authorName}</b> · <time title={dateTime(c.createdAt)}>{relative(c.createdAt)}</time></div>
-              <p>{c.body}</p>
+              <p><Linked text={c.body} /></p>
             </div>
           </div>
         ))}
