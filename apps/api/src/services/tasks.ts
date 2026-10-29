@@ -1,6 +1,6 @@
 import { one, many, type Db } from '../lib/db.js';
 import { badRequest, conflict, forbidden, notFound } from '../lib/errors.js';
-import type { Actor } from './actors.js';
+import { subWhere, type Actor } from './actors.js';
 import { loadCard, nextPosition, cardRef, numOf, isDiscarded } from './cards.js';
 import { BOARD_COLORS, ownList } from './boards.js';
 import { logEvent } from './events.js';
@@ -105,6 +105,8 @@ export async function updateCard(db: Db, actor: Actor, cardId: string, patch: Ca
     await db.query('UPDATE cards SET color = $2 WHERE id = $1', [cardId, patch.color]);
   }
   if (patch.isPrivate !== undefined && patch.isPrivate !== row.is_private) {
+    // Item 72: só a própria pessoa decide o que é privado; o substituto não liga nem desliga.
+    if (actor.sub) throw forbidden('Só a própria pessoa marca ou desmarca uma tarefa como privada.');
     // RN-08 e item 43: tarefa que tem ou teve delegação (recebida ou delegada, menos a cancelada) não pode ser privada.
     if (patch.isPrivate && (row.d_id || (await one(db, `SELECT 1 FROM delegations WHERE parent_card_id = $1 AND status <> 'CANCELED'`, [cardId])))) {
       throw conflict('Uma tarefa delegada não pode ser privada.');
@@ -270,7 +272,7 @@ export async function archiveDoneInList(db: Db, actor: Actor, listId: string) {
   const rows = await many<{ id: string }>(
     db,
     `SELECT c.id FROM cards c
-      WHERE c.list_id = $1 AND c.owner_id = $2 AND c.archived_at IS NULL AND c.completed_at IS NOT NULL
+      WHERE c.list_id = $1 AND c.owner_id = $2 AND c.archived_at IS NULL AND c.completed_at IS NOT NULL${subWhere(actor)}
         AND NOT EXISTS (SELECT 1 FROM delegations d WHERE d.card_id = c.id)
         AND NOT EXISTS (SELECT 1 FROM delegations x WHERE x.parent_card_id = c.id AND x.status IN ('PENDING_ACCEPT','IN_PROGRESS','AWAITING_ACK','DECLINED'))
       FOR UPDATE`,
@@ -340,8 +342,8 @@ export async function addComment(db: Db, actor: Actor, cardId: string, body: str
 export async function cardEvents(db: Db, cardId: string) {
   return many(
     db,
-    `SELECT e.id, e.type, e.before, e.after, e.created_at, u.name AS actor_name
-       FROM card_events e LEFT JOIN users u ON u.id = e.actor_id
+    `SELECT e.id, e.type, e.before, e.after, e.created_at, u.name AS actor_name, v.name AS via_name
+       FROM card_events e LEFT JOIN users u ON u.id = e.actor_id LEFT JOIN users v ON v.id = e.via_user_id
       WHERE e.card_id = $1 ORDER BY e.created_at, e.id`,
     [cardId],
   );

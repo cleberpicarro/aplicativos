@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { del, get, patch, post, type Card } from './lib/api';
+import { del, get, patch, post, setActingAs, type Card } from './lib/api';
 import { go, useRoute } from './lib/router';
 import { STATUS, cardNo, type StatusKey } from './lib/format';
 import { Avatar, CardStatusIcon, Dialog, ErrorText, StatusIcon, TipIcon, useMe } from './components/ui';
 import { Icon, type IconName } from './components/Icons';
 import { CardModal } from './components/CardModal';
+import { SubstitutionBox } from './components/Substitution';
 import { useAction } from './components/dialogs';
 import { BoardsPage, rememberedBoard } from './pages/Boards';
 import { InboxPage } from './pages/Inbox';
@@ -144,12 +145,14 @@ function Shell() {
   useEffect(() => { if (wide && menu) closeMenu(); }, [wide]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const hasReports = me.directReports.length > 0;
+  // Item 72: agindo como a pessoa substituída (seletor do topo). Dados pessoais, avisos e administração ficam de fora.
+  const acting = me.substitution.acting;
   // Item 58: todo mundo da hierarquia abre nas próprias tarefas (o Painel fica a um clique, no menu).
   const home = !me.user.inHierarchy ? '/pessoas' : '/quadros';
   let page = route.path;
   const cardCode = page.startsWith('/tarefa/') ? decodeURIComponent(page.slice(8)) : null;
   if (cardCode) page = lastPage.current;
-  else if (!PAGES[page]) page = home;
+  else if (!PAGES[page] || (acting && (page === '/avisos' || page === '/pessoas'))) page = home;
   // Guarda também os filtros (?filtro=...) para voltar ao mesmo lugar ao fechar uma tarefa.
   if (!cardCode) lastPage.current = PAGES[route.path] && route.params.toString() ? `${page}?${route.params}` : page;
 
@@ -188,8 +191,8 @@ function Shell() {
     { path: '/entrada', label: 'Caixa de entrada', icon: 'inbox', n: me.counts.inbox, show: me.user.inHierarchy },
     { path: '/arquivadas', label: 'Arquivadas', icon: 'archive', show: me.user.inHierarchy },
     { path: '/delegadas', label: 'Tarefas delegadas', icon: 'users', n: me.counts.needAction, attn: true, show: hasReports },
-    { path: '/avisos', label: 'Avisos', icon: 'bell', n: me.counts.unread, show: true },
-    { path: '/pessoas', label: 'Pessoas', icon: 'shield', show: me.user.isAdmin },
+    { path: '/avisos', label: 'Avisos', icon: 'bell', n: me.counts.unread, show: !acting },
+    { path: '/pessoas', label: 'Pessoas', icon: 'shield', show: me.user.isAdmin && !acting },
   ];
 
   // O número no ☰ soma os contadores do menu (caixa de entrada, delegadas que pedem ação, avisos não lidos).
@@ -216,9 +219,15 @@ function Shell() {
             <span className="brand"><img src="/icon.svg" alt="" /><span>SyncTasks</span></span>
             <button className="x" onClick={() => closeMenu()} aria-label="Fechar menu" title="Fechar menu"><Icon name="x" /></button>
           </div>
-          <button className="who" onClick={() => closeMenu(() => setMyData(true))} title={collapsed ? `${me.user.name} · ${me.user.roleTitle}. Meus dados` : 'Meus dados'}>
-            <Avatar name={me.user.name} large /><div style={{ minWidth: 0 }}><b>{me.user.name}</b><small>{me.user.roleTitle}</small></div>
-          </button>
+          {acting ? (
+            <div className="who acting-who" title={`Substituindo ${acting.name}`}>
+              <Avatar name={acting.name} large /><div style={{ minWidth: 0 }}><b>{acting.name}</b><small>Substituído(a) por você</small></div>
+            </div>
+          ) : (
+            <button className="who" onClick={() => closeMenu(() => setMyData(true))} title={collapsed ? `${me.user.name} · ${me.user.roleTitle}. Meus dados` : 'Meus dados'}>
+              <Avatar name={me.user.name} large /><div style={{ minWidth: 0 }}><b>{me.user.name}</b><small>{me.user.roleTitle}</small></div>
+            </button>
+          )}
           <nav className="nav" aria-label="Principal">
             {nav.filter((n) => n.show).map((n) => (
               <a key={n.path} href={`#${n.path}`} aria-current={page === n.path ? 'page' : undefined} title={collapsed ? n.label : undefined}
@@ -235,7 +244,7 @@ function Shell() {
             </button>
             <button onClick={() => closeMenu(() => setLegend(true))} title="Legenda dos ícones"><span className="ico"><Icon name="help" /></span><span className="lbl">Legenda</span></button>
             <button className="keys-btn" onClick={() => setKeysHelp(true)} title="Atalhos de teclado (tecla ?)"><span className="ico"><Icon name="keyboard" /></span><span className="lbl">Atalhos</span></button>
-            <button className="my-data" onClick={() => closeMenu(() => setMyData(true))} title="Meus dados"><span className="ico"><Icon name="self" /></span><span className="lbl">Meus dados</span></button>
+            {!acting && <button className="my-data" onClick={() => closeMenu(() => setMyData(true))} title="Meus dados"><span className="ico"><Icon name="self" /></span><span className="lbl">Meus dados</span></button>}
             <button className="collapse" onClick={toggleSide} title={collapsed ? 'Expandir menu' : 'Recolher menu'} aria-expanded={!collapsed}>
               <span className="ico"><Icon name={collapsed ? 'sideOpen' : 'sideClose'} /></span><span className="lbl">Recolher menu</span>
             </button>
@@ -247,6 +256,7 @@ function Shell() {
         <div className="topbar">
           <h1>{PAGES[page]?.title}</h1>
           <div className="tools">
+            {(acting || me.substitution.covering.length > 0) && <ActingPicker />}
             {page === '/quadros' && wide && <span className="filter-slot" ref={setFilterSlot} />}
             {page === '/quadros' && (
               <span className="view-switch" role="group" aria-label="Ver as tarefas em">
@@ -264,6 +274,7 @@ function Shell() {
             </button>
           </div>
         </div>
+        {acting && <ActingBar />}
         {page === '/painel' && <DashboardPage />}
         {page === '/quadros' && (view === 'tabela' ? <TablePage top={wide ? filterSlot : null} /> : <BoardsPage top={wide ? filterSlot : null} />)}
         {page === '/arquivadas' && <ArchivedPage />}
@@ -277,6 +288,37 @@ function Shell() {
       {legend && <LegendDialog onClose={() => setLegend(false)} />}
       {myData && <MyDataDialog onClose={() => setMyData(false)} />}
       {keysHelp && <ShortcutsDialog onClose={() => setKeysHelp(false)} />}
+    </div>
+  );
+}
+
+/** Item 72: “De quem são as tarefas na tela”: as próprias ou as de quem a pessoa está substituindo. */
+function ActingPicker() {
+  const me = useMe().data!;
+  const { covering, acting } = me.substitution;
+  return (
+    <label className={`acting-pick${acting ? ' on' : ''}`} title="Trocar entre as suas tarefas e as de quem você está substituindo">
+      <Icon name="users" />
+      <select value={acting?.id ?? ''} onChange={(e) => setActingAs(e.target.value || null)} aria-label="Tarefas de quem">
+        <option value="">Minhas tarefas</option>
+        {covering.map((c) => <option key={c.id} value={c.id}>Substituindo {c.name}</option>)}
+      </select>
+    </label>
+  );
+}
+
+/** Item 72: faixa que lembra, em todas as telas, que se está agindo por outra pessoa. */
+function ActingBar() {
+  const acting = useMe().data!.substitution.acting!;
+  return (
+    <div className="acting-bar" role="status">
+      <Icon name="users" />
+      <span>
+        Você está substituindo <b>{acting.name}</b>. {acting.shareCommon
+          ? 'Aparecem as tarefas comuns e as delegações; as privadas não aparecem.'
+          : 'Aparecem só as delegações, o que chegou de outras pessoas e o que você criar; as tarefas comuns e as privadas não aparecem.'}
+      </span>
+      <button className="b sm" onClick={() => setActingAs(null)}>Voltar para as minhas tarefas</button>
     </div>
   );
 }
@@ -379,6 +421,7 @@ function MyDataDialog({ onClose }: { onClose: () => void }) {
           <p className="hint" style={{ margin: 0 }}>Os avisos de delegação (delegar, aceitar, devolver, concluir, ciente…) continuam chegando sempre.</p>
         </fieldset>
       )}
+      {me.user.inHierarchy && <SubstitutionBox />}
       {me.user.inHierarchy && <AssistantsBox />}
       <ErrorText error={error} />
     </Dialog>

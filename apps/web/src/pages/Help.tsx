@@ -20,6 +20,7 @@ const SECTIONS: [string, string][] = [
   ['devolver', 'Devolver e transferir'],
   ['codigo', 'Código, busca e avisos'],
   ['atalhos', 'Atalhos de teclado'],
+  ['ferias', 'Férias e ausências'],
   ['privacidade', 'Privacidade e log'],
   ['icones', 'Ícones'],
   ['glossario', 'Glossário'],
@@ -290,6 +291,18 @@ export function HelpPage({ isAdmin }: { isAdmin: boolean }) {
         <p>As mudanças aparecem na tela na hora em que você clica ou solta o cartão; o app grava por trás. Se o servidor recusar, a tela volta como estava e aparece um aviso com o motivo.</p>
       </Sec>
 
+      <Sec id="ferias" title="Férias e ausências">
+        <p>Antes de sair de férias ou se ausentar, escolha quem cuida das suas tarefas enquanto isso.</p>
+        <ol>
+          <li>Abra <b>Meus dados</b> e, em <b>Férias e ausências</b>, clique em <b>Escolher substituto</b>.</li>
+          <li>Escolha a pessoa. Não aparece ninguém da sua própria equipe nem quem também está ausente.</li>
+          <li>Decida se vai <b>compartilhar as tarefas comuns</b>. Sem compartilhar, o substituto vê só as tarefas ligadas a delegações (as que você recebeu e as que você delegou), o que chegou de outras pessoas e o que ele mesmo criar. Compartilhando, vê também as tarefas comuns. As <b>privadas nunca aparecem</b>: antes de sair, marque como privado o que for particular.</li>
+          <li>Se quiser, informe o <b>último dia fora</b>: no dia seguinte a substituição acaba sozinha. Sem data, vale até você clicar em <b>Encerrar substituição</b>.</li>
+        </ol>
+        <p><b>Para quem substitui:</b> aparece um seletor no alto da tela. Escolha <b>Substituindo [nome]</b> para ver os quadros, a caixa de entrada, o Painel e as Tarefas delegadas da pessoa e agir por ela: aceitar, delegar para a equipe dela, dar ciente, reabrir, cancelar, criar tarefas. Uma faixa laranja lembra que você está substituindo; <b>Voltar para as minhas tarefas</b> volta para as suas. Avisos, Meus dados, exportar e importar e o log da pessoa não ficam disponíveis, e só ela marca ou desmarca uma tarefa como privada.</p>
+        <p>Tudo o que o substituto faz fica registrado no log como feito por ele, substituindo a pessoa, e os comentários mostram “escrito por …, substituto”. Quem sai de surpresa (doença, por exemplo) pode ter o substituto escolhido pela administração.</p>
+      </Sec>
+
       <Sec id="privacidade" title="Privacidade e log">
         <ul>
           <li>Seus quadros são só seus. Quem está acima de você vê <b>apenas as tarefas que delegou a você</b> e quantas tarefas próprias você tem.</li>
@@ -363,6 +376,8 @@ export function HelpPage({ isAdmin }: { isAdmin: boolean }) {
           </li>
         </ol>
         <p>A pessoa inativa continua na lista com a situação <b>Inativa</b>; marque <b>Esconder inativas</b> para tirá-la da vista (a escolha fica gravada na sua conta e vale da próxima vez que abrir a tela). O e-mail continua com ela. Para reativar, use <b>Reativar</b> no mesmo menu: ela volta a entrar e encontra os quadros e as privadas como deixou, mas o que foi passado adiante não volta sozinho.</p>
+        <h3>Substituto em férias e ausências</h3>
+        <p>Quando alguém sai de surpresa e não escolheu substituto, abra o menu <b>…</b> da pessoa e escolha <b>Substituto em férias e ausências</b>. Funciona como em Meus dados (veja <b>Férias e ausências</b>): escolha quem substitui, se as tarefas comuns ficam compartilhadas e o último dia fora. A pessoa e o substituto recebem aviso. No mesmo lugar dá para encerrar.</p>
         <h3>Senhas</h3>
         <p>Quem esquecer a senha usa <b>Esqueci minha senha</b> na tela de login e recebe um link por e-mail, válido por 2 horas. A administração não vê nem define senhas.</p>
       </Sec>

@@ -1,6 +1,6 @@
 import { one, many, type Db } from '../lib/db.js';
 import { badRequest, conflict, forbidden, notFound } from '../lib/errors.js';
-import { isDirectReport, directReports, type Actor } from './actors.js';
+import { isDirectReport, directReports, subWhere, type Actor } from './actors.js';
 import { loadCard, selectCards, nextPosition, cardRef, numOf } from './cards.js';
 import { ownList } from './boards.js';
 import { logEvent } from './events.js';
@@ -57,7 +57,7 @@ export async function delegate(db: Db, actor: Actor, cardId: string, input: { to
 export async function inbox(db: Db, actor: Actor) {
   return selectCards(
     db,
-    `c.owner_id = $1 AND c.list_id IS NULL AND c.archived_at IS NULL AND (d.id IS NULL OR d.status = 'PENDING_ACCEPT')`,
+    `c.owner_id = $1 AND c.list_id IS NULL AND c.archived_at IS NULL AND (d.id IS NULL OR d.status = 'PENDING_ACCEPT')${subWhere(actor)}`,
     [actor.id],
     'c.updated_at DESC',
   );

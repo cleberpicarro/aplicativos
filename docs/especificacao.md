@@ -149,6 +149,8 @@ Só o administrador:
 |---|:-:|:-:|:-:|:-:|:-:|
 | Ver e editar os próprios quadros, fases e tarefas | ✔ | ✔ | ✔ | ✔ | — |
 | Ver quadros de outra pessoa | ✘ | ✘ | ✘ | ✘ | ✘ |
+| Ver e gerenciar os quadros de quem você substitui (seção 7.11) | ✔ ** | ✔ ** | ✔ ** | ✔ ** | — |
+| Escolher o substituto de outra pessoa | ✘ | ✘ | ✘ | ✘ | ✔ |
 | Delegar (ao subordinado direto) | ✘ | ✔ | ✔ | ✔ | — |
 | Ver a tela Tarefas delegadas | ✘ | ✔ | ✔ | ✔ | — |
 | Ver as tarefas que **ele** delegou | — | ✔ | ✔ | ✔ | — |
@@ -159,6 +161,7 @@ Só o administrador:
 | Transferir gestão | ✘ | ✘ | ✘ | ✘ | ✔ |
 
 \* A abrangência ainda está em aberto: todas as tarefas ou só as da diretoria. Ver a seção 20.
+\** Só enquanto a pessoa estiver ausente e tiver escolhido você; nunca as privadas e, se ela não compartilhou, também não as tarefas comuns (RN-54 a RN-58).
 
 ---
 
@@ -283,6 +286,15 @@ Só o administrador:
 - **RN-42** Uma pessoa desativada não faz login (as sessões abertas caem na hora), não aparece como destino de delegação nem de transferência, e mantém seus registros no log. Não existe excluir pessoa. O e-mail continua com ela: para usá-lo de novo, reative a pessoa.
 - **RN-43** (item 44) **Desativar** abre uma janela com as pendências da pessoa e as resolve numa transação só, passando para um **sucessor** escolhido pelo administrador (alguém ativo do mesmo nível ou o superior direto dela): (a) os **subordinados diretos** passam a responder ao sucessor, como na troca de superior (RN-38 a RN-41); (b) as **delegações que ela fez e estão em aberto** passam a ter o sucessor como delegador; (c) as **tarefas que ela recebeu e não terminou** voltam a quem delegou como **devolvidas** (“Devolvida porque [nome] foi desativado(a).”); as concluídas aguardando ciente ficam para o ciente (reabrir é recusado); (d) as **tarefas próprias abertas e não privadas** vão para a **caixa de entrada do sucessor**, com registro no log; (e) privadas, quadros, concluídas, arquivadas e o log ficam com ela. Sem pendências, não precisa de sucessor. Todos os envolvidos recebem aviso.
 - **RN-43a** **Reativar** devolve o acesso: a pessoa encontra os quadros e as privadas como deixou; o que foi passado adiante não volta sozinho.
+
+### 7.11 Substituição em férias e ausências (item 72)
+
+- **RN-54** Quem vai sair de férias ou se ausentar escolhe um **substituto** em **Meus dados › Férias e ausências**; numa saída de surpresa, a administração escolhe por ela em **Pessoas** (menu **…** › Substituto em férias e ausências). O substituto é alguém ativo da hierarquia, que **não** seja a própria pessoa, **ninguém da equipe dela** (subordinados diretos ou indiretos: daria ciente nas próprias tarefas) nem alguém que também esteja ausente com substituto. Há uma substituição em vigor por pessoa; escolher outro substituto encerra a anterior.
+- **RN-55** A pessoa escolhe se **compartilha as tarefas comuns**. O substituto **sempre** vê os quadros e as fases dela e, nas tarefas: as ligadas a delegação (recebidas ou repassadas a alguém, menos a cancelada), as que vieram de outra pessoa por transferência e as que ele mesmo criou ali. As **comuns** aparecem só se ela compartilhou. As **privadas nunca** aparecem, em nenhuma tela, busca, tabela, arquivadas ou contador.
+- **RN-56** A substituição vale até o **último dia fora** informado (no dia seguinte acaba sozinha) ou até alguém encerrar (a própria pessoa ou a administração). O substituto é avisado ao começar e ao terminar; a pessoa é avisada quando a administração liga ou encerra por ela.
+- **RN-57** Para quem substitui, aparece um **seletor no topo** (“Minhas tarefas” / “Substituindo [nome]”), com uma faixa de aviso enquanto estiver agindo pela pessoa. Nesse modo ele usa Tarefas (quadro e tabela), Caixa de entrada, Arquivadas, Painel e Tarefas delegadas **como a pessoa**: aceitar, devolver, descartar, delegar à equipe dela, dar ciente, reabrir, cancelar, transferir, criar e mover tarefas. Não ficam disponíveis: Avisos, Meus dados (e-mails, assistente, substituição), exportar e importar, fundo da área de trabalho, captura, o **log** e qualquer função de administração; só a própria pessoa marca ou desmarca uma tarefa como **privada**. A escolha do seletor vale para a aba do navegador.
+- **RN-58** Tudo o que o substituto faz fica no **log** da tarefa em nome da pessoa, com “por [substituto], substituto”; os **comentários** mostram “escrito por [substituto], substituto”. Os avisos e e-mails a terceiros saem em nome da pessoa substituída.
+
 
 ---
 
@@ -735,6 +747,7 @@ REST com JSON, sob `/api`. A autenticação usa cookie httpOnly de sessão. Toda
 | `GET /notifications` · `POST /notifications/read` | avisos |
 | `GET/POST/PATCH /admin/users` · `POST /admin/users/:id/transfer-management` · `POST /admin/users/:id/active` `{active}` | administração |
 | `GET /admin/users/:id/deactivation` · `POST /admin/users/:id/deactivate` `{successorId?}` | pendências e desativação com sucessor (item 44) |
+| `GET /substitution?userId=` · `POST /substitution` `{userId?, substituteId, shareCommon, endsOn?}` · `POST /substitution/end` `{userId?}` | substituição em férias (item 72): da própria pessoa ou, com `userId`, pela administração. Com o cabeçalho `X-SyncTasks-Como: <id da pessoa>`, o substituto age por ela, só nas rotas de tarefas (RN-57; as demais respondem 403) |
 
 **Erros:** 401 (não autenticado), 403 (sem permissão), 404 (não existe ou não visível; não revela que a tarefa existe), 409 (transição inválida ou fase não vazia), 422 (validação).
 

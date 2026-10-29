@@ -15,6 +15,8 @@ type Sub = null | 'delegate' | 'transfer' | 'decline' | 'reopen' | 'redelegate' 
 
 export function CardModal({ code, onClose }: { code: string; onClose: () => void }) {
   const me = useMe().data!;
+  // Item 72: na substituição, a tarefa é da pessoa substituída, e não de quem está usando o app.
+  const you = me.substitution.acting ? me.substitution.acting.name : 'você';
   const qc = useQueryClient();
   // Item 55: a janela abre na hora com o que o quadro já sabe da tarefa; checklist, comentários e o resto chegam em seguida.
   const q = useQuery({
@@ -157,15 +159,15 @@ export function CardModal({ code, onClose }: { code: string; onClose: () => void
           <div className="card-grid">
             <div style={{ display: 'grid', gap: 16, alignContent: 'start', minWidth: 0 }}>
               <div className="meta-line">
-                <span>Com <b style={{ fontWeight: 500, color: 'var(--fg)' }}>{owner ? 'você' : card.ownerName}</b></span>
-                {d && <span>· Delegada por {d.delegatorId === me.user.id ? 'você' : d.delegatorName}</span>}
+                <span>Com <b style={{ fontWeight: 500, color: 'var(--fg)' }}>{owner ? you : card.ownerName}</b></span>
+                {d && <span>· Delegada por {d.delegatorId === me.user.id ? you : d.delegatorName}</span>}
                 {card.transferredFrom && <span>· Transferida por {card.transferredFrom.name}</span>}
                 {card.source === 'web' && <span>· Capturada da web</span>}
                 {card.source === 'email' && <span>· Capturada do e-mail</span>}
                 {card.source === 'trello' && <span>· Importada do Trello</span>}
                 {card.source === 'arquivo' && <span>· Importada de arquivo do SyncTasks</span>}
                 {card.source === 'assistente' && <span>· Criada pelo assistente (Claude)</span>}
-                {d?.parentNum != null && <span>· Desdobramento da tarefa <span className="code">{cardNo(d.parentNum)}</span> de {d.delegatorId === me.user.id ? 'você' : firstName(d.delegatorName)}</span>}
+                {d?.parentNum != null && <span>· Desdobramento da tarefa <span className="code">{cardNo(d.parentNum)}</span> de {d.delegatorId === me.user.id ? you : firstName(d.delegatorName)}</span>}
               </div>
 
               {owner && d?.noPass && !archived && (
@@ -211,7 +213,8 @@ export function CardModal({ code, onClose }: { code: string; onClose: () => void
               </div>
               {owner && board && !archived && card.listId && <MoveTo cardId={card.id} boardId={board.id} listId={card.listId} />}
               {/* RN-08 e item 43: tarefa que tem ou teve delegação (menos a cancelada) não pode ser privada. */}
-              {owner && !d && !card.child && !archived && (
+              {/* Item 72: só a própria pessoa decide o que é privado; o substituto não vê essa opção. */}
+              {owner && !d && !card.child && !archived && !me.substitution.acting && (
                 <label className="check">
                   <input type="checkbox" checked={card.isPrivate}
                     onChange={(e) => { const isPrivate = e.target.checked; run(() => patch(`/cards/${card.id}`, { isPrivate }), isPrivate ? 'Tarefa privada: nenhum superior vê.' : 'Tarefa visível.', { optimistic: () => changeCard(qc, card.id, { isPrivate }), scope: 'card' }); }} />
@@ -376,7 +379,7 @@ function Comments({ cardId, comments, canPost }: { cardId: string; comments: Car
           <div key={c.id} className="cmt">
             <Avatar name={c.authorName} />
             <div>
-              <div className="who2"><b>{c.authorName}</b> · <time title={dateTime(c.createdAt)}>{relative(c.createdAt)}</time></div>
+              <div className="who2"><b>{c.authorName}</b>{c.viaName && <span className="hint"> (escrito por {c.viaName}, substituto)</span>} · <time title={dateTime(c.createdAt)}>{relative(c.createdAt)}</time></div>
               <p><Linked text={c.body} /></p>
             </div>
           </div>
@@ -451,7 +454,7 @@ function CardColor({ id, color }: { id: string; color: string | null }) {
 }
 
 /* ---------- log ---------- */
-interface Ev { id: number; type: string; before: any; after: any; created_at: string; actor_name: string | null }
+interface Ev { id: number; type: string; before: any; after: any; created_at: string; actor_name: string | null; via_name: string | null }
 
 const df = (v: string | null | undefined) => (v ? fullDate(v) : 'sem prazo');
 const cut = (s: string) => (s.length > 220 ? `${s.slice(0, 220)}…` : s);
@@ -509,7 +512,7 @@ function EventLog({ cardId }: { cardId: string }) {
           return (
             <li key={e.id}>
               <time>{dateTime(e.created_at)}</time>
-              <span><b style={{ fontWeight: 500 }}>{e.actor_name ?? 'Sistema'}</b> {d.text}{d.change && <span className="chg">{d.change}</span>}</span>
+              <span><b style={{ fontWeight: 500 }}>{e.actor_name ?? 'Sistema'}</b>{e.via_name && <> (por {e.via_name}, substituto)</>} {d.text}{d.change && <span className="chg">{d.change}</span>}</span>
             </li>
           );
         })}

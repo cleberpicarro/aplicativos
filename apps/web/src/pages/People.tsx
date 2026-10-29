@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { get, patch, post } from '../lib/api';
 import { Avatar, Dialog, ErrorText, Menu, useMe, useToast } from '../components/ui';
+import { SubstitutionBox } from '../components/Substitution';
 import { Icon } from '../components/Icons';
 import { firstName } from '../lib/format';
 import { ConfirmDialog, useAction } from '../components/dialogs';
@@ -27,7 +28,7 @@ const managerName = (p: Person) => `${p.name} (${LEVELS[p.level!]})`;
 export function PeoplePage() {
   const me = useMe().data!;
   const q = useQuery({ queryKey: ['people'], queryFn: () => get<Person[]>('/admin/users') });
-  const [dlg, setDlg] = useState<null | { kind: 'new' } | { kind: 'edit' | 'toggle' | 'deactivate'; person: Person }>(null);
+  const [dlg, setDlg] = useState<null | { kind: 'new' } | { kind: 'edit' | 'toggle' | 'deactivate' | 'substitution'; person: Person }>(null);
   const qc = useQueryClient();
   /** Item 66: a escolha fica gravada na conta; a tela muda na hora e o servidor guarda em seguida. */
   const [hideChoice, setHideChoice] = useState<boolean | null>(null);
@@ -74,6 +75,8 @@ export function PeoplePage() {
                 <td style={{ textAlign: 'right' }}>
                   <Menu label={`Ações para ${p.name}`} items={[
                     { label: 'Editar dados', onClick: () => setDlg({ kind: 'edit', person: p }) },
+                    // Item 72: para quem saiu de surpresa e não escolheu substituto.
+                    { label: 'Substituto em férias e ausências', onClick: () => setDlg({ kind: 'substitution', person: p }), disabled: !p.active || p.level === null },
                     { label: 'Reenviar convite', onClick: () => run(() => post(`/admin/users/${p.id}/invite`), `Convite reenviado para ${p.email}.`), disabled: !p.active },
                     { label: p.active ? 'Desativar' : 'Reativar', onClick: () => setDlg({ kind: p.active ? 'deactivate' : 'toggle', person: p }), danger: p.active, disabled: p.id === me.user.id },
                   ]} />
@@ -87,6 +90,11 @@ export function PeoplePage() {
 
       {dlg?.kind === 'new' && <NewPersonDialog people={people} onClose={() => setDlg(null)} />}
       {dlg?.kind === 'edit' && <EditPersonDialog person={dlg.person} people={people} self={dlg.person.id === me.user.id} onClose={() => setDlg(null)} />}
+      {dlg?.kind === 'substitution' && (
+        <Dialog title={`Substituto de ${dlg.person.name}`} onClose={() => setDlg(null)} footer={<button className="b pri" onClick={() => setDlg(null)}>Pronto</button>}>
+          <SubstitutionBox userId={dlg.person.id} name={dlg.person.name} />
+        </Dialog>
+      )}
       {dlg?.kind === 'deactivate' && <DeactivateDialog person={dlg.person} onClose={() => setDlg(null)} />}
       {dlg?.kind === 'toggle' && (
         <ConfirmDialog title="Reativar pessoa" confirm="Reativar"

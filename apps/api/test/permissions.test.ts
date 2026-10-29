@@ -325,6 +325,8 @@ describe('permissões em massa (frente 2)', () => {
       'GET /api/oauth/request', 'POST /api/oauth/decide', 'GET /api/me/assistants', 'DELETE /api/me/assistants/:id', 'POST /mcp', 'GET /mcp', 'DELETE /mcp',
       'GET /.well-known/oauth-protected-resource', 'GET /.well-known/oauth-protected-resource/mcp', 'GET /.well-known/oauth-authorization-server',
       'POST /oauth/register', 'GET /oauth/authorize', 'POST /oauth/token',
+      // item 72 (substituição em férias): cobertas em substituicao.test.ts
+      'GET /api/substitution', 'POST /api/substitution', 'POST /api/substitution/end',
       // públicas por natureza
       'POST /api/auth/login', 'POST /api/auth/logout', 'POST /api/auth/password/forgot', 'POST /api/auth/password/set', 'GET /api/health', 'GET /compartilhar',
     ]);

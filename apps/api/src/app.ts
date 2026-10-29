@@ -13,6 +13,7 @@ import * as tasks from './services/tasks.js';
 import * as deleg from './services/delegation.js';
 import * as admin from './services/admin.js';
 import * as misc from './services/misc.js';
+import * as subs from './services/substitution.js';
 import { importTrello, trelloImportSchema } from './services/importer.js';
 import { exportAll } from './services/exporter.js';
 import { captureWeb } from './services/capture.js';
@@ -32,6 +33,23 @@ declare module 'fastify' {
 }
 
 const SESSION_COOKIE = 'synctasks_sid';
+
+/** Item 72: o que o substituto pode fazer em nome da pessoa (o resto responde 403). */
+const SUBSTITUTE_ROUTES = new Set([
+  'GET /api/me',
+  'GET /api/boards', 'POST /api/boards', 'GET /api/boards/archived', 'GET /api/boards/:id', 'PATCH /api/boards/:id', 'POST /api/boards/:id/archive',
+  'POST /api/boards/:id/unarchive', 'POST /api/boards/:id/lists', 'GET /api/boards/:id/match',
+  'PATCH /api/lists/:id', 'POST /api/lists/:id/sort', 'POST /api/lists/:id/archive-done', 'POST /api/lists/:id/archive',
+  'POST /api/cards', 'POST /api/cards/batch', 'POST /api/cards/undo-create', 'GET /api/cards/by-code/:code', 'GET /api/cards/:id', 'PATCH /api/cards/:id',
+  'POST /api/cards/:id/move', 'POST /api/cards/:id/complete', 'POST /api/cards/:id/uncomplete', 'POST /api/cards/:id/archive', 'POST /api/cards/:id/unarchive',
+  'POST /api/cards/:id/checklist', 'PATCH /api/cards/:id/checklist/:itemId', 'DELETE /api/cards/:id/checklist/:itemId', 'POST /api/cards/:id/comments',
+  'POST /api/cards/:id/delegate', 'GET /api/inbox', 'POST /api/cards/:id/accept', 'POST /api/cards/:id/accept-delegate', 'POST /api/inbox/discard',
+  'POST /api/inbox/restore', 'POST /api/cards/:id/decline', 'GET /api/cards/:id/transfer-targets', 'POST /api/cards/:id/transfer',
+  'POST /api/delegations/:id/ack', 'POST /api/delegations/:id/reopen', 'POST /api/delegations/:id/cancel', 'POST /api/delegations/:id/undo-cancel',
+  'POST /api/delegations/:id/redelegate', 'POST /api/delegations/:id/no-pass', 'GET /api/delegations',
+  'GET /api/dashboard', 'GET /api/archived', 'GET /api/table', 'GET /api/table/options', 'GET /api/filters', 'POST /api/filters', 'PATCH /api/filters/:id',
+  'DELETE /api/filters/:id', 'GET /api/search',
+]);
 const uuid = z.string().uuid();
 const date = isoDate.nullable();
 
@@ -53,7 +71,15 @@ export async function buildApp({ pool, logger = false, serveWeb = false }: AppOp
     }
   });
   app.addHook('preHandler', async (req) => {
-    if (req.url.startsWith('/api/')) req.actor = await auth.actorFromSession(pool, req.cookies[SESSION_COOKIE]);
+    if (!req.url.startsWith('/api/')) return;
+    req.actor = await auth.actorFromSession(pool, req.cookies[SESSION_COOKIE]);
+    // Item 72: com o seletor "Substituindo…" ligado, o pedido vale em nome da pessoa substituída,
+    // só nas telas de tarefas (nada de dados pessoais, avisos, log, administração ou exportação).
+    const como = req.headers['x-synctasks-como'];
+    if (req.actor && typeof como === 'string' && como) {
+      if (!SUBSTITUTE_ROUTES.has(`${req.method} ${req.routeOptions.url}`)) throw forbidden('Isso não fica disponível durante a substituição.');
+      req.actor = await subs.actAs(pool, req.actor, como);
+    }
   });
 
   app.setErrorHandler((err, req, reply) => {
@@ -77,7 +103,14 @@ export async function buildApp({ pool, logger = false, serveWeb = false }: AppOp
     if (!a.isAdmin) throw forbidden();
     return a;
   };
-  const inTx = <T>(fn: (db: any) => Promise<T>) => tx(pool, fn);
+  // Item 72: na substituição, a transação guarda quem age de fato; o banco grava isso no log, nos comentários
+  // e nas tarefas criadas (colunas via_user_id e created_via).
+  const inTx = <T>(req: FastifyRequest, fn: (db: any) => Promise<T>) =>
+    tx(pool, async (db) => {
+      const via = req.actor?.sub?.id;
+      if (via) await db.query(`SELECT set_config('synctasks.via', $1, true)`, [via]);
+      return fn(db);
+    });
 
   /* ---------------- autenticação ---------------- */
   const attempts = new Map<string, { n: number; until: number }>();
@@ -105,12 +138,12 @@ export async function buildApp({ pool, logger = false, serveWeb = false }: AppOp
   });
   app.post('/api/auth/password/forgot', async (req) => {
     const { email } = z.object({ email: z.string() }).parse(req.body);
-    await inTx((db) => auth.forgotPassword(db, email));
+    await inTx(req, (db) => auth.forgotPassword(db, email));
     return { ok: true };
   });
   app.post('/api/auth/password/set', async (req) => {
     const { token, password } = z.object({ token: z.string().min(10), password: z.string() }).parse(req.body);
-    await inTx((db) => auth.setPassword(db, token, password));
+    await inTx(req, (db) => auth.setPassword(db, token, password));
     return { ok: true };
   });
 
@@ -136,7 +169,7 @@ export async function buildApp({ pool, logger = false, serveWeb = false }: AppOp
     const a = need(req);
     if (a.level === null) throw forbidden('Administradores fora da hierarquia não têm quadros.');
     const { name } = z.object({ name: z.string().max(80) }).parse(req.body);
-    return inTx((db) => boards.createBoard(db, a.id, name));
+    return inTx(req, (db) => boards.createBoard(db, a.id, name));
   });
   app.get('/api/boards/:id', async (req) => {
     const { id } = z.object({ id: uuid }).parse(req.params);
@@ -147,7 +180,7 @@ export async function buildApp({ pool, logger = false, serveWeb = false }: AppOp
     const body = z
       .object({ name: z.string().max(80).optional(), color: z.string().max(20).nullable().optional(), position: z.number().finite().optional() })
       .parse(req.body);
-    await inTx(async (db) => {
+    await inTx(req, async (db) => {
       if (body.name !== undefined) await boards.renameBoard(db, need(req), id, body.name);
       if (body.color !== undefined) await boards.setBoardColor(db, need(req), id, body.color);
       if (body.position !== undefined) await boards.moveBoard(db, need(req), id, body.position);
@@ -157,54 +190,54 @@ export async function buildApp({ pool, logger = false, serveWeb = false }: AppOp
   app.get('/api/boards/archived', async (req) => boards.listArchivedBoards(pool, need(req)));
   app.post('/api/boards/:id/archive', async (req) => {
     const { id } = z.object({ id: uuid }).parse(req.params);
-    await inTx((db) => boards.archiveBoard(db, need(req), id));
+    await inTx(req, (db) => boards.archiveBoard(db, need(req), id));
     return { ok: true };
   });
   app.post('/api/boards/:id/unarchive', async (req) => {
     const { id } = z.object({ id: uuid }).parse(req.params);
     const { back } = z.object({ back: z.enum(['end', 'same']).default('end') }).parse(req.body ?? {});
-    await inTx((db) => boards.unarchiveBoard(db, need(req), id, back));
+    await inTx(req, (db) => boards.unarchiveBoard(db, need(req), id, back));
     return { ok: true };
   });
   app.post('/api/boards/:id/lists', async (req) => {
     const { id } = z.object({ id: uuid }).parse(req.params);
     const { name } = z.object({ name: z.string().max(60) }).parse(req.body);
-    return inTx((db) => boards.createList(db, need(req), id, name));
+    return inTx(req, (db) => boards.createList(db, need(req), id, name));
   });
   app.patch('/api/lists/:id', async (req) => {
     const { id } = z.object({ id: uuid }).parse(req.params);
     const body = z.object({ name: z.string().max(60).optional(), position: z.number().finite().optional() }).parse(req.body);
-    await inTx((db) => boards.updateList(db, need(req), id, body));
+    await inTx(req, (db) => boards.updateList(db, need(req), id, body));
     return { ok: true };
   });
   app.post('/api/lists/:id/sort', async (req) => {
     const { id } = z.object({ id: uuid }).parse(req.params);
     const { by } = z.object({ by: z.enum(['title', 'created', 'due']) }).parse(req.body);
-    await inTx((db) => boards.sortList(db, need(req), id, by));
+    await inTx(req, (db) => boards.sortList(db, need(req), id, by));
     return { ok: true };
   });
   app.post('/api/lists/:id/archive-done', async (req) => {
     const { id } = z.object({ id: uuid }).parse(req.params);
-    return inTx((db) => tasks.archiveDoneInList(db, need(req), id));
+    return inTx(req, (db) => tasks.archiveDoneInList(db, need(req), id));
   });
   app.post('/api/lists/:id/archive', async (req) => {
     const { id } = z.object({ id: uuid }).parse(req.params);
-    await inTx((db) => boards.archiveList(db, need(req), id));
+    await inTx(req, (db) => boards.archiveList(db, need(req), id));
     return { ok: true };
   });
 
   /* ---------------- tarefas ---------------- */
   app.post('/api/cards', async (req) => {
     const { listId, title, description } = z.object({ listId: uuid, title: z.string().max(200), description: z.string().max(20000).optional() }).parse(req.body);
-    return inTx((db) => tasks.createCard(db, need(req), listId, title, description));
+    return inTx(req, (db) => tasks.createCard(db, need(req), listId, title, description));
   });
   app.post('/api/cards/batch', async (req) => {
     const { listId, titles } = z.object({ listId: uuid, titles: z.array(z.string().max(200)).min(1).max(tasks.MAX_BATCH) }).parse(req.body);
-    return inTx((db) => tasks.createCards(db, need(req), listId, titles));
+    return inTx(req, (db) => tasks.createCards(db, need(req), listId, titles));
   });
   app.post('/api/cards/undo-create', async (req) => {
     const { ids } = z.object({ ids: z.array(uuid).min(1).max(tasks.MAX_BATCH) }).parse(req.body);
-    return inTx((db) => tasks.undoCreate(db, need(req), ids));
+    return inTx(req, (db) => tasks.undoCreate(db, need(req), ids));
   });
   app.get('/api/cards/by-code/:code', async (req) => {
     const { code } = z.object({ code: z.string().max(40) }).parse(req.params);
@@ -221,7 +254,7 @@ export async function buildApp({ pool, logger = false, serveWeb = false }: AppOp
     const body = z
       .object({ title: z.string().max(200).optional(), description: z.string().max(20000).optional(), dueDate: date.optional(), isPrivate: z.boolean().optional(), color: z.string().max(20).nullable().optional() })
       .parse(req.body);
-    await inTx((db) => tasks.updateCard(db, need(req), id, body));
+    await inTx(req, (db) => tasks.updateCard(db, need(req), id, body));
     return { ok: true };
   });
   app.post('/api/cards/:id/move', async (req) => {
@@ -229,49 +262,49 @@ export async function buildApp({ pool, logger = false, serveWeb = false }: AppOp
     const { listId, position, place } = z
       .object({ listId: uuid, position: z.number().finite().optional(), place: z.enum(['top', 'end']).optional() })
       .parse(req.body);
-    await inTx((db) => tasks.moveCard(db, need(req), id, listId, position, place));
+    await inTx(req, (db) => tasks.moveCard(db, need(req), id, listId, position, place));
     return { ok: true };
   });
   app.post('/api/cards/:id/complete', async (req) => {
     const { id } = z.object({ id: uuid }).parse(req.params);
-    await inTx((db) => tasks.completeCard(db, need(req), id));
+    await inTx(req, (db) => tasks.completeCard(db, need(req), id));
     return { ok: true };
   });
   app.post('/api/cards/:id/uncomplete', async (req) => {
     const { id } = z.object({ id: uuid }).parse(req.params);
-    await inTx((db) => tasks.uncompleteCard(db, need(req), id));
+    await inTx(req, (db) => tasks.uncompleteCard(db, need(req), id));
     return { ok: true };
   });
   app.post('/api/cards/:id/archive', async (req) => {
     const { id } = z.object({ id: uuid }).parse(req.params);
-    await inTx((db) => tasks.archiveCard(db, need(req), id));
+    await inTx(req, (db) => tasks.archiveCard(db, need(req), id));
     return { ok: true };
   });
   app.post('/api/cards/:id/unarchive', async (req) => {
     const { id } = z.object({ id: uuid }).parse(req.params);
-    await inTx((db) => tasks.unarchiveCard(db, need(req), id));
+    await inTx(req, (db) => tasks.unarchiveCard(db, need(req), id));
     return { ok: true };
   });
   app.post('/api/cards/:id/checklist', async (req) => {
     const { id } = z.object({ id: uuid }).parse(req.params);
     const { text } = z.object({ text: z.string().max(300) }).parse(req.body);
-    return inTx((db) => tasks.addChecklistItem(db, need(req), id, text));
+    return inTx(req, (db) => tasks.addChecklistItem(db, need(req), id, text));
   });
   app.patch('/api/cards/:id/checklist/:itemId', async (req) => {
     const { id, itemId } = z.object({ id: uuid, itemId: uuid }).parse(req.params);
     const body = z.object({ text: z.string().max(300).optional(), done: z.boolean().optional() }).parse(req.body);
-    await inTx((db) => tasks.updateChecklistItem(db, need(req), id, itemId, body));
+    await inTx(req, (db) => tasks.updateChecklistItem(db, need(req), id, itemId, body));
     return { ok: true };
   });
   app.delete('/api/cards/:id/checklist/:itemId', async (req) => {
     const { id, itemId } = z.object({ id: uuid, itemId: uuid }).parse(req.params);
-    await inTx((db) => tasks.deleteChecklistItem(db, need(req), id, itemId));
+    await inTx(req, (db) => tasks.deleteChecklistItem(db, need(req), id, itemId));
     return { ok: true };
   });
   app.post('/api/cards/:id/comments', async (req) => {
     const { id } = z.object({ id: uuid }).parse(req.params);
     const { body } = z.object({ body: z.string().max(5000) }).parse(req.body);
-    return inTx((db) => tasks.addComment(db, need(req), id, body));
+    return inTx(req, (db) => tasks.addComment(db, need(req), id, body));
   });
   app.get('/api/cards/:id/events', async (req) => {
     const { id } = z.object({ id: uuid }).parse(req.params);
@@ -287,32 +320,32 @@ export async function buildApp({ pool, logger = false, serveWeb = false }: AppOp
   app.post('/api/cards/:id/delegate', async (req) => {
     const { id } = z.object({ id: uuid }).parse(req.params);
     const body = z.object({ toUserId: uuid, suggestedDue: date.optional(), note: z.string().max(5000).optional(), noPass: z.boolean().optional() }).parse(req.body);
-    return inTx((db) => deleg.delegate(db, need(req), id, body));
+    return inTx(req, (db) => deleg.delegate(db, need(req), id, body));
   });
   app.get('/api/inbox', async (req) => deleg.inbox(pool, need(req)));
   app.post('/api/cards/:id/accept', async (req) => {
     const { id } = z.object({ id: uuid }).parse(req.params);
     const { listId } = z.object({ listId: uuid }).parse(req.body);
-    await inTx((db) => deleg.accept(db, need(req), id, listId));
+    await inTx(req, (db) => deleg.accept(db, need(req), id, listId));
     return { ok: true };
   });
   app.post('/api/cards/:id/accept-delegate', async (req) => {
     const { id } = z.object({ id: uuid }).parse(req.params);
     const body = z.object({ listId: uuid, toUserId: uuid, suggestedDue: date.optional(), note: z.string().max(5000).optional(), noPass: z.boolean().optional() }).parse(req.body);
-    return inTx((db) => deleg.acceptAndDelegate(db, need(req), id, body));
+    return inTx(req, (db) => deleg.acceptAndDelegate(db, need(req), id, body));
   });
   app.post('/api/inbox/discard', async (req) => {
     const { ids } = z.object({ ids: z.array(uuid).min(1).max(tasks.MAX_DISCARD) }).parse(req.body);
-    return inTx((db) => tasks.discardFromInbox(db, need(req), ids));
+    return inTx(req, (db) => tasks.discardFromInbox(db, need(req), ids));
   });
   app.post('/api/inbox/restore', async (req) => {
     const { ids } = z.object({ ids: z.array(uuid).min(1).max(tasks.MAX_DISCARD) }).parse(req.body);
-    return inTx((db) => tasks.restoreDiscarded(db, need(req), ids));
+    return inTx(req, (db) => tasks.restoreDiscarded(db, need(req), ids));
   });
   app.post('/api/cards/:id/decline', async (req) => {
     const { id } = z.object({ id: uuid }).parse(req.params);
     const { reason } = z.object({ reason: z.string().max(2000) }).parse(req.body);
-    await inTx((db) => deleg.decline(db, need(req), id, reason));
+    await inTx(req, (db) => deleg.decline(db, need(req), id, reason));
     return { ok: true };
   });
   app.get('/api/cards/:id/transfer-targets', async (req) => {
@@ -325,40 +358,40 @@ export async function buildApp({ pool, logger = false, serveWeb = false }: AppOp
   app.post('/api/cards/:id/transfer', async (req) => {
     const { id } = z.object({ id: uuid }).parse(req.params);
     const { toUserId } = z.object({ toUserId: uuid }).parse(req.body);
-    await inTx((db) => deleg.transfer(db, need(req), id, toUserId));
+    await inTx(req, (db) => deleg.transfer(db, need(req), id, toUserId));
     return { ok: true };
   });
   app.post('/api/delegations/:id/ack', async (req) => {
     const { id } = z.object({ id: uuid }).parse(req.params);
-    await inTx((db) => deleg.ack(db, need(req), id));
+    await inTx(req, (db) => deleg.ack(db, need(req), id));
     return { ok: true };
   });
   app.post('/api/delegations/:id/reopen', async (req) => {
     const { id } = z.object({ id: uuid }).parse(req.params);
     const { comment } = z.object({ comment: z.string().max(5000) }).parse(req.body);
-    await inTx((db) => deleg.reopen(db, need(req), id, comment));
+    await inTx(req, (db) => deleg.reopen(db, need(req), id, comment));
     return { ok: true };
   });
   app.post('/api/delegations/:id/cancel', async (req) => {
     const { id } = z.object({ id: uuid }).parse(req.params);
-    await inTx((db) => deleg.cancel(db, need(req), id));
+    await inTx(req, (db) => deleg.cancel(db, need(req), id));
     return { ok: true };
   });
   app.post('/api/delegations/:id/undo-cancel', async (req) => {
     const { id } = z.object({ id: uuid }).parse(req.params);
-    await inTx((db) => deleg.undoCancel(db, need(req), id));
+    await inTx(req, (db) => deleg.undoCancel(db, need(req), id));
     return { ok: true };
   });
   app.post('/api/delegations/:id/redelegate', async (req) => {
     const { id } = z.object({ id: uuid }).parse(req.params);
     const body = z.object({ toUserId: uuid, suggestedDue: date.optional(), noPass: z.boolean().optional() }).parse(req.body);
-    await inTx((db) => deleg.redelegate(db, need(req), id, body));
+    await inTx(req, (db) => deleg.redelegate(db, need(req), id, body));
     return { ok: true };
   });
   app.post('/api/delegations/:id/no-pass', async (req) => {
     const { id } = z.object({ id: uuid }).parse(req.params);
     const { noPass } = z.object({ noPass: z.boolean() }).parse(req.body);
-    await inTx((db) => deleg.setNoPass(db, need(req), id, noPass));
+    await inTx(req, (db) => deleg.setNoPass(db, need(req), id, noPass));
     return { ok: true };
   });
   app.get('/api/delegations', async (req) => {
@@ -369,7 +402,7 @@ export async function buildApp({ pool, logger = false, serveWeb = false }: AppOp
   /* ---------------- captura da web (item 14) ---------------- */
   app.post('/api/capture', async (req) => {
     const body = z.object({ title: z.string().max(1000), url: z.string().max(2000), text: z.string().max(5000).optional() }).parse(req.body);
-    return inTx((db) => captureWeb(db, need(req), body));
+    return inTx(req, (db) => captureWeb(db, need(req), body));
   });
   // Destino do "Compartilhar → SyncTasks" no Android (share_target do manifesto): leva à tela de captura.
   app.get('/compartilhar', async (req, reply) => {
@@ -394,7 +427,7 @@ export async function buildApp({ pool, logger = false, serveWeb = false }: AppOp
   /* ---------------- importação (arquivo do Trello ou do SyncTasks) ---------------- */
   app.post('/api/import/trello', { bodyLimit: 20 * 1024 * 1024 }, async (req) => {
     const data = trelloImportSchema.parse(req.body);
-    return inTx((db) => importTrello(db, need(req), data));
+    return inTx(req, (db) => importTrello(db, need(req), data));
   });
 
   /* ---------------- arquivadas (item 35) ---------------- */
@@ -440,16 +473,16 @@ export async function buildApp({ pool, logger = false, serveWeb = false }: AppOp
   app.get('/api/filters', async (req) => table.listFilters(pool, need(req)));
   app.post('/api/filters', async (req) => {
     const { name, filter } = z.object({ name: z.string().max(80), filter: table.filterSchema }).parse(req.body);
-    return inTx((db) => table.createFilter(db, need(req), name, filter));
+    return inTx(req, (db) => table.createFilter(db, need(req), name, filter));
   });
   app.patch('/api/filters/:id', async (req) => {
     const { id } = z.object({ id: uuid }).parse(req.params);
     const body = z.object({ name: z.string().max(80).optional(), filter: table.filterSchema.optional() }).parse(req.body);
-    return inTx((db) => table.updateFilter(db, need(req), id, body));
+    return inTx(req, (db) => table.updateFilter(db, need(req), id, body));
   });
   app.delete('/api/filters/:id', async (req) => {
     const { id } = z.object({ id: uuid }).parse(req.params);
-    await inTx((db) => table.deleteFilter(db, need(req), id));
+    await inTx(req, (db) => table.deleteFilter(db, need(req), id));
     return { ok: true };
   });
 
@@ -462,6 +495,28 @@ export async function buildApp({ pool, logger = false, serveWeb = false }: AppOp
   app.post('/api/notifications/read', async (req) => {
     await misc.markNotificationsRead(pool, need(req));
     return { ok: true };
+  });
+
+  /* ---------------- substituição em férias e ausências (item 72) ---------------- */
+  // A própria pessoa (sem userId) ou a administração (com o userId de quem saiu de surpresa).
+  const subTarget = (req: FastifyRequest, userId?: string) => {
+    const a = need(req);
+    return { a, id: userId ?? a.id };
+  };
+  app.get('/api/substitution', async (req) => {
+    const { userId } = z.object({ userId: uuid.optional() }).parse(req.query);
+    const { a, id } = subTarget(req, userId);
+    return subs.overview(pool, a, id);
+  });
+  app.post('/api/substitution', async (req) => {
+    const body = z.object({ userId: uuid.optional(), substituteId: uuid, shareCommon: z.boolean(), endsOn: date.optional() }).parse(req.body);
+    const { a, id } = subTarget(req, body.userId);
+    return inTx(req, (db) => subs.start(db, a, id, { substituteId: body.substituteId, shareCommon: body.shareCommon, endsOn: body.endsOn ?? null }));
+  });
+  app.post('/api/substitution/end', async (req) => {
+    const { userId } = z.object({ userId: uuid.optional() }).parse(req.body ?? {});
+    const { a, id } = subTarget(req, userId);
+    return inTx(req, (db) => subs.end(db, a, id));
   });
 
   /* ---------------- administração ---------------- */
@@ -481,7 +536,7 @@ export async function buildApp({ pool, logger = false, serveWeb = false }: AppOp
         isAdmin: z.boolean().optional(),
       })
       .parse(req.body);
-    const { user } = await inTx((db) => admin.createUser(db, body));
+    const { user } = await inTx(req, (db) => admin.createUser(db, body));
     return user;
   });
   app.patch('/api/admin/users/:id', async (req) => {
@@ -492,7 +547,7 @@ export async function buildApp({ pool, logger = false, serveWeb = false }: AppOp
       .parse(req.body);
     // Item 33: trocar o superior direto em "Editar dados" faz a transferência de gestão, na mesma transação.
     const { managerId, ...data } = body;
-    return inTx(async (db) => {
+    return inTx(req, async (db) => {
       await admin.updateUser(db, a, id, data);
       const moved = managerId ? (await admin.transferManagement(db, a, id, managerId)).moved : null;
       return { ok: true, moved };
@@ -502,13 +557,13 @@ export async function buildApp({ pool, logger = false, serveWeb = false }: AppOp
     const a = needAdmin(req);
     const { id } = z.object({ id: uuid }).parse(req.params);
     const { managerId } = z.object({ managerId: uuid }).parse(req.body);
-    return inTx((db) => admin.transferManagement(db, a, id, managerId));
+    return inTx(req, (db) => admin.transferManagement(db, a, id, managerId));
   });
   app.post('/api/admin/users/:id/active', async (req) => {
     const a = needAdmin(req);
     const { id } = z.object({ id: uuid }).parse(req.params);
     const { active } = z.object({ active: z.boolean() }).parse(req.body);
-    await inTx((db) => admin.setActive(db, a, id, active));
+    await inTx(req, (db) => admin.setActive(db, a, id, active));
     return { ok: true };
   });
   app.get('/api/admin/users/:id/deactivation', async (req) => {
@@ -520,12 +575,12 @@ export async function buildApp({ pool, logger = false, serveWeb = false }: AppOp
     const a = needAdmin(req);
     const { id } = z.object({ id: uuid }).parse(req.params);
     const { successorId } = z.object({ successorId: uuid.nullable().optional() }).parse(req.body);
-    return inTx((db) => admin.deactivate(db, a, id, successorId ?? null));
+    return inTx(req, (db) => admin.deactivate(db, a, id, successorId ?? null));
   });
   app.post('/api/admin/users/:id/invite', async (req) => {
     needAdmin(req);
     const { id } = z.object({ id: uuid }).parse(req.params);
-    await inTx(async (db) => {
+    await inTx(req, async (db) => {
       const u = (await db.query('SELECT id, name, email FROM users WHERE id = $1 AND active', [id])).rows[0];
       if (!u) throw notFound('Pessoa não encontrada.');
       await admin.sendInvite(db, u);
@@ -576,7 +631,7 @@ export async function buildApp({ pool, logger = false, serveWeb = false }: AppOp
   }));
   app.post('/oauth/register', async (req, reply) => {
     try {
-      return reply.status(201).send(await inTx((db) => oauth.registerClient(db, req.body)));
+      return reply.status(201).send(await inTx(req, (db) => oauth.registerClient(db, req.body)));
     } catch (err) {
       return oauthFail(reply, err);
     }
@@ -590,7 +645,7 @@ export async function buildApp({ pool, logger = false, serveWeb = false }: AppOp
     reply.header('Cache-Control', 'no-store');
     try {
       const body = z.record(z.string().max(4000)).catch({}).parse(req.body ?? {});
-      return await inTx((db) => oauth.token(db, body));
+      return await inTx(req, (db) => oauth.token(db, body));
     } catch (err) {
       return oauthFail(reply, err);
     }
@@ -624,7 +679,7 @@ export async function buildApp({ pool, logger = false, serveWeb = false }: AppOp
     const a = need(req);
     const body = oauth.authorizeSchema.extend({ allow: z.boolean() }).parse(req.body);
     const { allow, ...p } = body;
-    return inTx((db) => oauth.decide(db, a, p, allow));
+    return inTx(req, (db) => oauth.decide(db, a, p, allow));
   });
   // Meus dados: assistentes ligados à conta.
   app.get('/api/me/assistants', async (req) => oauth.listGrants(pool, need(req)));
