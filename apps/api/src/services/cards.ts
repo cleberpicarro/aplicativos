@@ -1,6 +1,6 @@
 import { one, many, type Db } from '../lib/db.js';
 import { notFound } from '../lib/errors.js';
-import { canSeeLog, type Actor } from './actors.js';
+import { canSeeLog, subSees, type Actor } from './actors.js';
 
 export type ViewerRole = 'owner' | 'delegator' | 'auditor';
 
@@ -143,8 +143,10 @@ function ownerLostAccess(r: any): boolean {
 }
 
 export async function roleFor(db: Db, actor: Actor, r: any): Promise<ViewerRole | null> {
-  if (r.owner_id === actor.id && !ownerLostAccess(r)) return 'owner';
+  if (r.owner_id === actor.id && !ownerLostAccess(r) && subSees(actor, r)) return 'owner';
   if (r.d_delegator_id === actor.id) return 'delegator';
+  // Item 72: o substituto nunca usa o acesso de auditoria da pessoa (log, tarefas da diretoria).
+  if (actor.sub) return null;
   if (await canSeeLog(db, actor, { owner_id: r.owner_id, is_private: r.is_private, delegator_id: r.d_delegator_id })) return 'auditor';
   return null;
 }
@@ -192,8 +194,9 @@ export async function cardDetail(db: Db, actor: Actor, cardId: string) {
   const checklist = await many(db, `SELECT id, text, done, position FROM checklist_items WHERE card_id = $1 ORDER BY position`, [cardId]);
   const comments = await many(
     db,
-    `SELECT cm.id, cm.body, cm.created_at, u.id AS author_id, u.name AS author_name
-       FROM comments cm JOIN users u ON u.id = cm.author_id WHERE cm.card_id = $1 ORDER BY cm.created_at`,
+    `SELECT cm.id, cm.body, cm.created_at, u.id AS author_id, u.name AS author_name, v.name AS via_name
+       FROM comments cm JOIN users u ON u.id = cm.author_id LEFT JOIN users v ON v.id = cm.via_user_id
+      WHERE cm.card_id = $1 ORDER BY cm.created_at`,
     [cardId],
   );
   const logVisible = await canSeeLog(db, actor, { owner_id: row.owner_id, is_private: row.is_private, delegator_id: row.d_delegator_id });
@@ -209,7 +212,7 @@ export async function cardDetail(db: Db, actor: Actor, cardId: string) {
     canSeeLog: logVisible,
     board,
     checklistItems: checklist,
-    comments: comments.map((c) => ({ id: c.id, body: c.body, createdAt: c.created_at, authorId: c.author_id, authorName: c.author_name })),
+    comments: comments.map((c) => ({ id: c.id, body: c.body, createdAt: c.created_at, authorId: c.author_id, authorName: c.author_name, viaName: c.via_name ?? null })),
   };
 }
 

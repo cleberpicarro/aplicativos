@@ -51,6 +51,7 @@ type BoardTab = { id: string; name: string; color: string | null; position: numb
 /** `top`: espaço na barra do topo para os botões do filtro (item 59); sem ele, ficam na linha acima das fases. */
 export function BoardsPage({ top }: { top?: HTMLElement | null } = {}) {
   const me = useMe().data!;
+  const acting = !!me.substitution.acting;
   const boards = useQuery({ queryKey: ['boards'], queryFn: () => get<BoardTab[]>('/boards') });
   const [selected, setSelected] = useState<string | null>(rememberedBoard);
   const [dialog, setDialog] = useState<null | 'newBoard' | 'renameBoard' | 'newList' | 'import' | 'export' | 'color' | 'workspace' | 'archiveBoard'>(null);
@@ -163,11 +164,12 @@ export function BoardsPage({ top }: { top?: HTMLElement | null } = {}) {
                 { label: 'Nova fase', onClick: () => setDialog('newList') },
                 { label: 'Mover quadro para a esquerda', onClick: () => moveBoard(-1), disabled: boardIndex <= 0 },
                 { label: 'Mover quadro para a direita', onClick: () => moveBoard(1), disabled: boardIndex === (boards.data?.length ?? 0) - 1 },
-                { label: 'Fundo da área de trabalho', onClick: () => setDialog('workspace') },
+                // Item 72: fundo, importar e exportar são da própria pessoa; o substituto não os vê.
+                ...(acting ? [] : [{ label: 'Fundo da área de trabalho', onClick: () => setDialog('workspace') }]),
               ] : []),
               // Itens 31 e 62: importar e exportar ficam juntos no fim do menu.
-              { label: 'Importar arquivo JSON', onClick: () => setDialog('import'), separator: !!board.data },
-              ...(boards.data.length ? [{ label: 'Exportar tarefas (JSON)', onClick: () => setDialog('export') }] : []),
+              ...(acting ? [] : [{ label: 'Importar arquivo JSON', onClick: () => setDialog('import'), separator: !!board.data }]),
+              ...(boards.data.length && !acting ? [{ label: 'Exportar tarefas (JSON)', onClick: () => setDialog('export') }] : []),
               // Item 42: arquivar quadro vazio, separado no fim.
               ...(board.data ? [{ label: 'Arquivar quadro', danger: true, separator: true, onClick: () => {
                 const n = board.data!.cards.length;

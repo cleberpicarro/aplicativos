@@ -1,6 +1,7 @@
 import { one, many, type Db } from '../lib/db.js';
-import type { Actor } from './actors.js';
+import { subWhere, type Actor } from './actors.js';
 import { directReports } from './actors.js';
+import * as subs from './substitution.js';
 import { cardIdByCode, loadCard, parseCode, parseNum, selectCards } from './cards.js';
 import { badRequest } from '../lib/errors.js';
 
@@ -31,7 +32,7 @@ export async function me(db: Db, actor: Actor) {
     db,
     `SELECT
        (SELECT count(*)::int FROM cards c LEFT JOIN delegations d ON d.card_id = c.id
-         WHERE c.owner_id = $1 AND c.list_id IS NULL AND c.archived_at IS NULL AND (d.id IS NULL OR d.status = 'PENDING_ACCEPT')) AS inbox,
+         WHERE c.owner_id = $1 AND c.list_id IS NULL AND c.archived_at IS NULL AND (d.id IS NULL OR d.status = 'PENDING_ACCEPT')${subWhere(actor)}) AS inbox,
        (SELECT count(*)::int FROM delegations d JOIN cards c ON c.id = d.card_id
          WHERE d.delegator_id = $1 AND c.archived_at IS NULL AND d.status IN ('AWAITING_ACK','DECLINED')) AS need_action,
        (SELECT count(*)::int FROM notifications WHERE user_id = $1 AND read_at IS NULL) AS unread,
@@ -42,8 +43,17 @@ export async function me(db: Db, actor: Actor) {
        (now() AT TIME ZONE 'America/Sao_Paulo')::date AS today`,
     [actor.id],
   );
+  // Item 72: quem a pessoa substitui (opções do seletor do topo) e, fora da substituição, quem a substitui.
+  const sub = actor.sub;
+  const substitution = {
+    covering: await subs.covering(db, sub ? sub.id : actor.id),
+    acting: sub ? { id: actor.id, name: actor.name, shareCommon: sub.share, by: { id: sub.id, name: sub.name } } : null,
+    mine: sub ? null : await subs.current(db, actor.id),
+  };
+  const { sub: _sub, ...user } = actor;
   return {
-    user: { ...actor, inHierarchy: actor.level !== null },
+    substitution,
+    user: { ...user, inHierarchy: actor.level !== null },
     directReports: reports.map((r) => ({ id: r.id, name: r.name, roleTitle: r.role_title })),
     counts: { inbox: counts.inbox, needAction: counts.need_action, unread: counts.unread },
     prefs: { workspaceBg: counts.workspace_bg as string | null, emailDigest: counts.email_digest as boolean, emailDue: counts.email_due as boolean, hideInactive: counts.hide_inactive as boolean },
@@ -62,7 +72,7 @@ export async function search(db: Db, actor: Actor, q: string, boardId?: string) 
   if (num !== null) {
     const mine = await selectCards(
       db,
-      `c.owner_id = $1 AND c.num = $2 AND (d.id IS NULL OR d.status NOT IN ('DECLINED','CANCELED'))`,
+      `c.owner_id = $1 AND c.num = $2 AND (d.id IS NULL OR d.status NOT IN ('DECLINED','CANCELED'))${subWhere(actor)}`,
       [actor.id, num],
       'c.archived_at NULLS FIRST, bo.position NULLS FIRST, c.seq',
     );
@@ -86,7 +96,7 @@ export async function search(db: Db, actor: Actor, q: string, boardId?: string) 
   const visible = `((c.owner_id = $1 AND (d.id IS NULL OR d.status NOT IN ('DECLINED','CANCELED'))) OR d.delegator_id = $1)`;
   const results = await selectCards(
     db,
-    `${visible} AND (c.search @@ websearch_to_tsquery('portuguese', $2) OR c.title ILIKE '%' || $3 || '%' OR c.description ILIKE '%' || $3 || '%')`,
+    `${visible}${subWhere(actor)} AND (c.search @@ websearch_to_tsquery('portuguese', $2) OR c.title ILIKE '%' || $3 || '%' OR c.description ILIKE '%' || $3 || '%')`,
     [actor.id, query, query.replace(/[%_\\]/g, (m) => '\\' + m)],
     'c.archived_at NULLS FIRST, c.updated_at DESC LIMIT 30',
   );

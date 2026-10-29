@@ -832,3 +832,23 @@ kbd { display: inline-block; min-width: 1.6em; padding: 1px 6px; border: 1px sol
 .desc-view.empty { padding: 0; border: 0; }
 .desc-add { width: 100%; min-height: 3rem; text-align: left; border: 1px dashed var(--line); border-radius: 6px; background: none; color: var(--muted); padding: 7px 10px; cursor: text; font-size: 0.92rem; }
 .desc-add:hover { background: var(--hover); color: var(--fg); }
+
+/* Item 72: substituição em férias e ausências. Seletor no topo, faixa de aviso e caixa em Meus dados. */
+.acting-pick { display: inline-flex; align-items: center; gap: 6px; height: 1.85rem; padding: 0 4px 0 9px; border: 1px solid var(--line); border-radius: 7px;
+  background: var(--sunk); color: var(--muted); font-size: 0.86rem; }
+.acting-pick select { border: 0; background: none; color: var(--fg); font: inherit; height: 100%; max-width: 15rem; cursor: pointer; }
+.acting-pick select:focus { outline: none; }
+.acting-pick:focus-within { border-color: var(--accent); }
+.acting-pick.on { border-color: var(--attn); background: var(--attn-bg); color: var(--attn); }
+.acting-pick.on select { font-weight: 500; }
+.acting-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: -4px 0 12px; padding: 8px 12px; border-radius: 8px;
+  background: var(--attn-bg); border: 1px solid color-mix(in srgb, var(--attn) 45%, transparent); color: var(--fg); font-size: 0.88rem; }
+.acting-bar > svg { color: var(--attn); flex: none; }
+.acting-bar > span { flex: 1 1 18rem; }
+.acting-who { cursor: default; }
+.acting-who small { color: var(--attn); }
+.my-sub .sub-now { margin: 0; }
+.my-sub .sub-now small { display: block; color: var(--muted); font-size: 0.8rem; margin-top: 2px; }
+.my-sub .sub-form { display: grid; gap: 10px; }
+.my-sub .field { display: grid; gap: 4px; }
+.my-sub input[type='date'] { width: auto; }

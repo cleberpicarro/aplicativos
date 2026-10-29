@@ -1,6 +1,6 @@
 import { one, many, type Db } from '../lib/db.js';
 import { badRequest, conflict, notFound } from '../lib/errors.js';
-import type { Actor } from './actors.js';
+import { subWhere, type Actor } from './actors.js';
 import { selectCards, nextPosition } from './cards.js';
 
 export const DEFAULT_LISTS = ['A fazer', 'Fazendo', 'Feito'];
@@ -46,7 +46,7 @@ export async function boardDetail(db: Db, actor: Actor, boardId: string) {
   // Cartões visíveis ao dono: não arquivados e sem delegação devolvida/cancelada.
   const cards = await selectCards(
     db,
-    `l.board_id = $1 AND c.owner_id = $2 AND c.archived_at IS NULL AND (d.id IS NULL OR d.status NOT IN ('DECLINED','CANCELED'))`,
+    `l.board_id = $1 AND c.owner_id = $2 AND c.archived_at IS NULL AND (d.id IS NULL OR d.status NOT IN ('DECLINED','CANCELED'))${subWhere(actor)}`,
     [boardId, actor.id],
   );
   return { id: board.id, name: board.name, color: board.color, lists, cards };

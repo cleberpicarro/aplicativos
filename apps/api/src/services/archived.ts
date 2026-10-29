@@ -1,5 +1,5 @@
 import { many, type Db } from '../lib/db.js';
-import type { Actor } from './actors.js';
+import { subWhere, type Actor } from './actors.js';
 import { parseCode, parseNum } from './cards.js';
 
 /** Item 35: quantas tarefas a tela "Arquivadas" mostra por vez. */
@@ -59,7 +59,7 @@ export async function listArchived(db: Db, actor: Actor, q: string, offset: numb
        LEFT JOIN boards b ON b.id = l.board_id
        JOIN users o ON o.id = c.owner_id
       WHERE c.archived_at IS NOT NULL
-        AND ((c.owner_id = $1 AND d.id IS NULL AND ${NOT_UNDONE}) OR (d.delegator_id = $1 AND d.status = 'ACKED'))${search}
+        AND ((c.owner_id = $1 AND d.id IS NULL AND ${NOT_UNDONE}) OR (d.delegator_id = $1 AND d.status = 'ACKED'))${subWhere(actor)}${search}
       ORDER BY c.archived_at DESC, c.seq DESC
       LIMIT $${params.length - 1} OFFSET $${params.length}`,
     params,

@@ -4,15 +4,41 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * Item 72: no seletor do topo, quem substitui alguém troca para essa pessoa. A escolha vale para esta aba
+ * (sessionStorage) e vai em todo pedido no cabeçalho X-SyncTasks-Como.
+ */
+const ACTING_KEY = 'synctasks.substituindo';
+let acting: string | null = (() => {
+  try { return sessionStorage.getItem(ACTING_KEY); } catch { return null; }
+})();
+export const actingAs = () => acting;
+/** Troca de pessoa: recarrega a página, para nenhuma tela mostrar dados da pessoa anterior. */
+export function setActingAs(id: string | null) {
+  try {
+    if (id) sessionStorage.setItem(ACTING_KEY, id);
+    else sessionStorage.removeItem(ACTING_KEY);
+  } catch { /* sem armazenamento: vale até recarregar */ }
+  acting = id;
+  window.location.hash = '#/quadros';
+  window.location.reload();
+}
+
 export async function api<T = any>(method: string, url: string, body?: unknown): Promise<T> {
   const res = await fetch(`/api${url}`, {
     method,
     credentials: 'same-origin',
-    headers: { ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}), 'X-SyncTasks': '1' },
+    headers: {
+      ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
+      'X-SyncTasks': '1',
+      ...(acting ? { 'X-SyncTasks-Como': acting } : {}),
+    },
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
   const text = await res.text();
   const data = text ? JSON.parse(text) : null;
+  // A substituição acabou (encerrada ou passou do último dia): volta para as próprias tarefas.
+  if (acting && res.status === 403 && data?.error === 'A substituição terminou.') setActingAs(null);
   if (!res.ok) throw new ApiError(res.status, data?.error ?? 'Não foi possível concluir a ação.');
   return data as T;
 }
@@ -74,6 +100,21 @@ export interface Me {
   /** Item 46: resumo diário e avisos de prazo por e-mail (ligados por padrão). */
   prefs: { workspaceBg: string | null; emailDigest: boolean; emailDue: boolean; hideInactive: boolean };
   today: string;
+  /** Item 72: quem a pessoa substitui (seletor do topo), em nome de quem está agindo agora e quem a substitui. */
+  substitution: {
+    covering: { id: string; name: string; roleTitle: string; shareCommon: boolean; endsOn: string | null }[];
+    acting: null | { id: string; name: string; shareCommon: boolean; by: { id: string; name: string } };
+    mine: Substitution | null;
+  };
+}
+
+export interface Substitution {
+  id: string;
+  substitute: { id: string; name: string; roleTitle: string };
+  shareCommon: boolean;
+  endsOn: string | null;
+  createdAt: string;
+  createdByName: string;
 }
 
 export interface CardDetail {
@@ -82,7 +123,7 @@ export interface CardDetail {
   canSeeLog: boolean;
   board: null | { id: string; name: string; lists: { id: string; name: string }[] };
   checklistItems: { id: string; text: string; done: boolean }[];
-  comments: { id: string; body: string; createdAt: string; authorId: string; authorName: string }[];
+  comments: { id: string; body: string; createdAt: string; authorId: string; authorName: string; viaName: string | null }[];
 }
 
 export interface Board {

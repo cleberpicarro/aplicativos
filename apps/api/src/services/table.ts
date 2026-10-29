@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { one, many, type Db } from '../lib/db.js';
 import { badRequest, notFound } from '../lib/errors.js';
 import { isoDate } from '../lib/dates.js';
-import type { Actor } from './actors.js';
+import { subWhere, type Actor } from './actors.js';
 import { CARD_SELECT, parseCode, parseNum, toCardDto } from './cards.js';
 import { BOARD_COLORS } from './boards.js';
 import { NOT_UNDONE } from './archived.js';
@@ -205,6 +205,8 @@ export function whereFor(actor: Actor, filter: Filter) {
     `(d.id IS NULL OR d.status NOT IN ('DECLINED','CANCELED'))`,
     NOT_UNDONE,
   ];
+  const sub = subWhere(actor);
+  if (sub) parts.push(sub.replace(/^ AND /, ''));
   const usesArchived = [...filter.all, ...filter.any].some((c) => c.field === 'archived');
   // Sem condição sobre "Arquivada", a tabela mostra só as que estão nos quadros e na caixa de entrada.
   if (!usesArchived) parts.push('c.archived_at IS NULL');
