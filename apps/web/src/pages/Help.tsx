@@ -295,7 +295,7 @@ export function HelpPage({ isAdmin }: { isAdmin: boolean }) {
         <p>Antes de sair de férias ou se ausentar, escolha quem cuida das suas tarefas enquanto isso.</p>
         <ol>
           <li>Abra <b>Meus dados</b> e, em <b>Férias e ausências</b>, clique em <b>Escolher substituto</b>.</li>
-          <li>Escolha a pessoa. Não aparece ninguém da sua própria equipe nem quem também está ausente.</li>
+          <li>Escolha a pessoa: pode ser qualquer pessoa ativa, inclusive alguém da sua equipe. Quem também está ausente aparece marcado “também ausente”.</li>
           <li>Decida se vai <b>compartilhar as tarefas comuns</b>. Sem compartilhar, o substituto vê só as tarefas ligadas a delegações (as que você recebeu e as que você delegou), o que chegou de outras pessoas e o que ele mesmo criar. Compartilhando, vê também as tarefas comuns. As <b>privadas nunca aparecem</b>: antes de sair, marque como privado o que for particular.</li>
           <li>Se quiser, informe o <b>último dia fora</b>: no dia seguinte a substituição acaba sozinha. Sem data, vale até você clicar em <b>Encerrar substituição</b>.</li>
         </ol>

@@ -71,21 +71,17 @@ export async function covering(db: Db, substituteId: string) {
 }
 
 /**
- * Quem pode substituir: alguém ativo da hierarquia, que não seja a própria pessoa nem ninguém da equipe dela
- * (daria ciente nas próprias tarefas) e que não esteja, também, ausente com substituto.
+ * Quem pode substituir (item 73): qualquer pessoa ativa, menos a própria. Inclui a equipe da pessoa e quem
+ * também está ausente (marcado como `absent`, para a tela avisar).
  */
 export async function candidates(db: Db, absentId: string) {
   return many(
     db,
-    `WITH RECURSIVE team AS (
-       SELECT id FROM users WHERE manager_id = $1
-       UNION ALL SELECT u.id FROM users u JOIN team t ON u.manager_id = t.id
-     )
-     SELECT u.id, u.name, u.role_title AS "roleTitle", u.level FROM users u
-      WHERE u.active AND u.level IS NOT NULL AND u.id <> $1
-        AND u.id NOT IN (SELECT id FROM team)
-        AND NOT EXISTS (SELECT 1 FROM substitutions s WHERE s.absent_id = u.id AND ${ACTIVE})
-      ORDER BY u.level, u.name`,
+    `SELECT u.id, u.name, u.role_title AS "roleTitle", u.level,
+            EXISTS (SELECT 1 FROM substitutions s WHERE s.absent_id = u.id AND ${ACTIVE}) AS absent
+       FROM users u
+      WHERE u.active AND u.id <> $1
+      ORDER BY u.level NULLS LAST, u.name`,
     [absentId],
   );
 }
@@ -118,7 +114,7 @@ export async function start(db: Db, by: Actor, absentId: string, input: { substi
   }
   const options = await candidates(db, absentId);
   const sub = options.find((o) => o.id === input.substituteId);
-  if (!sub) throw badRequest('Escolha um substituto ativo, que não seja da sua equipe nem esteja ausente.');
+  if (!sub) throw badRequest('Escolha um substituto ativo.');
   const before = await current(db, absentId);
   await db.query(`UPDATE substitutions s SET ended_at = now(), ended_by = $2 WHERE s.absent_id = $1 AND s.ended_at IS NULL`, [absentId, by.id]);
   await db.query(

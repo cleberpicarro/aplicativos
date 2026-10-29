@@ -51,17 +51,24 @@ afterAll(async () => {
 });
 
 describe('substituição em férias (item 72)', () => {
-  it('lista quem pode substituir: nem a própria pessoa, nem a equipe dela, nem quem está fora da hierarquia', async () => {
+  it('qualquer pessoa ativa pode substituir, inclusive da própria equipe (item 73); só não a própria pessoa', async () => {
     const r = await call('gest', 'GET', '/api/substitution');
     expect(r.status).toBe(200);
     expect(r.body.current).toBeNull();
     const names = r.body.candidates.map((c: any) => c.id);
-    expect(names).toContain(ctx.users.gest2.id);
-    expect(names).toContain(ctx.users.dir.id);
-    expect(names).toContain(ctx.users.func3.id);
-    for (const no of ['gest', 'func', 'func2', 'admin']) expect(names, no).not.toContain(ctx.users[no].id);
-    // Alguém da equipe é recusado também pelo servidor.
-    expect((await startSub('gest', { substituteId: ctx.users.func.id, shareCommon: false })).status).toBe(422);
+    for (const yes of ['gest2', 'dir', 'ceo', 'func', 'func2', 'func3', 'admin']) expect(names, yes).toContain(ctx.users[yes].id);
+    expect(names).not.toContain(ctx.users.gest.id);
+    expect((await startSub('gest', { substituteId: ctx.users.gest.id, shareCommon: false })).status).toBe(422);
+    // O CEO (todo mundo é da equipe dele) escolhe um diretor; o gestor escolhe um funcionário dele.
+    expect((await startSub('ceo', { substituteId: ctx.users.dir.id, shareCommon: false })).status).toBe(200);
+    expect((await como('dir', 'ceo', 'GET', '/api/inbox')).status).toBe(200);
+    expect((await call('ceo', 'POST', '/api/substitution/end', {})).status).toBe(200);
+    expect((await startSub('gest', { substituteId: ctx.users.func.id, shareCommon: false })).status).toBe(200);
+    expect((await como('func', 'gest', 'GET', '/api/delegations')).status).toBe(200);
+    // Quem está ausente aparece marcado para outra pessoa que for escolher.
+    const other = (await call('gest2', 'GET', '/api/substitution')).body.candidates.find((c: any) => c.id === ctx.users.gest.id);
+    expect(other.absent).toBe(true);
+    expect((await call('gest', 'POST', '/api/substitution/end', {})).status).toBe(200);
     // Data de volta no passado.
     expect((await startSub('gest', { substituteId: ctx.users.gest2.id, shareCommon: false, endsOn: day(-1) })).status).toBe(422);
     // Ninguém liga a substituição de outra pessoa, a não ser a administração.
