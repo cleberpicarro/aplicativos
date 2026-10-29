@@ -7,7 +7,7 @@ import { ErrorText } from './ui';
 
 interface Overview {
   current: Substitution | null;
-  candidates: { id: string; name: string; roleTitle: string; level: number }[];
+  candidates: { id: string; name: string; roleTitle: string; level: number | null; absent: boolean }[];
   today: string;
 }
 
@@ -80,9 +80,8 @@ export function SubstitutionBox({ userId, name }: { userId?: string; name?: stri
             <span className="label">Quem substitui {who}</span>
             <select className="select input" value={substituteId} onChange={(e) => setSubstituteId(e.target.value)} required>
               <option value="">Escolha…</option>
-              {candidates.map((c) => <option key={c.id} value={c.id}>{c.name} · {c.roleTitle}</option>)}
+              {candidates.map((c) => <option key={c.id} value={c.id}>{c.name} · {c.roleTitle}{c.absent ? ' (também ausente)' : ''}</option>)}
             </select>
-            <span className="hint">Não aparece quem é da {self ? 'sua equipe' : `equipe de ${name ?? 'a pessoa'}`} nem quem também está ausente.</span>
           </label>
           <label className="check">
             <input type="checkbox" checked={share} onChange={(e) => setShare(e.target.checked)} />

@@ -28,9 +28,9 @@ test.describe('substituição em férias', () => {
     const dlg = dialogo(page, 'Meus dados');
     await dlg.getByRole('button', { name: 'Escolher substituto' }).click();
     const quem = dlg.getByLabel('Quem substitui você');
-    // Quem é da equipe da Marina não aparece.
+    // Qualquer pessoa pode ser escolhida, inclusive da equipe da Marina (item 73).
     const opcoes = await quem.locator('option').allInnerTexts();
-    expect(opcoes.some((o) => o.startsWith('João'))).toBe(false);
+    expect(opcoes.some((o) => o.startsWith('João'))).toBe(true);
     await quem.selectOption({ label: opcoes.find((o) => o.startsWith('Paulo'))! });
     await expect(dlg.getByLabel(/Compartilhar as tarefas comuns/)).not.toBeChecked();
     await dlg.getByRole('button', { name: 'Ligar substituição' }).click();
