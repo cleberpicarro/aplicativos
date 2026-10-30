@@ -45,7 +45,7 @@ const SUBSTITUTE_ROUTES = new Set([
   'POST /api/cards/:id/checklist', 'PATCH /api/cards/:id/checklist/:itemId', 'DELETE /api/cards/:id/checklist/:itemId', 'POST /api/cards/:id/comments',
   'POST /api/cards/:id/delegate', 'GET /api/inbox', 'POST /api/cards/:id/accept', 'POST /api/cards/:id/accept-delegate', 'POST /api/inbox/discard',
   'POST /api/inbox/restore', 'POST /api/cards/:id/decline', 'GET /api/cards/:id/transfer-targets', 'POST /api/cards/:id/transfer',
-  'POST /api/delegations/:id/ack', 'POST /api/delegations/:id/reopen', 'POST /api/delegations/:id/cancel', 'POST /api/delegations/:id/undo-cancel',
+  'POST /api/delegations/:id/ack', 'POST /api/delegations/:id/reopen', 'POST /api/delegations/:id/cancel', 'POST /api/delegations/:id/undo-cancel', 'POST /api/delegations/:id/resume',
   'POST /api/delegations/:id/redelegate', 'POST /api/delegations/:id/no-pass', 'GET /api/delegations',
   'GET /api/dashboard', 'GET /api/archived', 'GET /api/table', 'GET /api/table/options', 'GET /api/filters', 'POST /api/filters', 'PATCH /api/filters/:id',
   'DELETE /api/filters/:id', 'GET /api/search',
@@ -381,6 +381,10 @@ export async function buildApp({ pool, logger = false, serveWeb = false }: AppOp
     const { id } = z.object({ id: uuid }).parse(req.params);
     await inTx(req, (db) => deleg.undoCancel(db, need(req), id));
     return { ok: true };
+  });
+  app.post('/api/delegations/:id/resume', async (req) => {
+    const { id } = z.object({ id: uuid }).parse(req.params);
+    return inTx(req, (db) => deleg.resume(db, need(req), id));
   });
   app.post('/api/delegations/:id/redelegate', async (req) => {
     const { id } = z.object({ id: uuid }).parse(req.params);

@@ -143,6 +143,57 @@ test.describe('delegação de ponta a ponta', () => {
     await aviso(page, 'Delegação cancelada.');
   });
 
+  test('tarefa devolvida: Retomar traz para a caixa de entrada e Cancelar manda para Arquivadas (item 75)', async ({ page, browser }) => {
+    const retomar = unico('Orçamento retomado');
+    const cancelar = unico('Orçamento encerrado');
+    await entrar(page, 'marina');
+    await irPara(page, 'Tarefas');
+    for (const t of [retomar, cancelar]) await delegar(page, await criarTarefa(page, t), /João/);
+
+    const joao = await outraPessoa(browser, 'joao');
+    try {
+      await irPara(joao.page, 'Caixa de entrada');
+      for (const t of [retomar, cancelar]) {
+        const row = joao.page.locator('.row.inbox', { hasText: t });
+        await row.getByRole('button', { name: 'Devolver' }).click();
+        const dv = dialogo(joao.page, 'Devolver tarefa');
+        await dv.getByLabel('Justificativa (obrigatória)').fill('Não é da minha área');
+        await dv.getByRole('button', { name: 'Devolver' }).click();
+        await expect(row).toHaveCount(0);
+      }
+    } finally {
+      await joao.fechar();
+    }
+
+    await irPara(page, 'Tarefas delegadas');
+    const precisa = page.locator('section[aria-labelledby="h-need"]');
+    const linhaR = precisa.locator('.row', { hasText: retomar });
+    for (const b of ['Redelegar', 'Retomar', 'Cancelar']) await expect(linhaR.getByRole('button', { name: b, exact: true })).toBeVisible();
+    await linhaR.getByRole('button', { name: 'Retomar' }).click();
+    await aviso(page, 'Tarefa retomada: ela está na sua caixa de entrada.');
+    await expect(linhaR).toHaveCount(0);
+
+    const linhaC = precisa.locator('.row', { hasText: cancelar });
+    await linhaC.getByRole('button', { name: 'Cancelar', exact: true }).click();
+    const cd = dialogo(page, 'Cancelar delegação');
+    await expect(cd).toContainText('vai para Arquivadas');
+    await cd.getByRole('button', { name: 'Cancelar delegação' }).click();
+    await aviso(page, 'Delegação cancelada. A tarefa foi para Arquivadas.');
+    await expect(linhaC).toHaveCount(0);
+
+    // A retomada está na caixa de entrada, com a justificativa como comentário.
+    await irPara(page, 'Caixa de entrada');
+    const naCaixa = page.locator('.row.inbox', { hasText: retomar });
+    await expect(naCaixa).toBeVisible();
+    await naCaixa.locator('.title button').click();
+    await expect(page.getByRole('dialog', { name: /^Tarefa #\d+$/ })).toContainText('Devolvida por João Alves: “Não é da minha área”');
+    await page.getByRole('dialog', { name: /^Tarefa #\d+$/ }).getByRole('button', { name: 'Fechar' }).click();
+
+    // A cancelada está em Arquivadas, marcada como Cancelada.
+    await irPara(page, 'Arquivadas');
+    await expect(page.locator('table.arch tr', { hasText: cancelar }).locator('.tag', { hasText: 'Cancelada' })).toBeVisible();
+  });
+
   test('avisos: quem recebe uma delegação vê o aviso e abre a tarefa por ele', async ({ page, browser }) => {
     const titulo = unico('Revisar contrato');
     await entrar(page, 'paulo');

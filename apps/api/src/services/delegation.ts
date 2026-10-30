@@ -149,8 +149,49 @@ export async function cancel(db: Db, actor: Actor, delegationId: string) {
   );
   await db.query('UPDATE cards SET archived_at = now(), list_id = NULL, updated_at = now() WHERE id = $1', [card.id]);
   await logEvent(db, card.id, actor.id, 'canceled');
-  if (d.parent_card_id) await logEvent(db, d.parent_card_id, actor.id, 'child_canceled', undefined, { childNum: card.num });
+  // Item 75: cancelar uma devolvida arquiva também a tarefa de origem, que sai do quadro de quem delegou.
+  const parent = d.parent_card_id ? await parentCard(db, d.parent_card_id) : null;
+  const archiveParent = d.status === 'DECLINED' && !!parent && !parent.archived_at && !parent.received;
+  if (archiveParent) await db.query('UPDATE cards SET archived_at = now(), updated_at = now() WHERE id = $1', [parent.id]);
+  if (parent) await logEvent(db, parent.id, actor.id, 'child_canceled', undefined, { childNum: card.num, ...(archiveParent ? { archived: true } : {}) });
   await notify(db, card.owner_id, 'canceled', `${first(actor.name)} cancelou a delegação`, cardRef(card));
+}
+
+/**
+ * Item 75: a tarefa de origem de uma delegação. `received` diz se ela mesma chegou por delegação de cima e ainda está
+ * em aberto: nesse caso ela continua no quadro (quem delegou a ela espera a conclusão), nem arquiva nem vai para a caixa.
+ */
+async function parentCard(db: Db, parentId: string) {
+  return one<{ id: string; num: number; archived_at: string | null; received: boolean }>(
+    db,
+    `SELECT c.id, c.num, c.archived_at, (pd.id IS NOT NULL) AS received
+       FROM cards c LEFT JOIN delegations pd ON pd.card_id = c.id
+      WHERE c.id = $1 FOR UPDATE OF c`,
+    [parentId],
+  );
+}
+
+/**
+ * Item 75: "Retomar" uma tarefa devolvida. A delegação é encerrada (como cancelada, sem aviso: a pessoa já devolveu)
+ * e a tarefa de origem volta para a caixa de entrada de quem delegou, com a justificativa da devolução como comentário.
+ */
+export async function resume(db: Db, actor: Actor, delegationId: string) {
+  const { d, card } = await delegatorDelegation(db, actor, delegationId);
+  if (d.status !== 'DECLINED') throw conflict('Só é possível retomar uma tarefa devolvida.');
+  const parent = d.parent_card_id ? await parentCard(db, d.parent_card_id) : null;
+  if (!parent) throw conflict('Esta tarefa não tem uma tarefa de origem para retomar. Use Redelegar ou Cancelar.');
+  if (parent.archived_at) throw conflict('A tarefa de origem está arquivada. Desarquive-a em Arquivadas ou use Redelegar.');
+  await db.query(`UPDATE delegations SET status = 'CANCELED', canceled_at = now(), updated_at = now() WHERE id = $1`, [d.id]);
+  await db.query('UPDATE cards SET archived_at = now(), list_id = NULL, updated_at = now() WHERE id = $1', [card.id]);
+  const inbox = !parent.received;
+  if (inbox) await db.query('UPDATE cards SET list_id = NULL, completed_at = NULL, updated_at = now() WHERE id = $1', [parent.id]);
+  const owner = await one(db, 'SELECT name FROM users WHERE id = $1', [card.owner_id]);
+  const body = `Devolvida por ${owner.name}: “${d.decline_reason ?? ''}”`;
+  await db.query('INSERT INTO comments (card_id, author_id, body) VALUES ($1, $2, $3)', [parent.id, actor.id, body]);
+  await logEvent(db, card.id, actor.id, 'resumed');
+  await logEvent(db, parent.id, actor.id, 'child_resumed', undefined, { childNum: card.num, inbox, num: await numOf(db, parent.id) });
+  await logEvent(db, parent.id, actor.id, 'comment_added', undefined, { body });
+  return { cardId: parent.id, inbox };
 }
 
 /** Item 48: por quanto tempo, depois de cancelar, o "Desfazer" ainda funciona. */
@@ -166,8 +207,16 @@ export async function undoCancel(db: Db, actor: Actor, delegationId: string) {
   const recent = await one(db, `SELECT $1::timestamptz > now() - make_interval(mins => $2) AS ok`, [d.canceled_at, UNDO_CANCEL_MINUTES]);
   if (!recent.ok) throw conflict('Já passou o tempo para desfazer o cancelamento. Se precisar, delegue a tarefa de novo.');
   if (d.parent_card_id) {
-    const parent = await one(db, 'SELECT archived_at FROM cards WHERE id = $1 FOR UPDATE', [d.parent_card_id]);
-    if (parent?.archived_at) throw conflict('A tarefa de origem foi arquivada: não dá para desfazer o cancelamento.');
+    // Item 75: a devolvida cancelada arquivou junto a tarefa de origem (no mesmo instante); o Desfazer a traz de volta.
+    // (Compara no banco: o horário em JavaScript perde os microssegundos.)
+    const parent = await one(
+      db,
+      'SELECT c.archived_at, c.archived_at = d.canceled_at AS by_cancel FROM cards c, delegations d WHERE c.id = $1 AND d.id = $2 FOR UPDATE OF c',
+      [d.parent_card_id, d.id],
+    );
+    if (parent?.archived_at && !(d.cancel_prev_status === 'DECLINED' && parent.by_cancel)) {
+      throw conflict('A tarefa de origem foi arquivada: não dá para desfazer o cancelamento.');
+    }
     const again = await one(db, `SELECT 1 FROM delegations WHERE parent_card_id = $1 AND id <> $2 AND status <> 'CANCELED'`, [d.parent_card_id, d.id]);
     if (again) throw conflict('A tarefa já foi delegada de novo: não dá para desfazer o cancelamento.');
   }
@@ -191,7 +240,10 @@ export async function undoCancel(db: Db, actor: Actor, delegationId: string) {
     [d.id, d.cancel_prev_status],
   );
   await logEvent(db, card.id, actor.id, 'cancel_undone', undefined, { status: d.cancel_prev_status });
-  if (d.parent_card_id) await logEvent(db, d.parent_card_id, actor.id, 'child_cancel_undone', undefined, { childNum: card.num });
+  if (d.parent_card_id) {
+    const back = await one(db, 'UPDATE cards SET archived_at = NULL, updated_at = now() WHERE id = $1 AND archived_at IS NOT NULL RETURNING id', [d.parent_card_id]);
+    await logEvent(db, d.parent_card_id, actor.id, 'child_cancel_undone', undefined, { childNum: card.num, ...(back ? { unarchived: true } : {}) });
+  }
   // A devolvida já tinha saído da pessoa: o cancelamento desfeito não muda nada para ela.
   if (d.cancel_prev_status !== 'DECLINED') {
     await notify(db, card.owner_id, 'cancel_undone', `${first(actor.name)} desfez o cancelamento: a tarefa voltou para você`, cardRef(card));

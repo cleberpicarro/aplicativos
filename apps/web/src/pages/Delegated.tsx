@@ -5,7 +5,7 @@ import { go, useRoute } from '../lib/router';
 import { TIPS, cardNo, daysBetween, firstName, plural } from '../lib/format';
 import { Avatar, CardStatusIcon, Due, TipIcon, ErrorText } from '../components/ui';
 import { Icon } from '../components/Icons';
-import { ConfirmDialog, RedelegateDialog, ReopenDialog, useAction, useCancelDelegation } from '../components/dialogs';
+import { ConfirmDialog, RedelegateDialog, ReopenDialog, useAction, useCancelDelegation, useResume } from '../components/dialogs';
 
 type Pending = null | { kind: 'reopen' | 'redelegate' | 'cancel'; card: Card };
 
@@ -40,6 +40,7 @@ export function DelegatedPage() {
   const [pending, setPending] = useState<Pending>(null);
   const { run, busy, error } = useAction();
   const cancelDelegation = useCancelDelegation();
+  const resume = useResume();
   const setCollapsed = (v: Record<string, boolean>) => { setCollapsedState(v); saveCollapsed(v); };
 
   const filterKey = route.params.get('filtro') ?? '';
@@ -61,7 +62,9 @@ export function DelegatedPage() {
       return (
         <>
           <button className="b pri" title={TIPS.redelegate} onClick={() => setPending({ kind: 'redelegate', card: c })}>Redelegar</button>
-          <button className="b" title={TIPS.cancel} onClick={() => setPending({ kind: 'cancel', card: c })}>Cancelar</button>
+          {/* Item 75: as três saídas da devolvida. */}
+          <button className="b" title={TIPS.resume} onClick={() => resume(d.id)}>Retomar</button>
+          <button className="b" title={TIPS.cancelDeclined} onClick={() => setPending({ kind: 'cancel', card: c })}>Cancelar</button>
         </>
       );
     }
@@ -177,8 +180,10 @@ export function DelegatedPage() {
       {pending?.kind === 'redelegate' && <RedelegateDialog card={pending.card} onClose={() => setPending(null)} />}
       {pending?.kind === 'cancel' && (
         <ConfirmDialog title="Cancelar delegação" danger confirm="Cancelar delegação"
-          text={`Cancelar “${pending.card.title}”? ${firstName(pending.card.ownerName)} é avisado(a).`}
-          onConfirm={() => cancelDelegation(pending.card.delegation!.id, pending.card.ownerName)} onClose={() => setPending(null)} />
+          text={pending.card.delegation!.status === 'DECLINED'
+            ? `Cancelar “${pending.card.title}”? A delegação é encerrada e a sua tarefa vai para Arquivadas.`
+            : `Cancelar “${pending.card.title}”? ${firstName(pending.card.ownerName)} é avisado(a).`}
+          onConfirm={() => cancelDelegation(pending.card.delegation!.id, pending.card.ownerName, pending.card.delegation!.status === 'DECLINED')} onClose={() => setPending(null)} />
       )}
     </div>
   );

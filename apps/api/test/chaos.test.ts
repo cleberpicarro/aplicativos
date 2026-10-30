@@ -1,7 +1,7 @@
 /**
  * Frente 4 do plano de testes: "uso caótico".
  * Um robô sorteia milhares de ações (criar, delegar, aceitar, devolver, concluir, reabrir, dar ciente,
- * cancelar, redelegar, transferir, mover, arquivar, descartar da caixa de entrada, tornar privada…) entre as pessoas da hierarquia e,
+ * cancelar, retomar, redelegar, transferir, mover, arquivar, descartar da caixa de entrada, tornar privada…) entre as pessoas da hierarquia e,
  * de tempos em tempos, confere regras que nunca podem ser quebradas.
  *
  * O sorteio é reproduzível: se falhar, a mensagem mostra a "semente" e as últimas ações.
@@ -116,7 +116,7 @@ async function runChaos(seed: number) {
       await act(who, 'POST', `/api/cards/${c.id}/${c.completed_at && r.chance(0.7) ? 'uncomplete' : 'complete'}`);
     },
     async responder() {
-      // delegador dá ciente, reabre, cancela ou redelega
+      // delegador dá ciente, reabre, cancela, redelega ou retoma (item 75)
       const who = r.pick(PEOPLE.filter((p) => reportsOf(p).length));
       const mine = await q(`SELECT id, status FROM delegations WHERE delegator_id = $1 AND status NOT IN ('ACKED','CANCELED') ORDER BY created_at, id`, [idOf(who)]);
       if (!mine.length) return;
@@ -126,6 +126,7 @@ async function runChaos(seed: number) {
       if (d.status === 'AWAITING_ACK' && roll < 0.6) await act(who, 'POST', `/api/delegations/${d.id}/ack`);
       else if (d.status === 'AWAITING_ACK') await act(who, 'POST', `/api/delegations/${d.id}/reopen`, { comment: 'Refazer a parte final' });
       else if (d.status === 'DECLINED' && roll < 0.5) await act(who, 'POST', `/api/delegations/${d.id}/redelegate`, { toUserId: idOf(r.pick(reportsOf(who))) });
+      else if (d.status === 'DECLINED' && roll < 0.65) await act(who, 'POST', `/api/delegations/${d.id}/resume`);
       else if (roll < 0.12) await act(who, 'POST', `/api/delegations/${d.id}/cancel`);
       else if (roll < 0.25) await act(who, 'POST', `/api/delegations/${d.id}/no-pass`, { noPass: r.chance(0.5) }); // item 41
       else await act(who, 'POST', `/api/delegations/${d.id}/ack`); // muitas vezes inválido de propósito
