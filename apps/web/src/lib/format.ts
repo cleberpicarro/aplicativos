@@ -26,6 +26,11 @@ export function fullDate(d: string): string {
   return `${d.slice(8, 10)}/${d.slice(5, 7)}/${d.slice(0, 4)}`;
 }
 
+/** Item 79: dia de um instante (dd/mm/aaaa), no fuso de Brasília. */
+export function dayOf(iso: string): string {
+  return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'America/Sao_Paulo' });
+}
+
 export function dateTime(iso: string): string {
   const d = new Date(iso);
   return d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' });

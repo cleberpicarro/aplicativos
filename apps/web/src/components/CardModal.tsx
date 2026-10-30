@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { del, get, patch, post, type CardDetail } from '../lib/api';
-import { TIPS, cardNo, dateTime, delegationKey, firstName, fullDate, relative, statusOf } from '../lib/format';
+import { del, get, patch, post, type CardDetail, type Follower } from '../lib/api';
+import { TIPS, cardNo, dateTime, dayOf, delegationKey, firstName, fullDate, relative, statusOf } from '../lib/format';
 import { Avatar, Dialog, ErrorText, StatusPill, useMe, useToast } from './ui';
 import { Icon } from './Icons';
 import { AcceptDialog, ConfirmDialog, DeclineDialog, DelegateDialog, RedelegateDialog, ReopenDialog, TransferDialog, useAction, useCancelDelegation, useDiscard, useResume } from './dialogs';
@@ -56,7 +56,7 @@ export function CardModal({ code, onClose }: { code: string; onClose: () => void
       </Dialog>
     );
   }
-  const { card, role, board, checklistItems, comments, canSeeLog } = q.data;
+  const { card, role, board, checklistItems, comments, canSeeLog, origin, followers } = q.data;
   const d = card.delegation;
   const owner = role === 'owner';
   const archived = !!card.archivedAt;
@@ -166,7 +166,9 @@ export function CardModal({ code, onClose }: { code: string; onClose: () => void
             <div style={{ display: 'grid', gap: 16, alignContent: 'start', minWidth: 0 }}>
               <div className="meta-line">
                 <span>Com <b style={{ fontWeight: 500, color: 'var(--fg)' }}>{owner ? you : card.ownerName}</b></span>
-                {d && <span>· Delegada por {d.delegatorId === me.user.id ? you : d.delegatorName}</span>}
+                {/* Item 79: quem criou a tarefa (a de origem, se ela veio por delegação) e quem delegou por último. */}
+                {origin && <span>· Criada por {origin.creatorId === me.user.id ? you : origin.creatorName} em {dayOf(origin.createdAt)}</span>}
+                {d && <span>· Delegada por {d.delegatorId === me.user.id ? you : d.delegatorName}{origin?.delegatedAt && ` em ${dayOf(origin.delegatedAt)}`}</span>}
                 {card.transferredFrom && <span>· Transferida por {card.transferredFrom.name}</span>}
                 {card.source === 'web' && <span>· Capturada da web</span>}
                 {card.source === 'email' && <span>· Capturada do e-mail</span>}
@@ -230,6 +232,10 @@ export function CardModal({ code, onClose }: { code: string; onClose: () => void
                     onChange={(e) => { const isPrivate = e.target.checked; run(() => patch(`/cards/${card.id}`, { isPrivate }), isPrivate ? 'Tarefa privada: nenhum superior vê.' : 'Tarefa visível.', { optimistic: () => changeCard(qc, card.id, { isPrivate }), scope: 'card' }); }} />
                   Privada
                 </label>
+              )}
+              {/* Item 81: seguidores recebem o log da tarefa por e-mail. Privada não tem; o substituto não mexe. */}
+              {followers && !card.isPrivate && (followers.length > 0 || (role !== 'auditor' && !archived && !me.substitution.acting)) && (
+                <Followers cardId={card.id} list={followers} editable={role !== 'auditor' && !archived && !me.substitution.acting} />
               )}
               {role === 'delegator' && d && !archived && !['ACKED', 'CANCELED'].includes(d.status) && (
                 <NoPassToggle delegationId={d.id} value={d.noPass} who={card.ownerName} />
@@ -467,6 +473,48 @@ function CardColor({ id, color }: { id: string; color: string | null }) {
   );
 }
 
+/** Item 81: e-mails @nerus.com.br que acompanham a tarefa; cada novidade do log vai para eles por e-mail. */
+function Followers({ cardId, list, editable }: { cardId: string; list: Follower[]; editable: boolean }) {
+  const [email, setEmail] = useState('');
+  const { run, busy, error, setError } = useAction();
+  const add = async (e: FormEvent) => {
+    e.preventDefault();
+    const v = email.trim().toLowerCase();
+    if (!v) return;
+    if (!/^[^\s@]+@nerus\.com\.br$/.test(v)) { setError(new Error('Só e-mails @nerus.com.br podem seguir a tarefa.')); return; }
+    if (await run(() => post(`/cards/${cardId}/followers`, { email: v }), `${v} passa a seguir a tarefa.`)) setEmail('');
+  };
+  return (
+    <div className="field">
+      <span className="label" title="Recebem por e-mail cada novidade da tarefa, com o log completo">Seguidores</span>
+      {list.length > 0 && (
+        <div className="followers" style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+          {list.map((f) => (
+            <span key={f.email} className="chip" title={`Incluído por ${f.addedByName}`}>
+              {f.email}
+              {editable && (
+                <button type="button" aria-label={`Tirar ${f.email}`} disabled={busy}
+                  onClick={() => run(() => post(`/cards/${cardId}/followers/remove`, { email: f.email }), `${f.email} deixou de seguir a tarefa.`)}>
+                  <Icon name="x" />
+                </button>
+              )}
+            </span>
+          ))}
+        </div>
+      )}
+      {editable && (
+        <form onSubmit={add} style={{ display: 'flex', gap: 4 }}>
+          <input className="input" type="email" aria-label="E-mail do seguidor" placeholder="nome@nerus.com.br" value={email} maxLength={200} style={{ flex: 1, minWidth: 0 }}
+            onChange={(e) => { setEmail(e.target.value); setError(null); }} />
+          <button className="b sm" type="submit" disabled={busy || !email.trim()} style={{ width: 'auto' }}>Incluir</button>
+        </form>
+      )}
+      {editable && <span className="hint">Recebem por e-mail cada novidade da tarefa, com o log completo.</span>}
+      <ErrorText error={error} />
+    </div>
+  );
+}
+
 /* ---------- log ---------- */
 interface Ev { id: number; type: string; before: any; after: any; created_at: string; actor_name: string | null; via_name: string | null }
 
@@ -510,6 +558,8 @@ function describe(e: Ev): { text: string; change?: string } {
     case 'child_cancel_undone': return { text: 'desfez o cancelamento da delegação para baixo', change: a.childNum ? `#${a.childNum}` : undefined };
     case 'redelegated': return { text: `redelegou para ${a.to}`, change: `Prazo sugerido: ${df(a.suggestedDue)}${a.noPass ? ' · não pode ser repassada' : ''}` };
     case 'transferred': return { text: `transferiu de ${b.owner} para ${a.owner}`, change: a.reason === 'deactivated' ? `${b.owner} foi desativado(a); a tarefa foi para a caixa de entrada de ${a.owner}` : undefined };
+    case 'follower_added': return { text: 'incluiu um seguidor', change: a.email };
+    case 'follower_removed': return a.self ? { text: 'deixou de seguir a tarefa (pelo link do e-mail)', change: b.email } : { text: 'tirou um seguidor', change: b.email };
     case 'management_transferred': return { text: 'transferência de gestão', change: `Acompanhamento passou de ${b.delegator ?? '—'} para ${a.delegator}` };
     default: return { text: e.type };
   }

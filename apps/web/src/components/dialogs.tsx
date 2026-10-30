@@ -388,15 +388,17 @@ export function ConfirmDialog({ title, text, confirm, danger, onConfirm, onClose
   );
 }
 
-export function NameDialog({ title, label, initial = '', confirm, onSave, onClose }: { title: string; label: string; initial?: string; confirm: string; onSave: (name: string) => Promise<unknown>; onClose: Close }) {
+export function NameDialog({ title, label, initial = '', confirm, onSave, onClose, saveOnOutside }: { title: string; label: string; initial?: string; confirm: string; onSave: (name: string) => Promise<unknown>; onClose: Close; saveOnOutside?: boolean }) {
   const { run, busy, error } = useAction();
   const [name, setName] = useState(initial);
-  const submit = async (e: FormEvent) => {
-    e.preventDefault();
+  const submit = async (e?: FormEvent) => {
+    e?.preventDefault();
     if ((await run(() => onSave(name))) !== undefined) onClose();
   };
+  // Item 77: na fase nova e no quadro novo, clicar fora da janela com o nome digitado cria; vazio, só fecha.
+  const outside = saveOnOutside ? () => { if (name.trim() && !busy) void submit(); else if (!name.trim()) onClose(); } : undefined;
   return (
-    <Dialog title={title} onClose={onClose} footer={<Footer busy={busy} onClose={onClose} label={confirm} />}>
+    <Dialog title={title} onClose={onClose} onOutside={outside} footer={<Footer busy={busy} onClose={onClose} label={confirm} />}>
       <form id="dlg" onSubmit={submit} className="dialog-b" style={{ padding: 0 }}>
         <div className="field">
           <label htmlFor="n-name">{label}</label>

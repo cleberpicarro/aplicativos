@@ -203,7 +203,8 @@ test.describe('delegação de ponta a ponta', () => {
     const lucas = await outraPessoa(browser, 'lucas');
     try {
       await irPara(lucas.page, 'Avisos');
-      await lucas.page.getByRole('button', { name: new RegExp(`delegou: ${titulo}`) }).click();
+      // O balão do item 80 também tem esse texto: o aviso é o da tela Avisos.
+      await lucas.page.getByRole('main').getByRole('button', { name: new RegExp(`delegou: ${titulo}`) }).click();
       await expect(lucas.page.getByRole('dialog', { name: /^Tarefa #\d+$/ })).toBeVisible();
     } finally {
       await lucas.fechar();
@@ -302,5 +303,48 @@ test.describe('delegação de ponta a ponta', () => {
     await irPara(page, 'Avisos');
     await expect(page.getByRole('button', { name: 'Lucas aceitou a tarefa' }).first()).toBeVisible();
     expect(filho).toBeTruthy();
+  });
+});
+
+test.describe('quem criou, balão e seguidores (itens 79 a 81)', () => {
+  test('quem recebe vê quem criou e quem delegou, recebe o balão e inclui um seguidor', async ({ page, browser }) => {
+    const titulo = unico('Relatório de vendas');
+    await entrar(page, 'marina');
+    await irPara(page, 'Tarefas');
+    const origem = await criarTarefa(page, titulo);
+    await delegar(page, origem, /João/);
+
+    const joao = await outraPessoa(browser, 'joao');
+    try {
+      // Item 80: o balão aparece ao entrar; clicar abre a tarefa.
+      const balao = joao.page.locator('.arrival', { hasText: titulo });
+      await expect(balao).toBeVisible();
+      await expect(balao).toContainText('Clique para ver');
+      await balao.getByRole('button', { name: /delegou/ }).click();
+      const dlg = joao.page.getByRole('dialog', { name: /^Tarefa #\d+$/ });
+      await expect(dlg).toBeVisible();
+      await expect(balao).toHaveCount(0);
+      // Item 79: quem criou e quem delegou por último, com as datas.
+      await expect(dlg.getByText(/Criada por Marina .+ em \d{2}\/\d{2}\/\d{4}/)).toBeVisible();
+      await expect(dlg.getByText(/Delegada por Marina .+ em \d{2}\/\d{2}\/\d{4}/)).toBeVisible();
+
+      // Item 81: só e-mails @nerus.com.br.
+      await dlg.getByLabel('E-mail do seguidor').fill('alguem@gmail.com');
+      await dlg.getByRole('button', { name: 'Incluir' }).click();
+      await expect(dlg.getByText('Só e-mails @nerus.com.br podem seguir a tarefa.')).toBeVisible();
+      await dlg.getByLabel('E-mail do seguidor').fill('ana.souza@nerus.com.br');
+      await dlg.getByRole('button', { name: 'Incluir' }).click();
+      await expect(dlg.locator('.followers .chip', { hasText: 'ana.souza@nerus.com.br' })).toBeVisible();
+      await dlg.getByRole('button', { name: 'Tirar ana.souza@nerus.com.br' }).click();
+      await expect(dlg.locator('.followers .chip')).toHaveCount(0);
+
+      // O balão não volta ao recarregar.
+      await dlg.getByRole('button', { name: 'Fechar' }).click();
+      await joao.page.reload();
+      await expect(joao.page.locator('.topbar h1')).toBeVisible();
+      await expect(joao.page.locator('.arrival')).toHaveCount(0);
+    } finally {
+      await joao.fechar();
+    }
   });
 });

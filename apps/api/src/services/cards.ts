@@ -1,6 +1,7 @@
 import { one, many, type Db } from '../lib/db.js';
 import { notFound } from '../lib/errors.js';
 import { canSeeLog, subSees, type Actor } from './actors.js';
+import { listFollowers } from './followers.js';
 
 export type ViewerRole = 'owner' | 'delegator' | 'auditor';
 
@@ -206,10 +207,33 @@ export async function cardDetail(db: Db, actor: Actor, cardId: string) {
     const lists = await many(db, 'SELECT id, name FROM lists WHERE board_id = $1 AND archived_at IS NULL ORDER BY position', [row.board_id]);
     board = { ...b, lists };
   }
+  // Item 79: quem criou a tarefa de origem (subindo pelas delegações) e quando ela foi delegada por último.
+  const origin = await one(
+    db,
+    `WITH RECURSIVE up(id, depth) AS (
+       SELECT $1::uuid, 0
+       UNION ALL
+       SELECT d.parent_card_id, up.depth + 1 FROM up JOIN delegations d ON d.card_id = up.id
+        WHERE d.parent_card_id IS NOT NULL AND up.depth < 50
+     )
+     SELECT u.id AS creator_id, u.name AS creator_name, c.created_at FROM up JOIN cards c ON c.id = up.id JOIN users u ON u.id = c.created_by
+      ORDER BY up.depth DESC LIMIT 1`,
+    [cardId],
+  );
+  const lastDelegation = row.d_id
+    ? await one(db, `SELECT created_at FROM card_events WHERE card_id = $1 AND type IN ('delegated', 'redelegated') ORDER BY created_at DESC, id DESC LIMIT 1`, [cardId])
+    : null;
   return {
     card: dto,
     role,
     canSeeLog: logVisible,
+    origin: {
+      creatorId: origin.creator_id as string,
+      creatorName: origin.creator_name as string,
+      createdAt: origin.created_at as string,
+      delegatedAt: row.d_id ? ((lastDelegation?.created_at ?? row.created_at) as string) : null,
+    },
+    followers: await listFollowers(db, cardId),
     board,
     checklistItems: checklist,
     comments: comments.map((c) => ({ id: c.id, body: c.body, createdAt: c.created_at, authorId: c.author_id, authorName: c.author_name, viaName: c.via_name ?? null })),

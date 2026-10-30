@@ -50,12 +50,22 @@ export async function me(db: Db, actor: Actor) {
     acting: sub ? { id: actor.id, name: actor.name, shareCommon: sub.share, by: { id: sub.id, name: sub.name } } : null,
     mine: sub ? null : await subs.current(db, actor.id),
   };
+  // Item 80: tarefa delegada ou transferida que chegou e ainda não apareceu como balão (nunca para o substituto).
+  const fresh = sub ? [] : await many(
+    db,
+    `SELECT n.id, n.text, n.card_id FROM notifications n
+      WHERE n.user_id = $1 AND n.type IN ('delegated', 'transferred') AND n.read_at IS NULL AND n.popped_at IS NULL
+        AND n.created_at > now() - interval '7 days'
+      ORDER BY n.created_at DESC LIMIT 20`,
+    [actor.id],
+  );
   const { sub: _sub, ...user } = actor;
   return {
     substitution,
     user: { ...user, inHierarchy: actor.level !== null },
     directReports: reports.map((r) => ({ id: r.id, name: r.name, roleTitle: r.role_title })),
     counts: { inbox: counts.inbox, needAction: counts.need_action, unread: counts.unread },
+    fresh: fresh.map((n) => ({ id: n.id as string, text: n.text as string, cardId: (n.card_id as string | null) ?? null })),
     prefs: { workspaceBg: counts.workspace_bg as string | null, emailDigest: counts.email_digest as boolean, emailDue: counts.email_due as boolean, hideInactive: counts.hide_inactive as boolean },
     today: counts.today,
   };
@@ -101,6 +111,16 @@ export async function search(db: Db, actor: Actor, q: string, boardId?: string) 
     'c.archived_at NULLS FIRST, c.updated_at DESC LIMIT 30',
   );
   return { byCode: null, results };
+}
+
+/** Item 80: marca os balões que já apareceram; com read, também como lidos (a pessoa clicou no balão). */
+export async function markPopped(db: Db, actor: Actor, ids: string[], read: boolean) {
+  if (!ids.length) return;
+  await db.query(
+    `UPDATE notifications SET popped_at = coalesce(popped_at, now()), read_at = CASE WHEN $3 THEN coalesce(read_at, now()) ELSE read_at END
+      WHERE user_id = $1 AND id = ANY($2::uuid[])`,
+    [actor.id, ids, read],
+  );
 }
 
 export async function listNotifications(db: Db, actor: Actor) {

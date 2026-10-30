@@ -24,7 +24,7 @@ const AUDITORS = ['admin', 'ceo', 'dir'];
 
 /** Fotografia das tabelas de dados: qualquer mudança aparece como diferença. */
 async function snapshot() {
-  const tables = ['boards', 'lists', 'cards', 'checklist_items', 'comments', 'delegations', 'card_events', 'users', 'manager_changes', 'saved_filters'];
+  const tables = ['boards', 'lists', 'cards', 'checklist_items', 'comments', 'delegations', 'card_events', 'users', 'manager_changes', 'saved_filters', 'card_followers'];
   const out: Record<string, string> = {};
   for (const t of tables) {
     const r = await ctx.pool.query(`SELECT md5(coalesce(string_agg(x::text, '|' ORDER BY x::text), '')) AS h FROM ${t} x`);
@@ -83,6 +83,8 @@ beforeAll(async () => {
   s.discarded = (await call('gest', 'POST', '/api/capture', { title: 'Descartada pelo gestor', url: 'https://exemplo.com/b' })).body.id;
   await call('gest', 'POST', '/api/inbox/discard', { ids: [s.discarded] });
   // Filtro salvo da tabela (item 36).
+  // Item 81: um seguidor na tarefa comum (ninguém de fora tira nem inclui).
+  await call('gest', 'POST', `/api/cards/${own.id}/followers`, { email: 'seguidor@nerus.com.br' });
   s.filter = (await call('gest', 'POST', '/api/filters', { name: 'Do gestor', filter: { all: [{ field: 'status', op: 'eq', value: 'open' }] } })).body.id;
 });
 afterAll(async () => {
@@ -115,6 +117,8 @@ async function attemptsAgainstGest(who: string): Promise<Attempt[]> {
     { method: 'POST', url: `/api/cards/${id}/accept-delegate`, body: { listId: myList, toUserId: someone }, route: 'POST /api/cards/:id/accept-delegate' },
     { method: 'POST', url: '/api/inbox/discard', body: { ids: [id] }, route: 'POST /api/inbox/discard' },
     { method: 'POST', url: '/api/inbox/restore', body: { ids: [id] }, route: 'POST /api/inbox/restore' },
+    { method: 'POST', url: `/api/cards/${id}/followers`, body: { email: 'intruso@nerus.com.br' }, route: 'POST /api/cards/:id/followers' },
+    { method: 'POST', url: `/api/cards/${id}/followers/remove`, body: { email: 'seguidor@nerus.com.br' }, route: 'POST /api/cards/:id/followers/remove' },
   ];
   const deleg = (id: string): Attempt[] => [
     { method: 'POST', url: `/api/delegations/${id}/ack`, route: 'POST /api/delegations/:id/ack' },
@@ -319,14 +323,17 @@ describe('permissões em massa (frente 2)', () => {
       'GET /api/admin/users', 'POST /api/admin/users', 'PATCH /api/admin/users/:id', 'POST /api/admin/users/:id/transfer-management',
       'POST /api/admin/users/:id/active', 'POST /api/admin/users/:id/invite', 'PATCH /api/filters/:id', 'DELETE /api/filters/:id',
       'POST /api/cards/:id/accept-delegate', 'POST /api/inbox/discard', 'POST /api/inbox/restore',
+      'POST /api/cards/:id/followers', 'POST /api/cards/:id/followers/remove',
       // só leem ou alteram os dados da própria pessoa (não recebem identificador de outra)
       'GET /api/me', 'PATCH /api/me/prefs', 'GET /api/boards', 'POST /api/boards', 'GET /api/inbox', 'GET /api/delegations', 'GET /api/dashboard',
-      'GET /api/search', 'GET /api/notifications', 'POST /api/notifications/read', 'POST /api/capture', 'POST /api/import/trello', 'GET /api/export',
+      'GET /api/search', 'GET /api/notifications', 'POST /api/notifications/read', 'POST /api/notifications/popped', 'POST /api/capture', 'POST /api/import/trello', 'GET /api/export',
       'GET /api/archived', 'GET /api/boards/archived', 'GET /api/table', 'GET /api/table/options', 'GET /api/filters', 'POST /api/filters',
       // item 65 (conector para assistentes): cobertas em conector.test.ts
       'GET /api/oauth/request', 'POST /api/oauth/decide', 'GET /api/me/assistants', 'DELETE /api/me/assistants/:id', 'POST /mcp', 'GET /mcp', 'DELETE /mcp',
       'GET /.well-known/oauth-protected-resource', 'GET /.well-known/oauth-protected-resource/mcp', 'GET /.well-known/oauth-authorization-server',
       'POST /oauth/register', 'GET /oauth/authorize', 'POST /oauth/token',
+      // item 81 (parar de seguir pelo link do e-mail, sem login, pelo código secreto): coberta em itens-77-81.test.ts
+      'GET /seguir/sair', 'POST /seguir/sair',
       // item 72 (substituição em férias): cobertas em substituicao.test.ts
       'GET /api/substitution', 'POST /api/substitution', 'POST /api/substitution/end',
       // públicas por natureza

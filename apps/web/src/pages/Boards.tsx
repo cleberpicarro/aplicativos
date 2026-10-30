@@ -199,7 +199,7 @@ export function BoardsPage({ top }: { top?: HTMLElement | null } = {}) {
       {board.data && <Kanban board={board.data} today={me.today} zoom={zoom} match={matchIds} onNewList={() => setDialog('newList')} />}
 
       {dialog === 'newBoard' && (
-        <NameDialog title="Novo quadro" label="Nome do quadro" confirm="Criar" onClose={() => setDialog(null)}
+        <NameDialog title="Novo quadro" label="Nome do quadro" confirm="Criar" saveOnOutside onClose={() => setDialog(null)}
           onSave={async (name) => { const b = await post<{ id: string }>('/boards', { name }); select(b.id); return b; }} />
       )}
       {dialog === 'import' && (
@@ -212,7 +212,7 @@ export function BoardsPage({ top }: { top?: HTMLElement | null } = {}) {
           onSave={(name) => patch(`/boards/${board.data!.id}`, { name })} />
       )}
       {dialog === 'newList' && board.data && (
-        <NameDialog title="Nova fase" label="Nome da fase" confirm="Criar" onClose={() => setDialog(null)}
+        <NameDialog title="Nova fase" label="Nome da fase" confirm="Criar" saveOnOutside onClose={() => setDialog(null)}
           onSave={(name) => post(`/boards/${board.data!.id}/lists`, { name })} />
       )}
       {dialog === 'color' && board.data && <ColorDialog board={board.data} onClose={() => setDialog(null)} />}
@@ -319,6 +319,9 @@ function Kanban({ board, today, zoom, match, onNewList }: { board: Board; today:
   const [dropAt, setDropAt] = useState<DropAt>(null);
   const [renaming, setRenaming] = useState<{ id: string; name: string } | null>(null);
   const [archiving, setArchiving] = useState<{ id: string; name: string } | null>(null);
+  // Item 78: a fase se arrasta pelo cabeçalho; a linha azul vertical mostra onde ela vai entrar.
+  const [dragList, setDragList] = useState<string | null>(null);
+  const [listDrop, setListDrop] = useState<{ id: string; after: boolean } | null>(null);
 
   const allOf = (listId: string) => board.cards.filter((c) => c.listId === listId);
   // Com filtro ligado, os cartões que não atendem a ele ficam escondidos; as fases continuam todas no lugar.
@@ -339,6 +342,7 @@ function Kanban({ board, today, zoom, match, onNewList }: { board: Board; today:
   const drop = (e: DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    if (dragList) { dropList(); return; }
     const id = dragId ?? e.dataTransfer.getData('text/plain');
     const target = dropAt;
     setDragId(null);
@@ -358,14 +362,33 @@ function Kanban({ board, today, zoom, match, onNewList }: { board: Board; today:
       { optimistic: () => changeCard(qc, id, { listId: target.listId, position }), scope: 'card' });
   };
 
+  /** Item 78: grava a nova ordem da fase; ela já aparece no lugar novo antes da resposta do servidor. */
+  const placeList = (id: string, beforeId: string | null) => {
+    const list = board.lists.filter((l) => l.id !== id);
+    const idx = beforeId ? list.findIndex((l) => l.id === beforeId) : -1;
+    const position = idx === -1
+      ? (list[list.length - 1]?.position ?? 0) + 1
+      : idx === 0 ? list[0].position - 1 : (list[idx - 1].position + list[idx].position) / 2;
+    const current = board.lists.find((l) => l.id === id);
+    if (!current) return;
+    const order = [...list.slice(0, idx === -1 ? list.length : idx), { ...current, position }, ...(idx === -1 ? [] : list.slice(idx))];
+    if (order.map((l) => l.id).join() === board.lists.map((l) => l.id).join()) return;
+    qc.setQueryData<Board>(['board', board.id], (old) => old && { ...old, lists: order });
+    run(() => patch(`/lists/${id}`, { position }));
+  };
   const moveList = (index: number, dir: -1 | 1) => {
     const lists = board.lists;
-    const target = index + dir;
-    if (target < 0 || target >= lists.length) return;
-    const neighbor = lists[target];
-    const beyond = lists[target + dir];
-    const position = beyond ? (neighbor.position + beyond.position) / 2 : neighbor.position + dir;
-    run(() => patch(`/lists/${lists[index].id}`, { position }));
+    if (dir === -1 && index > 0) placeList(lists[index].id, lists[index - 1].id);
+    if (dir === 1 && index < lists.length - 1) placeList(lists[index].id, lists[index + 2]?.id ?? null);
+  };
+  const dropList = () => {
+    const id = dragList;
+    const target = listDrop;
+    setDragList(null);
+    setListDrop(null);
+    if (!id || !target) return;
+    const i = board.lists.findIndex((l) => l.id === target.id);
+    placeList(id, target.after ? board.lists[i + 1]?.id ?? null : target.id);
   };
 
   /** Item 23: arquiva as concluídas da fase, com “Desfazer” no aviso. */
@@ -389,9 +412,17 @@ function Kanban({ board, today, zoom, match, onNewList }: { board: Board; today:
           const cards = cardsOf(l.id);
           const all = allOf(l.id);
           const here = dropAt?.listId === l.id;
+          const listMark = listDrop?.id === l.id && dragList !== l.id ? (listDrop.after ? ' drop-after' : ' drop-before') : '';
           return (
-            <section key={l.id} className={`col${here ? ' over' : ''}`} aria-label={l.name}
+            <section key={l.id} className={`col${here ? ' over' : ''}${dragList === l.id ? ' dragging' : ''}${listMark}`} aria-label={l.name}
               onDragOver={(e) => {
+                if (dragList) {
+                  e.preventDefault();
+                  const r = e.currentTarget.getBoundingClientRect();
+                  const after = e.clientX > r.left + r.width / 2;
+                  if (listDrop?.id !== l.id || listDrop.after !== after) setListDrop({ id: l.id, after });
+                  return;
+                }
                 if (!dragId) return;
                 e.preventDefault();
                 // No vão entre dois cartões, mantém a linha onde está; abaixo do último, vai para o fim.
@@ -403,7 +434,9 @@ function Kanban({ board, today, zoom, match, onNewList }: { board: Board; today:
               }}
               onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node) && here) setDropAt(null); }}
               onDrop={drop}>
-              <div className="col-h">
+              <div className="col-h" draggable={board.lists.length > 1} title={board.lists.length > 1 ? 'Arraste para mudar a ordem das fases' : undefined}
+                onDragStart={(e) => { if (e.target !== e.currentTarget) return; setDragList(l.id); e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', l.id); }}
+                onDragEnd={() => { setDragList(null); setListDrop(null); }}>
                 <b title={l.name}>{l.name}</b>
                 <span className="n" title={match ? 'Tarefas que atendem ao filtro, do total da fase' : undefined}>{match ? `${cards.length} de ${all.length}` : cards.length}</span>
                 <Menu label={`Opções da fase ${l.name}`} items={[
@@ -436,7 +469,7 @@ function Kanban({ board, today, zoom, match, onNewList }: { board: Board; today:
           <button className="add-card" style={{ margin: 0 }} onClick={onNewList}><Icon name="plus" />Nova fase</button>
         </div>
       </div>
-      <p className="hint">Arraste as tarefas para mudar a ordem ou a fase, e as abas para mudar a ordem dos quadros; a linha azul mostra onde vai entrar. No celular, abra a tarefa e use “Mover para”.</p>
+      <p className="hint">Arraste as tarefas para mudar a ordem ou a fase, o nome da fase para mudar a ordem das fases e as abas para mudar a ordem dos quadros; a linha azul mostra onde vai entrar. No celular, abra a tarefa e use “Mover para”.</p>
 
       {renaming && (
         <NameDialog title="Renomear fase" label="Nome da fase" confirm="Salvar" initial={renaming.name} onClose={() => setRenaming(null)}
@@ -561,7 +594,7 @@ function AddCard({ listId, first }: { listId: string; first?: boolean }) {
       onClick: () => run(() => post('/cards/undo-create', { ids }), 'Criação desfeita.'),
     });
   };
-  const submit = (e?: FormEvent) => {
+  const submit = (e?: FormEvent, close = false) => {
     e?.preventDefault();
     const lines = splitLines(text);
     if (!lines.length) { setOpen(false); return; }
@@ -570,16 +603,34 @@ function AddCard({ listId, first }: { listId: string; first?: boolean }) {
       // Item 54: o cartão aparece na hora (como “criando…”) e o campo já fica livre para a próxima tarefa.
       const title = lines[0];
       setText('');
+      if (close) setOpen(false);
+      // Se o servidor recusar, o campo volta aberto com o título, para não perder o que foi digitado.
       void run(() => post('/cards', { listId, title }), undefined, { optimistic: () => addPendingCard(qc, listId, title), scope: 'card' })
-        .then((r) => { if (!r) setText(title); });
+        .then((r) => { if (!r) { setOpen(true); setText(title); } });
       return;
     }
     setAsking(lines);
   };
+  // Item 77: clicar fora do campo cria a tarefa digitada e fecha o campo; vazio, só fecha.
+  // Esc e “Cancelar” continuam descartando. Cliques numa janela (a pergunta das várias linhas) ou no aviso
+  // flutuante (o Desfazer do lote) não contam.
+  const form = useRef<HTMLFormElement>(null);
+  const outside = useRef(submit);
+  outside.current = submit;
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      const target = e.target as Element;
+      if (form.current?.contains(target) || target.closest?.('.scrim, .toast')) return;
+      outside.current(undefined, true);
+    };
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, [open]);
 
   if (!open) return <button className="add-card" onClick={() => setOpen(true)}><Icon name="plus" />Adicionar tarefa</button>;
   return (
-    <form className="add-form" onSubmit={submit}>
+    <form ref={form} className="add-form" onSubmit={submit}>
       <textarea ref={field} className="input add-text" autoFocus rows={1} value={text} placeholder="Título da tarefa" aria-label="Título da nova tarefa"
         onChange={(e) => setText(e.target.value)}
         onKeyDown={(e) => {

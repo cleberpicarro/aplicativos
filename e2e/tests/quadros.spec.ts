@@ -453,3 +453,63 @@ test.describe('meus quadros', () => {
     await expect(dlg.locator('.cmt').getByRole('link', { name: 'http://example.com/ata' })).toBeVisible();
   });
 });
+
+test.describe('clicar fora e arrastar fases (itens 77 e 78)', () => {
+  test('clicar fora do campo cria a tarefa digitada; na fase nova, clicar fora da janela cria a fase', async ({ page }) => {
+    await entrar(page, 'beatriz');
+    const quadro = unico('Clicar fora');
+    await page.getByRole('button', { name: 'Quadro', exact: true }).click();
+    await dialogo(page, 'Novo quadro').getByLabel('Nome do quadro').fill(quadro);
+    // Item 77: clicar fora da janela com o nome digitado também cria o quadro.
+    await page.mouse.click(5, 5);
+    await expect(page.getByRole('tab', { name: quadro })).toHaveAttribute('aria-selected', 'true');
+
+    const col = page.getByRole('region', { name: 'A fazer', exact: true });
+    const titulo = unico('Digitada e clicou fora');
+    await col.getByRole('button', { name: 'Adicionar tarefa' }).click();
+    await col.getByLabel('Título da nova tarefa').fill(titulo);
+    await page.locator('.topbar h1').click();
+    await expect(col.locator('article.kc[data-id]', { hasText: titulo })).toBeVisible();
+    await expect(col.getByLabel('Título da nova tarefa')).toHaveCount(0);
+    // Vazio: clicar fora só fecha.
+    await col.getByRole('button', { name: 'Adicionar tarefa' }).click();
+    await page.locator('.topbar h1').click();
+    await expect(col.getByLabel('Título da nova tarefa')).toHaveCount(0);
+    await expect(col.locator('article.kc')).toHaveCount(1);
+    // Esc continua descartando.
+    await col.getByRole('button', { name: 'Adicionar tarefa' }).click();
+    await col.getByLabel('Título da nova tarefa').fill('Não era para criar');
+    await col.getByLabel('Título da nova tarefa').press('Escape');
+    await page.locator('.topbar h1').click();
+    await expect(col.locator('article.kc')).toHaveCount(1);
+
+    await page.getByRole('button', { name: 'Opções do quadro' }).click();
+    await page.getByRole('menuitem', { name: 'Nova fase' }).click();
+    await dialogo(page, 'Nova fase').getByLabel('Nome da fase').fill('Revisão');
+    await page.mouse.click(5, 5);
+    await expect(page.locator('.col-h b')).toHaveText(['A fazer', 'Fazendo', 'Feito', 'Revisão']);
+  });
+
+  test('arrastar a fase pelo nome muda a ordem das fases, com as tarefas junto', async ({ page }) => {
+    await entrar(page, 'beatriz');
+    const quadro = unico('Arrastar fases');
+    await page.getByRole('button', { name: 'Quadro', exact: true }).click();
+    await dialogo(page, 'Novo quadro').getByLabel('Nome do quadro').fill(quadro);
+    await dialogo(page, 'Novo quadro').getByRole('button', { name: 'Criar' }).click();
+    await expect(page.locator('.col-h b')).toHaveText(['A fazer', 'Fazendo', 'Feito']);
+    const titulo = unico('Vai junto');
+    await criarTarefa(page, titulo, 'Feito');
+
+    const cab = (fase: string) => page.getByRole('region', { name: fase, exact: true }).locator('.col-h');
+    // “Feito” para antes de “A fazer” (metade esquerda do cabeçalho).
+    await cab('Feito').dragTo(cab('A fazer'), { targetPosition: { x: 10, y: 10 } });
+    await expect(page.locator('.col-h b')).toHaveText(['Feito', 'A fazer', 'Fazendo']);
+    await page.reload();
+    await expect(page.locator('.col-h b')).toHaveText(['Feito', 'A fazer', 'Fazendo']);
+    await expect(page.getByRole('region', { name: 'Feito', exact: true }).locator('article.kc', { hasText: titulo })).toBeVisible();
+    // E o menu da fase continua funcionando (é o jeito no celular).
+    await page.getByRole('button', { name: 'Opções da fase Feito' }).click();
+    await page.getByRole('menuitem', { name: 'Mover fase para a direita' }).click();
+    await expect(page.locator('.col-h b')).toHaveText(['A fazer', 'Feito', 'Fazendo']);
+  });
+});

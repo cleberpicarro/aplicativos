@@ -91,7 +91,7 @@ export function Due({ date, done, today }: { date: string | null; done?: boolean
 }
 
 /* ---------- diálogo ---------- */
-export function Dialog({ title, onClose, children, footer, wide, label }: { title: ReactNode; onClose: () => void; children: ReactNode; footer?: ReactNode; wide?: boolean; label?: string }) {
+export function Dialog({ title, onClose, onOutside, children, footer, wide, label }: { title: ReactNode; onClose: () => void; onOutside?: () => void; children: ReactNode; footer?: ReactNode; wide?: boolean; label?: string }) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const prev = document.activeElement as HTMLElement | null;
@@ -109,7 +109,7 @@ export function Dialog({ title, onClose, children, footer, wide, label }: { titl
     return () => { document.removeEventListener('keydown', onKey); prev?.focus?.(); };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   return (
-    <div className="scrim" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+    <div className="scrim" onMouseDown={(e) => { if (e.target === e.currentTarget) (onOutside ?? onClose)(); }}>
       <div ref={ref} className={`dialog${wide ? ' card' : ''}`} role="dialog" aria-modal="true" aria-label={label ?? (typeof title === 'string' ? title : undefined)}>
         <div className="dialog-h">
           <h3>{title}</h3>

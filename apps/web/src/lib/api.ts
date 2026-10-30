@@ -97,6 +97,8 @@ export interface Me {
   user: { id: string; name: string; email: string; level: number | null; roleTitle: string; managerId: string | null; isAdmin: boolean; inHierarchy: boolean };
   directReports: { id: string; name: string; roleTitle: string }[];
   counts: { inbox: number; needAction: number; unread: number };
+  /** Item 80: tarefas delegadas ou transferidas que chegaram e ainda não apareceram como balão. */
+  fresh?: { id: string; text: string; cardId: string | null }[];
   /** Item 46: resumo diário e avisos de prazo por e-mail (ligados por padrão). */
   prefs: { workspaceBg: string | null; emailDigest: boolean; emailDue: boolean; hideInactive: boolean };
   today: string;
@@ -124,7 +126,13 @@ export interface CardDetail {
   board: null | { id: string; name: string; lists: { id: string; name: string }[] };
   checklistItems: { id: string; text: string; done: boolean }[];
   comments: { id: string; body: string; createdAt: string; authorId: string; authorName: string; viaName: string | null }[];
+  /** Item 79: quem criou a tarefa de origem e quando ela foi delegada por último (só chega com a tarefa completa). */
+  origin?: { creatorId: string; creatorName: string; createdAt: string; delegatedAt: string | null };
+  /** Item 81: e-mails que seguem a tarefa. */
+  followers?: Follower[];
 }
+
+export interface Follower { email: string; addedByName: string; createdAt: string }
 
 export interface Board {
   id: string;

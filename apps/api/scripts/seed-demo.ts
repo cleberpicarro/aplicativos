@@ -113,6 +113,8 @@ export async function seedDemo(db: Db) {
   await task(db, lucas, 'A fazer', 'Revisar base de conhecimento', 4);
 
   await db.query('DELETE FROM email_outbox');
+  // Item 80: o que já veio com a equipe de exemplo não aparece como balão ao entrar.
+  await db.query('UPDATE notifications SET popped_at = now()');
   return true;
 }
 

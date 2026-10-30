@@ -5,6 +5,7 @@ import { createMailer, processOutbox } from './lib/mailer.js';
 import { buildApp } from './app.js';
 import { tx } from './lib/db.js';
 import { runReminders } from './services/reminders.js';
+import { runFollowerMail } from './services/followers.js';
 import { seedDemo } from '../scripts/seed-demo.js';
 
 const pool = createPool(config.databaseUrl);
@@ -31,10 +32,18 @@ const reminders = () => {
 const reminderTimer = setInterval(reminders, 15 * 60_000);
 const firstReminders = setTimeout(reminders, 30_000);
 
+// Item 81: e-mail dos seguidores, quando a tarefa fica 5 minutos sem novidade nova. Confere a cada minuto.
+const followerTimer = setInterval(() => {
+  tx(pool, (db) => runFollowerMail(db))
+    .then((r) => { if (r.sent) app.log.info(r, 'e-mails dos seguidores na fila'); })
+    .catch((err) => app.log.error(err, 'falha ao preparar os e-mails dos seguidores'));
+}, 60_000);
+
 const shutdown = async () => {
   clearInterval(timer);
   clearInterval(reminderTimer);
   clearTimeout(firstReminders);
+  clearInterval(followerTimer);
   await app.close();
   await pool.end();
   process.exit(0);

@@ -5,6 +5,7 @@ import { loadCard, selectCards, nextPosition, cardRef, numOf } from './cards.js'
 import { ownList } from './boards.js';
 import { logEvent } from './events.js';
 import { notify } from './notify.js';
+import { copyFollowers } from './followers.js';
 
 const first = (name: string) => name.split(' ')[0];
 
@@ -46,6 +47,7 @@ export async function delegate(db: Db, actor: Actor, cardId: string, input: { to
   const to = await one(db, 'SELECT name FROM users WHERE id = $1', [input.toUserId]);
   await logEvent(db, child.id, actor.id, 'delegated', undefined, { from: actor.name, to: to.name, suggestedDue: due, parentNum: row.num, ...(noPass ? { noPass } : {}) });
   await logEvent(db, row.id, actor.id, 'delegated_down', undefined, { to: to.name, childNum: child.num });
+  await copyFollowers(db, row.id, child.id);
   if (input.note?.trim()) {
     await db.query('INSERT INTO comments (card_id, author_id, body) VALUES ($1, $2, $3)', [child.id, actor.id, input.note.trim()]);
     await logEvent(db, child.id, actor.id, 'comment_added', undefined, { body: input.note.trim() });
