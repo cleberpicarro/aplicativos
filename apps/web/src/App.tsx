@@ -288,6 +288,48 @@ function Shell() {
       {legend && <LegendDialog onClose={() => setLegend(false)} />}
       {myData && <MyDataDialog onClose={() => setMyData(false)} />}
       {keysHelp && <ShortcutsDialog onClose={() => setKeysHelp(false)} />}
+      <ArrivalBalloon />
+    </div>
+  );
+}
+
+/**
+ * Item 80: balão no canto quando chega tarefa delegada ou transferida. Clicar abre a tarefa (várias juntas: a caixa
+ * de entrada) e marca o aviso como lido; some sozinho em 10 segundos, e o aviso continua no sino.
+ */
+function ArrivalBalloon() {
+  const me = useMe().data;
+  const qc = useQueryClient();
+  const [shown, setShown] = useState<{ ids: string[]; text: string; cardId: string | null } | null>(null);
+  const seen = useRef(new Set<string>());
+  useEffect(() => {
+    const fresh = (me?.fresh ?? []).filter((n) => !seen.current.has(n.id));
+    if (!fresh.length) return;
+    for (const n of fresh) seen.current.add(n.id);
+    const ids = fresh.map((n) => n.id);
+    setShown(fresh.length === 1
+      ? { ids, text: fresh[0].text, cardId: fresh[0].cardId }
+      : { ids, text: `${fresh.length} tarefas novas chegaram para você`, cardId: null });
+    post('/notifications/popped', { ids }).catch(() => { /* sem rede: o balão pode aparecer de novo depois */ });
+  }, [me?.fresh]);
+  useEffect(() => {
+    if (!shown) return;
+    const t = setTimeout(() => setShown(null), 10_000);
+    return () => clearTimeout(t);
+  }, [shown]);
+  if (!shown) return null;
+  const open = () => {
+    post('/notifications/popped', { ids: shown.ids, read: true }).then(() => qc.invalidateQueries({ queryKey: ['me'] })).catch(() => {});
+    go(shown.cardId ? `/tarefa/${shown.cardId}` : '/entrada');
+    setShown(null);
+  };
+  return (
+    <div className="arrival" role="status">
+      <button className="arrival-open" onClick={open}>
+        <Icon name="inbox" />
+        <span><b>{shown.text}</b><small>Clique para ver</small></span>
+      </button>
+      <button className="arrival-x" aria-label="Fechar o aviso" onClick={() => setShown(null)}><Icon name="x" /></button>
     </div>
   );
 }

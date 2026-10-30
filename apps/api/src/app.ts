@@ -14,6 +14,7 @@ import * as deleg from './services/delegation.js';
 import * as admin from './services/admin.js';
 import * as misc from './services/misc.js';
 import * as subs from './services/substitution.js';
+import * as followers from './services/followers.js';
 import { importTrello, trelloImportSchema } from './services/importer.js';
 import { exportAll } from './services/exporter.js';
 import { captureWeb } from './services/capture.js';
@@ -316,6 +317,40 @@ export async function buildApp({ pool, logger = false, serveWeb = false }: AppOp
     return tasks.cardEvents(pool, id);
   });
 
+  /* ---------------- seguidores (item 81) ---------------- */
+  app.post('/api/cards/:id/followers', async (req) => {
+    const { id } = z.object({ id: uuid }).parse(req.params);
+    const { email } = z.object({ email: z.string().max(200) }).parse(req.body);
+    return inTx(req, (db) => followers.addFollower(db, need(req), id, email));
+  });
+  app.post('/api/cards/:id/followers/remove', async (req) => {
+    const { id } = z.object({ id: uuid }).parse(req.params);
+    const { email } = z.object({ email: z.string().max(200) }).parse(req.body);
+    return inTx(req, (db) => followers.removeFollower(db, need(req), id, email));
+  });
+  // Link "parar de seguir" do e-mail, sem login. O GET só mostra o botão (leitores de e-mail abrem links sozinhos);
+  // quem confirma é o POST.
+  const page = (title: string, body: string) =>
+    `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${title} · SyncTasks</title>` +
+    `<style>body{font:16px system-ui,sans-serif;max-width:32rem;margin:15vh auto;padding:0 16px;color:#1f2937}button{font:inherit;padding:8px 16px;border-radius:6px;border:1px solid #2563eb;background:#2563eb;color:#fff;cursor:pointer}</style></head>` +
+    `<body><h1 style="font-size:1.3rem">${title}</h1>${body}</body></html>`;
+  const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+  app.get('/seguir/sair', async (req, reply) => {
+    const { t } = z.object({ t: z.string().max(100).default('') }).parse(req.query);
+    reply.type('text/html; charset=utf-8');
+    if (!uuid.safeParse(t).success) return page('Link inválido', '<p>Este link de “parar de seguir” não é válido.</p>');
+    return page('Parar de seguir a tarefa',
+      `<p>Você deixa de receber os e-mails com as novidades desta tarefa.</p><form method="post"><input type="hidden" name="t" value="${esc(t)}"><button>Parar de seguir</button></form>`);
+  });
+  // O formulário chega como application/x-www-form-urlencoded (leitor registrado mais abaixo, junto do /oauth/token).
+  app.post('/seguir/sair', async (req, reply) => {
+    const { t } = z.object({ t: z.string().max(100).default('') }).parse(req.body ?? {});
+    reply.type('text/html; charset=utf-8');
+    const gone = uuid.safeParse(t).success ? await tx(pool, (db) => followers.unfollowByToken(db, t)) : null;
+    if (!gone) return page('Pronto', '<p>Este e-mail já não segue esta tarefa.</p>');
+    return page('Pronto', `<p><b>${esc(gone.email)}</b> deixou de seguir a tarefa “${esc(gone.title)}”.</p>`);
+  });
+
   /* ---------------- delegação ---------------- */
   app.post('/api/cards/:id/delegate', async (req) => {
     const { id } = z.object({ id: uuid }).parse(req.params);
@@ -498,6 +533,12 @@ export async function buildApp({ pool, logger = false, serveWeb = false }: AppOp
   app.get('/api/notifications', async (req) => misc.listNotifications(pool, need(req)));
   app.post('/api/notifications/read', async (req) => {
     await misc.markNotificationsRead(pool, need(req));
+    return { ok: true };
+  });
+  // Item 80: o balão já apareceu (some sozinho e não volta); com read, quem clicou nele também leu o aviso.
+  app.post('/api/notifications/popped', async (req) => {
+    const { ids, read } = z.object({ ids: z.array(uuid).max(50), read: z.boolean().optional() }).parse(req.body);
+    await misc.markPopped(pool, need(req), ids, !!read);
     return { ok: true };
   });
 

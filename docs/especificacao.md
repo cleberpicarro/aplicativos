@@ -375,6 +375,7 @@ stateDiagram-v2
 - **RN-51** Cada registro guarda: data e hora (UTC, exibidas em America/Sao_Paulo), autor, tipo de evento, tarefa (código) e, quando houver, **valor anterior e novo**.
 - **RN-52** O log fica acessível **a qualquer momento**, inclusive depois de a tarefa ser arquivada ou cancelada, pelo código.
 - **RN-53** **Por enquanto, só administrador, CEO e diretores** veem o log. A abrangência está em aberto (seção 20).
+- **RN-53a** (item 81) **Seguidores** de uma tarefa recebem o log dela por e-mail (12.4), sem acesso ao app.
 
 **Eventos registrados**
 
@@ -387,6 +388,7 @@ stateDiagram-v2
 | Delegação | delegada (para quem, prazo sugerido); devolvida (justificativa); concluída; conclusão desfeita; ciente dado; reaberta (motivo); cancelada; redelegada |
 | Transferência | transferida (de, para) |
 | Estrutura | gestão transferida (delegador antigo → novo) |
+| Seguidores (item 81) | seguidor incluído; seguidor tirado (ou saiu pelo link do e-mail) |
 
 ---
 
@@ -417,7 +419,15 @@ Cada evento gera um **aviso no app** e um **e-mail**:
 - Os envios usam uma fila com tentativas repetidas. Uma falha de e-mail não impede a ação no app.
 - Todo e-mail traz um link direto para a tarefa.
 - Os avisos no app ficam na tela **Avisos**, com contador de não lidos no menu.
-- Comentários não geram e-mail na v1.
+- Comentários não geram e-mail na v1 (para quem usa o app; os seguidores do item 81 recebem tudo do log).
+- **Balão** (item 80): tarefa delegada ou transferida que chega gera, além do aviso, um balão no canto de baixo da tela, uma vez só (fica marcado no aviso, `popped_at`), até 1 minuto depois (o app confere a cada minuto) ou ao entrar. Uma: “Marina delegou: … · Clique para ver”, que abre a tarefa; várias: “N tarefas novas chegaram para você”, que abre a caixa de entrada. Clicar marca como lido. Some sozinho em 10 segundos. Não aparece para o substituto agindo por outra pessoa.
+
+### 11.2a Seguidores (item 81)
+
+- Na tarefa aberta, o campo **Seguidores** aceita só e-mails **@nerus.com.br** (a pessoa não precisa ter conta), até 20 por tarefa. Incluem e tiram quem está com a tarefa e quem a delegou (não a auditoria, nem o substituto). Tarefa **privada** não aceita seguidores e, se ficar privada depois, não manda nada sobre esse período.
+- Cada novidade do log da tarefa gera um e-mail para cada seguidor, com o que aconteceu e o **log completo**; novidades com menos de **5 minutos** entre si vão num e-mail só (o servidor confere a cada minuto). Assunto: `[ST-000123] concluiu a tarefa: Título` ou `[ST-000123] 3 novidades: Título`. O primeiro e-mail sai logo depois da inclusão, com o registro dela e o log completo.
+- Todo e-mail traz **Parar de seguir** (`/seguir/sair?t=…`, sem login): o link abre uma página com o botão, e só o botão tira o seguidor (leitores de e-mail abrem links sozinhos). Fica no log.
+- Ao **delegar**, os seguidores são copiados para o cartão de quem recebe.
 
 ### 11.3 E-mails automáticos: prazo e resumo diário (item 46)
 
@@ -468,10 +478,11 @@ No topo de cada tela: título, campo de **busca** (texto ou código) e controle 
 - **Ordem dos quadros:** arrastando a aba (uma linha mostra onde vai entrar) ou pelo menu do quadro. Fica gravada no servidor.
 - **Fundo da área de trabalho:** padrão (branco) ou 7 cores mais firmes (cinza-azulado, azul, verde-água, verde, areia, lilás, rosa), com versões para o tema escuro. Vale para todas as telas e fica gravado na conta da pessoa. Fases e cartões continuam claros; a cor do quadro, se houver, fica por cima, só na área do quadro.
 - **Cor do quadro:** paleta de 8 cores suaves (azul, verde, amarelo, laranja, vermelho, roxo, rosa, cinza) com versões para os temas claro e escuro. Fica gravada no quadro, não no navegador.
-- Colunas de fases, com rolagem horizontal própria. Cada coluna tem nome, contador e menu (renomear, mover, **ordenar por** nome, data de criação ou prazo, arquivar). Ordenar reorganiza a fase uma vez; o arrastar continua valendo depois.
+- Colunas de fases, com rolagem horizontal própria. **Item 78:** a fase se arrasta pelo cabeçalho (nome) para a esquerda ou a direita; uma linha azul vertical mostra onde ela vai entrar, a nova ordem aparece na hora e é gravada no servidor. Cada coluna tem nome, contador e menu (renomear, mover, **ordenar por** nome, data de criação ou prazo, arquivar). Ordenar reorganiza a fase uma vez; o arrastar continua valendo depois.
 - Arrastar funciona entre fases e **dentro da mesma fase**: uma linha mostra onde a tarefa vai cair (acima ou abaixo do cartão, conforme a metade em que o ponteiro está).
 - No cartão aberto, **Mover para** escolhe quadro e fase, ou leva a tarefa **para o topo / para o fim** da fase. Mudar de quadro fica no log com o quadro e a fase de origem.
 - **+ Fase** ao final.
+- **Clicar fora** (item 77): no campo **Adicionar tarefa**, clicar fora com o título digitado cria a tarefa (como o Enter) e fecha o campo; vazio, só fecha; várias linhas abrem a pergunta do item 30. **Esc** e **Cancelar** descartam. Na janela de **Nova fase** e **Novo quadro**, clicar fora com o nome digitado cria.
 - **Cartão no quadro:** botão de concluir (círculo), título (até 2 linhas), número (#12), prazo, progresso do checklist, **etiquetas de delegação** (opção A, decidida em 17/10: roxa **De [nome]** na tarefa recebida, verde-azulada **Para [nome]** na tarefa que a pessoa delegou, com o primeiro nome) e ícones (privada, **não pode ser repassada** (item 41), aguardando ciente, reaberta). **Itens 60 e 61:** todo cartão tem a **mesma altura** (2 linhas de título, mesmo se curto, e 1 linha de marcas). Na linha de marcas vêm primeiro número, prazo, etiquetas De/Para e situação; checklist, privada e “não pode ser repassada” saem, da direita para a esquerda, se não couberem, e viram um “+N” com dica. No computador, parar o mouse 0,5 s sobre o cartão abre um **balão** ao lado (à direita; à esquerda se não couber) com título completo, descrição (até 15 linhas), com quem está e a situação, prazo, checklist e privada; some ao tirar o mouse, clicar no cartão, rolar, apertar uma tecla ou arrastar, e não existe no celular. **Itens 70 e 71:** o balão continua aberto enquanto o mouse vai do cartão até ele (0,3 s de tolerância) e fica sobre ele; tem os links clicáveis e um ícone de **copiar** que copia a descrição (ou o título, se não houver descrição) e mostra “Copiado” por 2 s. Endereços `http://`, `https://`, `www.` e e-mails na descrição, nos comentários e no título viram links que abrem numa aba nova (só esses tipos; o texto gravado não muda). Na tarefa aberta, a descrição aparece como texto com os links; clicar fora de um link ou em **Editar** abre a caixa de edição.
 - **Filtro no quadro** (item 47): a mesma barra de filtro da tabela (12.2a), com os atalhos **Delegadas para mim** e **Delegadas por mim**. No computador e no notebook (item 59), o botão **Filtro**, os atalhos e **Condição** ficam na barra do topo, à esquerda de Quadro / Tabela; até 1.440 pixels de largura, e no celular, os atalhos aparecem como **Para mim** e **Por mim**. A linha acima das fases só aparece com filtro ligado, com as etiquetas com ×. No celular (até 820 pixels), os botões ficam acima das fases. Com filtro ligado, os cartões que não atendem somem e as fases ficam no lugar, cada uma com a contagem “3 de 10”; a faixa “Filtro ligado: mostrando 12 de 40 tarefas deste quadro” tem o botão **Limpar filtro**. O filtro vale para o quadro aberto; as condições Quadro e Arquivada ficam fora da lista de campos ali e, num filtro que as tenha, aparecem riscadas e são ignoradas, com um aviso. O servidor diz quais tarefas do quadro atendem ao filtro (`GET /api/boards/:id/match`), com as mesmas regras da tabela. Quando um cartão deixa de atender (por exemplo, concluído num filtro de abertas) ou é criado sem atender, ele some e um aviso explica.
 - Arrastar e soltar entre fases. No celular, usar "Mover para" dentro do cartão.
@@ -510,6 +521,8 @@ No topo de cada tela: título, campo de **busca** (texto ou código) e controle 
 
 ### 12.4 Cartão (tarefa aberta)
 
+- **Linha de cima** (item 79): com quem está, **Criada por [nome] em dd/mm/aaaa** (quem criou a tarefa de origem, subindo pelas delegações) e, numa tarefa recebida, **Delegada por [nome] em dd/mm/aaaa** (quem delegou por último; na redelegada, a data da redelegação). Quem estava antes e devolveu não aparece.
+- **Seguidores** (item 81, 11.2a).
 - Título editável, número (#12), status **com texto**, botão **Cor** (item 38: 8 cores + Sem cor; o cartão fica todo dessa cor no quadro, em tom sólido médio com texto escuro no tema claro e branco no escuro, item 40; só o dono vê e muda, não entra no log) e prazo.
 - Descrição.
 - Prazo. Quando é uma delegação, mostra também o prazo sugerido original.
@@ -701,7 +714,9 @@ Restrição: `manager.level = level - 1`, validada na aplicação e em trigger.
 
 Triggers bloqueiam `UPDATE` e `DELETE` nessa tabela.
 
-**`notifications`**: id, user_id, card_id null, type, payload jsonb, read_at, email_status (`pending`, `sent`, `failed`), email_attempts, created_at.
+**`notifications`**: id, user_id, card_id null, type, payload jsonb, read_at, popped_at (item 80: já apareceu como balão), email_status (`pending`, `sent`, `failed`), email_attempts, created_at.
+
+**`card_followers`** (item 81): card_id, email (`@nerus.com.br`), added_by, token (link “parar de seguir”), last_event_id (último registro do log já enviado), created_at.
 
 **`sessions` / `password_tokens`**: tokens de sessão e de definição de senha, com expiração.
 
@@ -747,6 +762,8 @@ REST com JSON, sob `/api`. A autenticação usa cookie httpOnly de sessão. Toda
 | `GET /boards/:id/match?filter=` | quais tarefas do quadro (só do dono) atendem ao filtro: `{ids, ignored}` (item 47) |
 | `GET/POST /filters` · `PATCH/DELETE /filters/:id` | filtros salvos da tabela (só os da própria pessoa) |
 | `GET /notifications` · `POST /notifications/read` | avisos |
+| `POST /notifications/popped` `{ids, read?}` | item 80: balões que já apareceram (com `read`, também lidos); `GET /me` traz `fresh` |
+| `POST /cards/:id/followers` `{email}` · `POST /cards/:id/followers/remove` `{email}` · `GET`/`POST /seguir/sair` | seguidores (item 81); `GET /cards/:id` traz `followers` e `origin` (item 79) |
 | `GET/POST/PATCH /admin/users` · `POST /admin/users/:id/transfer-management` · `POST /admin/users/:id/active` `{active}` | administração |
 | `GET /admin/users/:id/deactivation` · `POST /admin/users/:id/deactivate` `{successorId?}` | pendências e desativação com sucessor (item 44) |
 | `GET /substitution?userId=` · `POST /substitution` `{userId?, substituteId, shareCommon, endsOn?}` · `POST /substitution/end` `{userId?}` | substituição em férias (item 72): da própria pessoa ou, com `userId`, pela administração. Com o cabeçalho `X-SyncTasks-Como: <id da pessoa>`, o substituto age por ela, só nas rotas de tarefas (RN-57; as demais respondem 403) |
