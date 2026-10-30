@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { get, post, type Card } from '../lib/api';
 import { cardNo, firstName } from '../lib/format';
+import { go } from '../lib/router';
 import { Dialog, ErrorText, useMe, useToast } from './ui';
 
 /** Item 54: o que não precisa ser baixado de novo quando só uma tarefa mudou. */
@@ -52,14 +53,39 @@ export function useAction() {
 export function useCancelDelegation() {
   const qc = useQueryClient();
   const toast = useToast();
-  return async (delegationId: string, ownerName: string) => {
+  return async (delegationId: string, ownerName: string, declined = false) => {
     await post(`/delegations/${delegationId}/cancel`);
-    toast(`Delegação cancelada. ${firstName(ownerName)} foi avisado(a).`, 'ok', {
+    // Item 75: a devolvida cancelada leva junto a tarefa de origem para Arquivadas.
+    toast(declined ? 'Delegação cancelada. A tarefa foi para Arquivadas.' : `Delegação cancelada. ${firstName(ownerName)} foi avisado(a).`, 'ok', {
       label: 'Desfazer',
       onClick: () => post(`/delegations/${delegationId}/undo-cancel`).then(
-        async () => { await qc.invalidateQueries(); toast(`Cancelamento desfeito: a tarefa voltou para ${firstName(ownerName)}.`); },
+        async () => { await qc.invalidateQueries(); toast(declined ? 'Cancelamento desfeito: a tarefa voltou para o seu quadro.' : `Cancelamento desfeito: a tarefa voltou para ${firstName(ownerName)}.`); },
         (e) => toast((e as Error).message, 'error'),
       ),
+    });
+    return true;
+  };
+}
+
+/**
+ * Item 75: "Retomar" uma tarefa devolvida. A delegação é encerrada e a tarefa de origem volta para a caixa de entrada
+ * de quem delegou (ou continua no quadro, se ela mesma veio de cima por delegação). O aviso traz "Abrir".
+ */
+export function useResume() {
+  const qc = useQueryClient();
+  const toast = useToast();
+  return async (delegationId: string) => {
+    let r: { cardId: string; inbox: boolean };
+    try {
+      r = await post<{ cardId: string; inbox: boolean }>(`/delegations/${delegationId}/resume`);
+    } catch (e) {
+      toast((e as Error).message, 'error');
+      return false;
+    }
+    await qc.invalidateQueries();
+    toast(r.inbox ? 'Tarefa retomada: ela está na sua caixa de entrada.' : 'Tarefa retomada: ela continua no seu quadro.', 'ok', {
+      label: 'Abrir',
+      onClick: () => go(`/tarefa/${r.cardId}`),
     });
     return true;
   };

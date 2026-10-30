@@ -51,6 +51,8 @@ export async function listArchived(db: Db, actor: Actor, q: string, offset: numb
     `SELECT c.id, c.code, ${NUM} AS num, c.color, c.title, c.due_date, c.completed_at, c.archived_at, c.created_at,
             CASE WHEN d.id IS NULL THEN 'own' ELSE 'delegated' END AS kind,
             (d.id IS NULL AND c.list_id IS NULL AND c.completed_at IS NULL) AS discarded,
+            (d.id IS NULL AND EXISTS (SELECT 1 FROM delegations cd WHERE cd.parent_card_id = c.id AND cd.status = 'CANCELED'
+              AND cd.cancel_prev_status = 'DECLINED' AND cd.canceled_at = c.archived_at)) AS canceled,
             b.name AS board_name, (b.archived_at IS NOT NULL) AS board_archived, l.name AS list_name, o.name AS delegated_to
        FROM cards c
        LEFT JOIN delegations d ON d.card_id = c.id
@@ -81,6 +83,8 @@ export async function listArchived(db: Db, actor: Actor, q: string, offset: numb
       listName: r.list_name ?? null,
       /** Item 50: descartada da caixa de entrada (sem concluir); ao desarquivar, volta para a caixa de entrada. */
       discarded: !!r.discarded,
+      /** Item 75: arquivada ao cancelar a delegação devolvida (não foi concluída). */
+      canceled: !!r.canceled,
       delegatedTo: r.kind === 'delegated' ? (r.delegated_to as string) : null,
     })),
     hasMore: rows.length > ARCHIVED_PAGE,

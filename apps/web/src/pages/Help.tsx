@@ -249,7 +249,13 @@ export function HelpPage({ isAdmin }: { isAdmin: boolean }) {
           </li>
         </ol>
         <p>Enquanto ninguém der o ciente, a tarefa continua em “Precisam da sua ação”.</p>
-        <p>Para uma tarefa devolvida, quem delegou pode <b>Redelegar</b> (para a mesma ou outra pessoa; é o mesmo cartão, que chega à caixa de entrada dela) ou <b>Cancelar</b>. Todo cancelamento tem <b>Desfazer</b> no aviso, logo depois de cancelar.</p>
+        <p>Para uma tarefa devolvida, quem delegou tem três saídas:</p>
+        <ul>
+          <li><b>Redelegar:</b> para a mesma ou outra pessoa; é o mesmo cartão, que chega à caixa de entrada dela.</li>
+          <li><b>Retomar:</b> você mesmo fica com a tarefa. Ela vai para a sua <b>caixa de entrada</b>, com a justificativa da devolução como comentário, e dali você organiza, faz ou delega de novo. Quem devolveu não é avisado de novo. (Se a tarefa veio de cima para você por delegação, ela continua no seu quadro.)</li>
+          <li><b>Cancelar:</b> encerra a delegação e a sua tarefa vai para <b>Arquivadas</b>, com a etiqueta <b>Cancelada</b>. Se precisar, desarquive: ela volta ao quadro.</li>
+        </ul>
+        <p>Todo cancelamento tem <b>Desfazer</b> no aviso, logo depois de cancelar.</p>
       </Sec>
 
       <Sec id="devolver" title="Devolver e transferir">

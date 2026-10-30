@@ -4,7 +4,7 @@ import { del, get, patch, post, type CardDetail } from '../lib/api';
 import { TIPS, cardNo, dateTime, delegationKey, firstName, fullDate, relative, statusOf } from '../lib/format';
 import { Avatar, Dialog, ErrorText, StatusPill, useMe, useToast } from './ui';
 import { Icon } from './Icons';
-import { AcceptDialog, ConfirmDialog, DeclineDialog, DelegateDialog, RedelegateDialog, ReopenDialog, TransferDialog, useAction, useCancelDelegation, useDiscard } from './dialogs';
+import { AcceptDialog, ConfirmDialog, DeclineDialog, DelegateDialog, RedelegateDialog, ReopenDialog, TransferDialog, useAction, useCancelDelegation, useDiscard, useResume } from './dialogs';
 import { go } from '../lib/router';
 import { BOARD_COLORS } from '../pages/Boards';
 import { cardFromBoards, changeCard, changeChecklistItem } from '../lib/optimistic';
@@ -33,6 +33,7 @@ export function CardModal({ code, onClose }: { code: string; onClose: () => void
   const { run, busy, error } = useAction();
   const toast = useToast();
   const cancelDelegation = useCancelDelegation();
+  const resume = useResume();
   const discard = useDiscard();
   const keys = useRef<{ c?: () => void; d?: () => void }>({});
   // Item 56: C conclui e D delega a tarefa aberta (quando não há outra janela por cima e ninguém está escrevendo).
@@ -122,9 +123,14 @@ export function CardModal({ code, onClose }: { code: string; onClose: () => void
           <button className="b" title={TIPS.reopen} onClick={() => setSub('reopen')}>Reabrir</button>
         </>
       )}
-      {d.status === 'DECLINED' && <button className="b pri" title={TIPS.redelegate} onClick={() => setSub('redelegate')}>Redelegar</button>}
+      {d.status === 'DECLINED' && (
+        <>
+          <button className="b pri" title={TIPS.redelegate} onClick={() => setSub('redelegate')}>Redelegar</button>
+          <button className="b" title={TIPS.resume} disabled={busy} onClick={async () => { if (await resume(d.id)) onClose(); }}><Icon name="undo" />Retomar</button>
+        </>
+      )}
       {['PENDING_ACCEPT', 'IN_PROGRESS', 'DECLINED'].includes(d.status) && (
-        <button className="b danger" title={TIPS.cancel} onClick={() => setSub('cancel')}>Cancelar delegação</button>
+        <button className="b danger" title={d.status === 'DECLINED' ? TIPS.cancelDeclined : TIPS.cancel} onClick={() => setSub('cancel')}>Cancelar delegação</button>
       )}
     </>
   );
@@ -189,8 +195,12 @@ export function CardModal({ code, onClose }: { code: string; onClose: () => void
                     <NoPassToggle delegationId={card.child.delegationId} value={card.child.noPass} who={card.child.ownerName} />
                   )}
                   {/* Item 48: cancelar a delegação daqui mesmo, da tarefa original (com Desfazer no aviso). */}
+                  {/* Item 75: devolvida também se retoma daqui (a tarefa vem para a caixa de entrada). */}
+                  {owner && !archived && card.child.status === 'DECLINED' && (
+                    <button className="b sm child-cancel" title={TIPS.resume} onClick={() => resume(card.child!.delegationId)}><Icon name="undo" />Retomar</button>
+                  )}
                   {owner && !archived && ['PENDING_ACCEPT', 'IN_PROGRESS', 'DECLINED'].includes(card.child.status) && (
-                    <button className="b sm danger child-cancel" title={TIPS.cancel} onClick={() => setSub('cancelChild')}>Cancelar delegação</button>
+                    <button className="b sm danger child-cancel" title={card.child.status === 'DECLINED' ? TIPS.cancelDeclined : TIPS.cancel} onClick={() => setSub('cancelChild')}>Cancelar delegação</button>
                   )}
                 </div>
               )}
@@ -246,14 +256,18 @@ export function CardModal({ code, onClose }: { code: string; onClose: () => void
       {sub === 'accept' && <AcceptDialog card={card} onClose={() => setSub(null)} />}
       {sub === 'cancel' && (
         <ConfirmDialog title="Cancelar delegação" danger confirm="Cancelar delegação"
-          text={`Cancelar “${card.title}”? ${firstName(card.ownerName)} é avisado(a) e a tarefa sai do quadro dessa pessoa.`}
-          onConfirm={() => cancelDelegation(d!.id, card.ownerName)}
+          text={d!.status === 'DECLINED'
+            ? `Cancelar “${card.title}”? A delegação é encerrada e a sua tarefa vai para Arquivadas.`
+            : `Cancelar “${card.title}”? ${firstName(card.ownerName)} é avisado(a) e a tarefa sai do quadro dessa pessoa.`}
+          onConfirm={() => cancelDelegation(d!.id, card.ownerName, d!.status === 'DECLINED')}
           onClose={() => setSub(null)} />
       )}
       {sub === 'cancelChild' && card.child && (
         <ConfirmDialog title="Cancelar delegação" danger confirm="Cancelar delegação"
-          text={`Cancelar a delegação de “${card.title}” para ${card.child.ownerName}? ${firstName(card.child.ownerName)} é avisado(a) e a tarefa sai do quadro dessa pessoa. Esta tarefa continua com você.`}
-          onConfirm={() => cancelDelegation(card.child!.delegationId, card.child!.ownerName)}
+          text={card.child.status === 'DECLINED'
+            ? `Cancelar a delegação de “${card.title}”, que ${firstName(card.child.ownerName)} devolveu? Esta tarefa vai para Arquivadas.`
+            : `Cancelar a delegação de “${card.title}” para ${card.child.ownerName}? ${firstName(card.child.ownerName)} é avisado(a) e a tarefa sai do quadro dessa pessoa. Esta tarefa continua com você.`}
+          onConfirm={async () => { const declined = card.child!.status === 'DECLINED'; await cancelDelegation(card.child!.delegationId, card.child!.ownerName, declined); if (declined) onClose(); return true; }}
           onClose={() => setSub(null)} />
       )}
     </>
@@ -489,7 +503,9 @@ function describe(e: Ev): { text: string; change?: string } {
     case 'acked': return { text: 'deu ciente: tarefa arquivada' };
     case 'reopened': return { text: 'reabriu a tarefa', change: `“${a.reason}”` };
     case 'canceled': return { text: 'cancelou a delegação' };
-    case 'child_canceled': return { text: 'cancelou a delegação para baixo', change: a.childNum ? `#${a.childNum}` : a.childCode };
+    case 'child_canceled': return { text: a.archived ? 'cancelou a delegação devolvida e arquivou a tarefa' : 'cancelou a delegação para baixo', change: a.childNum ? `#${a.childNum}` : a.childCode };
+    case 'resumed': return { text: 'retomou a tarefa devolvida (delegação encerrada)' };
+    case 'child_resumed': return { text: a.inbox ? 'retomou a tarefa devolvida: voltou para a caixa de entrada' : 'retomou a tarefa devolvida', change: a.childNum ? `#${a.childNum}` : undefined };
     case 'cancel_undone': return { text: 'desfez o cancelamento da delegação' };
     case 'child_cancel_undone': return { text: 'desfez o cancelamento da delegação para baixo', change: a.childNum ? `#${a.childNum}` : undefined };
     case 'redelegated': return { text: `redelegou para ${a.to}`, change: `Prazo sugerido: ${df(a.suggestedDue)}${a.noPass ? ' · não pode ser repassada' : ''}` };

@@ -100,4 +100,6 @@ export const TIPS = {
   reopen: 'Não aceita a conclusão: a tarefa volta para a pessoa, com o seu comentário.',
   redelegate: 'Envia a tarefa devolvida para a mesma ou outra pessoa da sua equipe. O código é mantido.',
   cancel: 'Encerra a delegação. A tarefa sai do quadro da pessoa e ela é avisada.',
+  cancelDeclined: 'Encerra a delegação e arquiva a sua tarefa. Ela vai para Arquivadas, de onde dá para desarquivar.',
+  resume: 'Você mesmo fica com a tarefa: ela volta para a sua caixa de entrada, com a justificativa da devolução como comentário.',
 };

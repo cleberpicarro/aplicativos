@@ -123,6 +123,7 @@ async function attemptsAgainstGest(who: string): Promise<Attempt[]> {
     { method: 'POST', url: `/api/delegations/${id}/redelegate`, body: { toUserId: someone }, route: 'POST /api/delegations/:id/redelegate' },
     { method: 'POST', url: `/api/delegations/${id}/no-pass`, body: { noPass: true }, route: 'POST /api/delegations/:id/no-pass' },
     { method: 'POST', url: `/api/delegations/${id}/undo-cancel`, route: 'POST /api/delegations/:id/undo-cancel' },
+    { method: 'POST', url: `/api/delegations/${id}/resume`, route: 'POST /api/delegations/:id/resume' },
   ];
   return [
     { method: 'GET', url: `/api/boards/${s.board}`, route: 'GET /api/boards/:id' },
@@ -187,6 +188,7 @@ describe('permissões em massa (frente 2)', () => {
       { method: 'PATCH', url: `/api/cards/${s.child}`, body: { isPrivate: true }, route: '' }, // RN-08
       { method: 'POST', url: `/api/delegations/${s.deleg}/no-pass`, body: { noPass: false }, route: '' }, // item 41: só o delegador
       { method: 'POST', url: `/api/delegations/${s.canceled}/undo-cancel`, route: '' }, // item 48: só o delegador
+      { method: 'POST', url: `/api/delegations/${s.deleg}/resume`, route: '' }, // item 75: só o delegador
     ];
     for (const t of tries) {
       const r = await call('func', t.method, t.url, t.body);
@@ -312,7 +314,7 @@ describe('permissões em massa (frente 2)', () => {
       'DELETE /api/cards/:id/checklist/:itemId', 'POST /api/cards/:id/comments', 'GET /api/cards/:id/events', 'POST /api/cards/:id/delegate',
       'POST /api/cards/:id/accept', 'POST /api/cards/:id/decline', 'GET /api/cards/:id/transfer-targets', 'POST /api/cards/:id/transfer',
       'POST /api/delegations/:id/ack', 'POST /api/delegations/:id/reopen', 'POST /api/delegations/:id/cancel', 'POST /api/delegations/:id/redelegate',
-      'POST /api/delegations/:id/no-pass', 'POST /api/delegations/:id/undo-cancel', 'GET /api/boards/:id/match', 'POST /api/boards/:id/archive', 'POST /api/boards/:id/unarchive',
+      'POST /api/delegations/:id/no-pass', 'POST /api/delegations/:id/undo-cancel', 'POST /api/delegations/:id/resume', 'GET /api/boards/:id/match', 'POST /api/boards/:id/archive', 'POST /api/boards/:id/unarchive',
       'GET /api/admin/users/:id/deactivation', 'POST /api/admin/users/:id/deactivate',
       'GET /api/admin/users', 'POST /api/admin/users', 'PATCH /api/admin/users/:id', 'POST /api/admin/users/:id/transfer-management',
       'POST /api/admin/users/:id/active', 'POST /api/admin/users/:id/invite', 'PATCH /api/filters/:id', 'DELETE /api/filters/:id',
