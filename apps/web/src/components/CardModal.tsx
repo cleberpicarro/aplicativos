@@ -4,7 +4,7 @@ import { del, get, patch, post, type CardDetail, type Follower } from '../lib/ap
 import { TIPS, cardNo, dateTime, dayOf, delegationKey, firstName, fullDate, relative, statusOf } from '../lib/format';
 import { Avatar, Dialog, ErrorText, StatusPill, useMe, useToast } from './ui';
 import { Icon } from './Icons';
-import { AcceptDialog, ConfirmDialog, DeclineDialog, DelegateDialog, RedelegateDialog, ReopenDialog, TransferDialog, useAction, useCancelDelegation, useDiscard, useResume } from './dialogs';
+import { AcceptDialog, ConfirmDialog, DeclineDialog, DelegateDialog, RedelegateDialog, ReopenDialog, TransferDialog, useAction, useCancelDelegation, useDiscard, useDiscardCard, useResume } from './dialogs';
 import { go } from '../lib/router';
 import { BOARD_COLORS } from '../pages/Boards';
 import { cardFromBoards, changeCard, changeChecklistItem } from '../lib/optimistic';
@@ -35,6 +35,7 @@ export function CardModal({ code, onClose }: { code: string; onClose: () => void
   const cancelDelegation = useCancelDelegation();
   const resume = useResume();
   const discard = useDiscard();
+  const discardCard = useDiscardCard();
   const keys = useRef<{ c?: () => void; d?: () => void }>({});
   // Item 56: C conclui e D delega a tarefa aberta (quando não há outra janela por cima e ninguém está escrevendo).
   useEffect(() => {
@@ -97,6 +98,11 @@ export function CardModal({ code, onClose }: { code: string; onClose: () => void
             <button className="b" title={TIPS.delegate} onClick={() => setSub('delegate')}><Icon name="out" />Delegar</button>
           )}
           {!card.completedAt && <button className="b" title={TIPS.transfer} onClick={() => setSub('transfer')}><Icon name="move" />Transferir</button>}
+          {!card.completedAt && !d && !childOpen && (
+            <button className="b" title={TIPS.discardCard} onClick={async () => { if (await discardCard(card.id)) onClose(); }}>
+              <Icon name="archive" />Descartar
+            </button>
+          )}
           {d && d.status === 'IN_PROGRESS' && !card.transferredFrom && (
             <button className="b" title={TIPS.decline} onClick={() => setSub('decline')}><Icon name="undo" />Devolver</button>
           )}
@@ -547,7 +553,7 @@ function describe(e: Ev): { text: string; change?: string } {
     case 'completion_undone': return { text: 'desfez a conclusão' };
     case 'archived': return { text: a.undo ? 'desfez a criação (tarefa arquivada)' : 'arquivou a tarefa' };
     case 'unarchived': return { text: a.inbox ? 'desarquivou a tarefa (de volta à caixa de entrada)' : 'desarquivou a tarefa' };
-    case 'discarded': return { text: 'descartou a tarefa da caixa de entrada' };
+    case 'discarded': return { text: a.board ? 'descartou a tarefa, sem concluir' : 'descartou a tarefa da caixa de entrada' };
     case 'acked': return { text: 'deu ciente: tarefa arquivada' };
     case 'reopened': return { text: 'reabriu a tarefa', change: `“${a.reason}”` };
     case 'canceled': return { text: 'cancelou a delegação' };

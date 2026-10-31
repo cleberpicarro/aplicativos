@@ -117,6 +117,32 @@ export function useDiscard() {
   };
 }
 
+/**
+ * Item 82: descarta, de dentro da tarefa, uma tarefa própria e aberta do quadro (vai para Arquivadas sem concluir).
+ * O Desfazer do aviso desarquiva: ela volta à mesma fase e posição, com o mesmo número.
+ */
+export function useDiscardCard() {
+  const qc = useQueryClient();
+  const toast = useToast();
+  return async (id: string) => {
+    try {
+      await post(`/cards/${id}/discard`);
+    } catch (e) {
+      toast((e as Error).message, 'error');
+      return false;
+    }
+    await qc.invalidateQueries();
+    toast('Tarefa descartada.', 'ok', {
+      label: 'Desfazer',
+      onClick: () => post(`/cards/${id}/unarchive`).then(
+        async () => { await qc.invalidateQueries(); toast('A tarefa voltou para o quadro.'); },
+        (e) => toast((e as Error).message, 'error'),
+      ),
+    });
+    return true;
+  };
+}
+
 type Close = () => void;
 
 function Footer({ busy, onClose, label, danger }: { busy: boolean; onClose: Close; label: string; danger?: boolean }) {

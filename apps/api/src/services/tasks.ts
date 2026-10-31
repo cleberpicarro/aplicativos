@@ -251,6 +251,28 @@ export async function discardFromInbox(db: Db, actor: Actor, ids: string[]) {
   return { discarded: unique.length, ids: unique };
 }
 
+/**
+ * Item 82: descartar uma tarefa de dentro dela, no quadro (sem concluir). Ela vai para Arquivadas como "descartada",
+ * guarda a fase e a posição e, ao ser desarquivada (ou no Desfazer), volta ao mesmo lugar com o mesmo número.
+ * Só tarefa própria e aberta, sem delegação recebida nem repassada em aberto. Na caixa de entrada, vale o item 50.
+ */
+export async function discardCard(db: Db, actor: Actor, cardId: string) {
+  const { row, role } = await loadCard(db, actor, cardId, { lock: true });
+  if (role !== 'owner') throw forbidden('Só quem tem a tarefa pode descartá-la.');
+  if (!row.list_id && !row.archived_at) return discardFromInbox(db, actor, [cardId]);
+  if (row.archived_at) throw conflict('A tarefa já está arquivada.');
+  if (row.d_id) {
+    throw conflict(row.transferred_from_id
+      ? `Esta tarefa veio de ${row.d_delegator_name}: ela não pode ser descartada. Você pode transferi-la.`
+      : `Esta tarefa foi delegada por ${row.d_delegator_name}: use Devolver, com a justificativa.`);
+  }
+  if (row.completed_at) throw conflict('A tarefa está concluída: use Arquivar.');
+  if (await one(db, CHILD_OPEN, [cardId])) throw conflict('Esta tarefa tem uma delegação em aberto. Cancele a delegação antes de descartar.');
+  await db.query('UPDATE cards SET archived_at = now(), updated_at = now() WHERE id = $1', [cardId]);
+  await logEvent(db, cardId, actor.id, 'discarded', undefined, { board: true });
+  return { discarded: 1, ids: [cardId] };
+}
+
 /** "Desfazer" do descartar: as tarefas voltam para a caixa de entrada. */
 export async function restoreDiscarded(db: Db, actor: Actor, ids: string[]) {
   const unique = [...new Set(ids)];
