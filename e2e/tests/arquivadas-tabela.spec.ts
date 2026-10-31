@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import type { Page } from '@playwright/test';
-import { test, expect, entrar, outraPessoa, irPara, criarTarefa, dialogo, aviso, unico, api, numeroDe } from './apoio';
+import { test, expect, entrar, outraPessoa, irPara, criarTarefa, abrirTarefa, dialogo, aviso, unico, api, numeroDe } from './apoio';
 const idDe = async (page: Page, codigo: string) => (await api(page, 'GET', `/cards/by-code/${codigo}`)).card.id as string;
 
 function ontem() {
@@ -63,6 +63,44 @@ test.describe('arquivadas (item 35)', () => {
     await expect(linha).toHaveCount(0);
     await irPara(page, 'Tarefas');
     await expect(page.locator('article.kc', { hasText: propria })).toBeVisible();
+  });
+});
+
+test.describe('descartar tarefa do quadro (item 82)', () => {
+  test('descartar de dentro da tarefa, desfazer pelo aviso e desarquivar em Arquivadas', async ({ page }) => {
+    await entrar(page, 'paulo');
+    await irPara(page, 'Tarefas');
+    const titulo = unico('Teste criado por engano');
+    const id = await criarTarefa(page, titulo);
+    const card = page.locator('article.kc', { hasText: titulo });
+
+    let dlg = await abrirTarefa(page, id);
+    await dlg.getByRole('button', { name: 'Descartar', exact: true }).click();
+    await expect(dlg).toHaveCount(0);
+    await aviso(page, 'Tarefa descartada.');
+    await expect(card).toHaveCount(0);
+    await page.locator('.toast', { hasText: 'Tarefa descartada.' }).getByRole('button', { name: 'Desfazer' }).click();
+    await aviso(page, 'A tarefa voltou para o quadro.');
+    await expect(card).toBeVisible();
+
+    // Descarta de novo e traz de volta pela tela Arquivadas.
+    dlg = await abrirTarefa(page, id);
+    await dlg.getByRole('button', { name: 'Descartar', exact: true }).click();
+    await expect(card).toHaveCount(0);
+
+    await irPara(page, 'Arquivadas');
+    const linha = page.locator('table.arch tbody tr', { hasText: titulo });
+    await expect(linha.locator('.tag')).toHaveText('Descartada');
+    await expect(linha).toContainText('A fazer');
+    await expect(linha).not.toContainText('Caixa de entrada');
+    await linha.getByRole('button', { name: 'Desarquivar' }).click();
+    await aviso(page, /de volta a “/);
+    await irPara(page, 'Tarefas');
+    await expect(card).toBeVisible();
+    dlg = await abrirTarefa(page, id);
+    await dlg.getByRole('button', { name: 'Concluir' }).click();
+    await expect(dlg.getByRole('button', { name: 'Descartar', exact: true })).toHaveCount(0);
+    await expect(dlg.getByRole('button', { name: 'Arquivar' })).toBeVisible();
   });
 });
 

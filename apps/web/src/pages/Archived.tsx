@@ -16,7 +16,7 @@ export interface ArchivedItem {
   archivedAt: string;
   createdAt: string;
   kind: 'own' | 'delegated';
-  /** Item 50: descartada da caixa de entrada; ao desarquivar, volta para lá. */
+  /** Item 50: descartada sem concluir; ao desarquivar, volta para a caixa de entrada ou, com boardName (item 82), para a fase. */
   discarded: boolean;
   /** Item 75: arquivada ao cancelar a delegação devolvida. */
   canceled: boolean;
@@ -72,11 +72,11 @@ export function ArchivedPage() {
     try {
       await post(`/cards/${it.id}/unarchive`);
       await qc.invalidateQueries();
-      const where = it.discarded ? 'à caixa de entrada' : it.boardName && !it.boardArchived ? `a “${it.boardName}”` : 'ao seu primeiro quadro';
+      const where = it.discarded && !it.boardName ? 'à caixa de entrada' : it.boardName && !it.boardArchived ? `a “${it.boardName}”` : 'ao seu primeiro quadro';
       // A cancelada (item 75) não foi concluída: não se arquiva de novo à mão, então o aviso fica sem Desfazer.
       toast(`Tarefa desarquivada: de volta ${where}.`, 'ok', it.canceled ? undefined : {
         label: 'Desfazer',
-        onClick: () => (it.discarded ? post('/inbox/discard', { ids: [it.id] }) : post(`/cards/${it.id}/archive`))
+        onClick: () => (it.discarded ? (it.boardName ? post(`/cards/${it.id}/discard`) : post('/inbox/discard', { ids: [it.id] })) : post(`/cards/${it.id}/archive`))
           .then(() => qc.invalidateQueries(), (e) => toast((e as Error).message, 'error')),
       });
     } catch (e) {
@@ -128,11 +128,11 @@ export function ArchivedPage() {
                     <span className="ttl">
                     <button className="cell-link" onClick={() => go(`/tarefa/${it.id}`)} title={it.title}>{it.title}</button>
                     {it.kind === 'delegated' && <span className="tag del" title="Você delegou e deu o ciente">Delegada para {it.delegatedTo}</span>}
-                    {it.discarded && <span className="tag disc" title="Descartada da caixa de entrada, sem concluir">Descartada</span>}
+                    {it.discarded && <span className="tag disc" title={it.boardName ? 'Descartada do quadro, sem concluir' : 'Descartada da caixa de entrada, sem concluir'}>Descartada</span>}
                     {it.canceled && <span className="tag disc" title="Arquivada ao cancelar a delegação que foi devolvida">Cancelada</span>}
                     </span>
                   </td>
-                  <td className="muted">{it.discarded ? 'Caixa de entrada' : it.boardName ? `${it.boardName} · ${it.listName}${it.boardArchived ? ' (quadro arquivado)' : ''}` : '—'}</td>
+                  <td className="muted">{it.discarded && !it.boardName ? 'Caixa de entrada' : it.boardName ? `${it.boardName} · ${it.listName}${it.boardArchived ? ' (quadro arquivado)' : ''}` : '—'}</td>
                   <td className="c-date">{day(it.completedAt)}</td>
                   <td className="c-date">{day(it.archivedAt)}</td>
                   <td className="c-acts">

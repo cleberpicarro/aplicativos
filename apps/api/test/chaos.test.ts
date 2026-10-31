@@ -200,6 +200,15 @@ async function runChaos(seed: number) {
       const res = await act(who, 'POST', '/api/inbox/discard', { ids });
       if (res.status === 200 && r.chance(0.3)) await act(who, 'POST', '/api/inbox/restore', { ids });
     },
+    async descartarDoQuadro() {
+      // item 82: descarta de dentro da tarefa, no quadro (às vezes uma que não pode) e, às vezes, desfaz
+      const who = r.pick(PEOPLE);
+      const cards = (await cardsOf(who)).filter((c) => c.list_id && !c.archived_at);
+      if (!cards.length) return;
+      const c = r.pick(cards);
+      const res = await act(who, 'POST', `/api/cards/${c.id}/discard`);
+      if (res.status === 200 && r.chance(0.3)) await act(who, 'POST', `/api/cards/${c.id}/unarchive`);
+    },
     async delegarDaCaixa() {
       // item 50: aceita e delega de uma vez, direto da caixa de entrada
       const who = r.pick(PEOPLE.filter((p) => reportsOf(p).length));

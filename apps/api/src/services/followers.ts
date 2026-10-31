@@ -122,7 +122,7 @@ export function describeEvent(e: { type: string; before: any; after: any }): str
     case 'completion_undone': return t('desfez a conclusão');
     case 'archived': return t(a.undo ? 'desfez a criação (tarefa arquivada)' : 'arquivou a tarefa');
     case 'unarchived': return t('desarquivou a tarefa');
-    case 'discarded': return t('descartou a tarefa da caixa de entrada');
+    case 'discarded': return t(a.board ? 'descartou a tarefa, sem concluir' : 'descartou a tarefa da caixa de entrada');
     case 'acked': return t('deu ciente: tarefa arquivada');
     case 'reopened': return t('reabriu a tarefa', `“${a.reason}”`);
     case 'canceled': return t('cancelou a delegação');

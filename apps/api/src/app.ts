@@ -42,7 +42,7 @@ const SUBSTITUTE_ROUTES = new Set([
   'POST /api/boards/:id/unarchive', 'POST /api/boards/:id/lists', 'GET /api/boards/:id/match',
   'PATCH /api/lists/:id', 'POST /api/lists/:id/sort', 'POST /api/lists/:id/archive-done', 'POST /api/lists/:id/archive',
   'POST /api/cards', 'POST /api/cards/batch', 'POST /api/cards/undo-create', 'GET /api/cards/by-code/:code', 'GET /api/cards/:id', 'PATCH /api/cards/:id',
-  'POST /api/cards/:id/move', 'POST /api/cards/:id/complete', 'POST /api/cards/:id/uncomplete', 'POST /api/cards/:id/archive', 'POST /api/cards/:id/unarchive',
+  'POST /api/cards/:id/move', 'POST /api/cards/:id/complete', 'POST /api/cards/:id/uncomplete', 'POST /api/cards/:id/archive', 'POST /api/cards/:id/unarchive', 'POST /api/cards/:id/discard',
   'POST /api/cards/:id/checklist', 'PATCH /api/cards/:id/checklist/:itemId', 'DELETE /api/cards/:id/checklist/:itemId', 'POST /api/cards/:id/comments',
   'POST /api/cards/:id/delegate', 'GET /api/inbox', 'POST /api/cards/:id/accept', 'POST /api/cards/:id/accept-delegate', 'POST /api/inbox/discard',
   'POST /api/inbox/restore', 'POST /api/cards/:id/decline', 'GET /api/cards/:id/transfer-targets', 'POST /api/cards/:id/transfer',
@@ -372,6 +372,10 @@ export async function buildApp({ pool, logger = false, serveWeb = false }: AppOp
   app.post('/api/inbox/discard', async (req) => {
     const { ids } = z.object({ ids: z.array(uuid).min(1).max(tasks.MAX_DISCARD) }).parse(req.body);
     return inTx(req, (db) => tasks.discardFromInbox(db, need(req), ids));
+  });
+  app.post('/api/cards/:id/discard', async (req) => {
+    const { id } = z.object({ id: uuid }).parse(req.params);
+    return inTx(req, (db) => tasks.discardCard(db, need(req), id));
   });
   app.post('/api/inbox/restore', async (req) => {
     const { ids } = z.object({ ids: z.array(uuid).min(1).max(tasks.MAX_DISCARD) }).parse(req.body);

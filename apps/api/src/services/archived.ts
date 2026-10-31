@@ -10,7 +10,7 @@ export const ARCHIVED_PAGE = 50;
  * Vale o último arquivamento: se a tarefa foi desarquivada depois (pela busca) e arquivada de novo, ela volta a contar.
  */
 export const NOT_UNDONE = `(c.archived_at IS NULL OR coalesce((SELECT ue.after->>'undo' FROM card_events ue
-  WHERE ue.card_id = c.id AND ue.type = 'archived' ORDER BY ue.id DESC LIMIT 1), '') <> 'true')`;
+  WHERE ue.card_id = c.id AND ue.type IN ('archived', 'discarded') ORDER BY ue.id DESC LIMIT 1), '') <> 'true')`;
 
 /** Item 37: na lista, a tarefa delegada aparece com o número que ela tem no quadro de quem delegou. */
 const NUM = `CASE WHEN d.id IS NULL THEN c.num ELSE coalesce(pc.num, c.num) END`;
@@ -50,7 +50,8 @@ export async function listArchived(db: Db, actor: Actor, q: string, offset: numb
     db,
     `SELECT c.id, c.code, ${NUM} AS num, c.color, c.title, c.due_date, c.completed_at, c.archived_at, c.created_at,
             CASE WHEN d.id IS NULL THEN 'own' ELSE 'delegated' END AS kind,
-            (d.id IS NULL AND c.list_id IS NULL AND c.completed_at IS NULL) AS discarded,
+            (d.id IS NULL AND c.completed_at IS NULL AND (c.list_id IS NULL OR (SELECT de.type FROM card_events de
+              WHERE de.card_id = c.id AND de.type IN ('archived', 'discarded') ORDER BY de.id DESC LIMIT 1) = 'discarded')) AS discarded,
             (d.id IS NULL AND EXISTS (SELECT 1 FROM delegations cd WHERE cd.parent_card_id = c.id AND cd.status = 'CANCELED'
               AND cd.cancel_prev_status = 'DECLINED' AND cd.canceled_at = c.archived_at)) AS canceled,
             b.name AS board_name, (b.archived_at IS NOT NULL) AS board_archived, l.name AS list_name, o.name AS delegated_to
@@ -81,7 +82,7 @@ export async function listArchived(db: Db, actor: Actor, q: string, offset: numb
       /** Item 42: o quadro onde a tarefa estava foi arquivado. */
       boardArchived: !!r.board_archived,
       listName: r.list_name ?? null,
-      /** Item 50: descartada da caixa de entrada (sem concluir); ao desarquivar, volta para a caixa de entrada. */
+      /** Item 50: descartada sem concluir; ao desarquivar, volta para a caixa de entrada ou, se veio do quadro (item 82, boardName), para a fase. */
       discarded: !!r.discarded,
       /** Item 75: arquivada ao cancelar a delegação devolvida (não foi concluída). */
       canceled: !!r.canceled,
