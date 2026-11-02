@@ -130,6 +130,8 @@ export interface CardDetail {
   origin?: { creatorId: string; creatorName: string; createdAt: string; delegatedAt: string | null };
   /** Item 81: e-mails que seguem a tarefa. */
   followers?: Follower[];
+  /** Item 85: posição da tarefa na fase (a prioridade), só para quem tem a tarefa e só no quadro. */
+  priority?: null | { listId: string; listName: string; rank: number; total: number };
 }
 
 export interface Follower { email: string; addedByName: string; createdAt: string }
@@ -138,7 +140,8 @@ export interface Board {
   id: string;
   name: string;
   color: string | null;
-  lists: { id: string; name: string; position: number }[];
+  /** Item 85: fase recolhida no quadro e limite opcional de tarefas (acima dele o contador fica laranja). */
+  lists: { id: string; name: string; position: number; collapsed: boolean; cardLimit: number | null }[];
   cards: Card[];
 }
 

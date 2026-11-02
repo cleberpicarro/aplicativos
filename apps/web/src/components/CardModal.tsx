@@ -57,7 +57,7 @@ export function CardModal({ code, onClose }: { code: string; onClose: () => void
       </Dialog>
     );
   }
-  const { card, role, board, checklistItems, comments, canSeeLog, origin, followers } = q.data;
+  const { card, role, board, checklistItems, comments, canSeeLog, origin, followers, priority } = q.data;
   const d = card.delegation;
   const owner = role === 'owner';
   const archived = !!card.archivedAt;
@@ -229,6 +229,8 @@ export function CardModal({ code, onClose }: { code: string; onClose: () => void
                 {d?.suggestedDue && d.suggestedDue !== card.dueDate && <span className="hint">Sugerido: {fullDate(d.suggestedDue)}</span>}
                 {owner && d && <span className="hint">Ao mudar, {firstName(d.delegatorName)} é avisado(a).</span>}
               </div>
+              {/* Item 85: a prioridade é a posição na fase; digitar outra posição muda o quadro e fica no log. */}
+              {owner && !archived && priority && <PriorityField cardId={card.id} p={priority} />}
               {owner && board && !archived && card.listId && <MoveTo cardId={card.id} boardId={board.id} listId={card.listId} />}
               {/* RN-08 e item 43: tarefa que tem ou teve delegação (menos a cancelada) não pode ser privada. */}
               {/* Item 72: só a própria pessoa decide o que é privado; o substituto não vê essa opção. */}
@@ -553,6 +555,7 @@ function describe(e: Ev): { text: string; change?: string } {
     case 'completion_undone': return { text: 'desfez a conclusão' };
     case 'archived': return { text: a.undo ? 'desfez a criação (tarefa arquivada)' : 'arquivou a tarefa' };
     case 'unarchived': return { text: a.inbox ? 'desarquivou a tarefa (de volta à caixa de entrada)' : 'desarquivou a tarefa' };
+    case 'priority_changed': return { text: 'mudou a prioridade na fase', change: `${b.rank}º → ${a.rank}º` };
     case 'discarded': return { text: a.board ? 'descartou a tarefa, sem concluir' : 'descartou a tarefa da caixa de entrada' };
     case 'acked': return { text: 'deu ciente: tarefa arquivada' };
     case 'reopened': return { text: 'reabriu a tarefa', change: `“${a.reason}”` };
@@ -589,6 +592,32 @@ function EventLog({ cardId }: { cardId: string }) {
           );
         })}
       </ol>
+    </div>
+  );
+}
+
+/** Item 85: prioridade = posição da tarefa na fase (1º é o topo). */
+function PriorityField({ cardId, p }: { cardId: string; p: { listName: string; rank: number; total: number } }) {
+  const [v, setV] = useState(String(p.rank));
+  const { run, busy } = useAction();
+  useEffect(() => setV(String(p.rank)), [p.rank]);
+  const n = Math.round(Number(v));
+  const valid = v.trim() !== '' && Number.isFinite(n) && n >= 1;
+  const saveIt = (rank: number) => {
+    const r = Math.min(rank, p.total);
+    if (r === p.rank) { setV(String(p.rank)); return; }
+    run(() => post(`/cards/${cardId}/priority`, { rank: r }), `Prioridade: ${r}ª de ${p.total} em “${p.listName}”.`);
+  };
+  return (
+    <div className="field">
+      <span className="label">Prioridade em “{p.listName}”</span>
+      <div className="prio-field">
+        <input className="input" type="number" min={1} max={p.total} value={v} aria-label="Prioridade (1 é a mais importante)" disabled={busy || p.total < 2}
+          onChange={(e) => setV(e.target.value)} onBlur={() => (valid ? saveIt(n) : setV(String(p.rank)))}
+          onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }} />
+        <span>de {p.total}</span>
+      </div>
+      <span className="hint">1 é a primeira da fase. Digite outra posição e tecle Enter.</span>
     </div>
   );
 }

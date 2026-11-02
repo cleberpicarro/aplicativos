@@ -209,6 +209,24 @@ async function runChaos(seed: number) {
       const res = await act(who, 'POST', `/api/cards/${c.id}/discard`);
       if (res.status === 200 && r.chance(0.3)) await act(who, 'POST', `/api/cards/${c.id}/unarchive`);
     },
+    async emMassa() {
+      // item 85: ações em massa da fase expandida (às vezes com tarefas que a regra não deixa) e prioridade digitada
+      const who = r.pick(PEOPLE);
+      const cards = (await cardsOf(who)).filter((c) => c.list_id && !c.archived_at);
+      if (!cards.length) return;
+      const ids = cards.filter(() => r.chance(0.3)).map((c) => c.id);
+      if (!ids.length) ids.push(r.pick(cards).id);
+      const roll = r.next();
+      if (roll < 0.15) await act(who, 'POST', `/api/cards/${r.pick(cards).id}/priority`, { rank: 1 + Math.floor(r.next() * 6) });
+      else if (roll < 0.3) await act(who, 'POST', '/api/cards/bulk', { action: r.pick(['complete', 'uncomplete']), ids });
+      else if (roll < 0.45) await act(who, 'POST', '/api/cards/bulk', { action: r.pick(['archive', 'discard']), ids });
+      else if (roll < 0.6) await act(who, 'POST', '/api/cards/bulk', { action: 'due', items: ids.map((id) => ({ id, dueDate: day(Math.floor(r.next() * 10)) })) });
+      else if (roll < 0.7) await act(who, 'POST', '/api/cards/bulk', { action: 'color', items: ids.map((id) => ({ id, color: r.pick(['azul', 'verde', null]) })) });
+      else {
+        const lists = await q(`SELECT l.id FROM lists l JOIN boards b ON b.id = l.board_id WHERE b.owner_id = $1 AND l.archived_at IS NULL ORDER BY b.position, l.position, l.id`, [idOf(who)]);
+        await act(who, 'POST', '/api/cards/bulk', { action: 'move', ids, listId: r.pick(lists).id, place: r.pick(['top', 'end']) });
+      }
+    },
     async delegarDaCaixa() {
       // item 50: aceita e delega de uma vez, direto da caixa de entrada
       const who = r.pick(PEOPLE.filter((p) => reportsOf(p).length));

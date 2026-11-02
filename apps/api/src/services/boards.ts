@@ -42,7 +42,11 @@ export async function listBoards(db: Db, actor: Actor) {
 
 export async function boardDetail(db: Db, actor: Actor, boardId: string) {
   const board = await ownBoard(db, actor, boardId);
-  const lists = await many(db, 'SELECT id, name, position FROM lists WHERE board_id = $1 AND archived_at IS NULL ORDER BY position', [boardId]);
+  const lists = await many(
+    db,
+    'SELECT id, name, position, collapsed, card_limit AS "cardLimit" FROM lists WHERE board_id = $1 AND archived_at IS NULL ORDER BY position',
+    [boardId],
+  );
   // Cartões visíveis ao dono: não arquivados e sem delegação devolvida/cancelada.
   const cards = await selectCards(
     db,
@@ -93,13 +97,19 @@ export async function createList(db: Db, actor: Actor, boardId: string, name: st
   return one(db, 'INSERT INTO lists (board_id, name, position) VALUES ($1, $2, $3) RETURNING id, name, position', [boardId, name.trim(), position]);
 }
 
-export async function updateList(db: Db, actor: Actor, listId: string, patch: { name?: string; position?: number }) {
+export async function updateList(
+  db: Db, actor: Actor, listId: string,
+  patch: { name?: string; position?: number; collapsed?: boolean; cardLimit?: number | null },
+) {
   await ownList(db, actor, listId);
   if (patch.name !== undefined) {
     if (!patch.name.trim()) throw badRequest('Dê um nome à fase.');
     await db.query('UPDATE lists SET name = $2 WHERE id = $1', [listId, patch.name.trim()]);
   }
   if (patch.position !== undefined) await db.query('UPDATE lists SET position = $2 WHERE id = $1', [listId, patch.position]);
+  // Item 85: recolher a fase no quadro e o limite de tarefas (null tira o limite).
+  if (patch.collapsed !== undefined) await db.query('UPDATE lists SET collapsed = $2 WHERE id = $1', [listId, patch.collapsed]);
+  if (patch.cardLimit !== undefined) await db.query('UPDATE lists SET card_limit = $2 WHERE id = $1', [listId, patch.cardLimit]);
 }
 
 /** RN-03: só arquiva fase vazia. */

@@ -1,3 +1,4 @@
+import { priorityOf } from './phase.js';
 import { one, many, type Db } from '../lib/db.js';
 import { notFound } from '../lib/errors.js';
 import { canSeeLog, subSees, type Actor } from './actors.js';
@@ -235,6 +236,8 @@ export async function cardDetail(db: Db, actor: Actor, cardId: string) {
     },
     followers: await listFollowers(db, cardId),
     board,
+    // Item 85: a posição da tarefa na fase é a prioridade dela.
+    priority: role === 'owner' ? await priorityOf(db, actor, row) : null,
     checklistItems: checklist,
     comments: comments.map((c) => ({ id: c.id, body: c.body, createdAt: c.created_at, authorId: c.author_id, authorName: c.author_name, viaName: c.via_name ?? null })),
   };

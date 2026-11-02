@@ -276,7 +276,7 @@ function Shell() {
         </div>
         {acting && <ActingBar />}
         {page === '/painel' && <DashboardPage />}
-        {page === '/quadros' && (view === 'tabela' ? <TablePage top={wide ? filterSlot : null} /> : <BoardsPage top={wide ? filterSlot : null} />)}
+        {page === '/quadros' && (view === 'tabela' ? <TablePage top={wide ? filterSlot : null} /> : <BoardsPage top={wide ? filterSlot : null} wide={wide} />)}
         {page === '/arquivadas' && <ArchivedPage />}
         {page === '/entrada' && <InboxPage />}
         {page === '/delegadas' && <DelegatedPage />}
