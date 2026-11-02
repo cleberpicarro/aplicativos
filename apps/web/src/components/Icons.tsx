@@ -1,6 +1,8 @@
 import type { ReactElement } from 'react';
 
 const P: Record<string, ReactElement> = {
+  expand: <path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7" />,
+  chevR: <path d="M9.5 5.5L16 12l-6.5 6.5" />,
   board: <><rect x="3.5" y="4" width="7" height="16" rx="1.5" /><rect x="13.5" y="4" width="7" height="10" rx="1.5" /></>,
   inbox: <><path d="M21 12.5h-5.5l-1.8 2.5h-3.4l-1.8-2.5H3" /><path d="M5.8 5h12.4L21 12.5V18a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-5.5z" /></>,
   users: <><circle cx="9" cy="8.5" r="3.2" /><path d="M3 19.5c.6-3 3-5 6-5s5.4 2 6 5" /><path d="M15.5 5.3a3.2 3.2 0 0 1 0 6.4M17.5 14.7c1.7.6 3 2.3 3.4 4.8" /></>,

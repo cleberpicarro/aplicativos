@@ -10,7 +10,7 @@ import { FilterBar, load, save, useTaskFilter } from '../components/TaskFilter';
 
 /* Item 36: as tarefas da pessoa em tabela, com filtro por condições e filtros salvos (o filtro é o mesmo do Quadro, item 47). */
 
-type Row = Card & { boardName: string | null; listName: string | null };
+export type Row = Card & { boardName: string | null; listName: string | null };
 
 const COL_KEY = 'synctasks.tabela.colunas';
 const SORT_KEY = 'synctasks.tabela.ordem';
@@ -128,7 +128,7 @@ export function TablePage({ top }: { top?: HTMLElement | null }) {
   );
 }
 
-function cellView(r: Row, col: Column, today: string) {
+export function cellView(r: Row, col: Column, today: string) {
   switch (col) {
     case 'code': return <span className="code">{cardNo(r.num)}</span>;
     case 'title': return (
@@ -173,12 +173,15 @@ function csvCell(r: Row, col: Column): string | number | null {
   }
 }
 
-function ColumnsDialog({ cols, onChange, onClose }: { cols: Column[]; onChange: (c: Column[]) => void; onClose: () => void }) {
-  const toggle = (id: Column) => onChange(cols.includes(id) ? cols.filter((c) => c !== id) : COLUMNS.map((c) => c.id).filter((c) => c === id || cols.includes(c)));
+/** Escolher as colunas. Item 85: a fase expandida usa o mesmo, com a lista de colunas dela. */
+export function ColumnsDialog<C extends string>({ cols, onChange, onClose, all = COLUMNS as unknown as { id: C; label: string; fixed?: boolean }[], defaults = DEFAULT_COLUMNS as unknown as C[] }: {
+  cols: C[]; onChange: (c: C[]) => void; onClose: () => void; all?: { id: C; label: string; fixed?: boolean }[]; defaults?: C[];
+}) {
+  const toggle = (id: C) => onChange(cols.includes(id) ? cols.filter((c) => c !== id) : all.map((c) => c.id).filter((c) => c === id || cols.includes(c)));
   return (
-    <Dialog title="Colunas" onClose={onClose} footer={<><button className="b" onClick={() => onChange(DEFAULT_COLUMNS)}>Voltar ao padrão</button><span className="grow" /><button className="b pri" onClick={onClose}>Pronto</button></>}>
+    <Dialog title="Colunas" onClose={onClose} footer={<><button className="b" onClick={() => onChange(defaults)}>Voltar ao padrão</button><span className="grow" /><button className="b pri" onClick={onClose}>Pronto</button></>}>
       <div className="cols">
-        {COLUMNS.map((c) => (
+        {all.map((c) => (
           <label key={c.id} className="check">
             <input type="checkbox" checked={cols.includes(c.id)} disabled={c.fixed} onChange={() => toggle(c.id)} /> {c.label}
           </label>

@@ -217,6 +217,7 @@ Só o administrador:
 - **RN-03a** (item 42) Um **quadro só pode ser arquivado se estiver vazio**: nenhuma tarefa ativa em nenhuma fase (concluídas ainda não arquivadas e tarefas repassadas contam). As fases vão junto. O **último quadro** da pessoa não pode ser arquivado. Não existe apagar quadro. O quadro arquivado aparece em **Arquivadas** e pode ser desarquivado: volta como a última aba, com fases, cor e fundo, e a numeração das tarefas continua de onde parou (RN-45).
 - **RN-05a** O detentor pode **arquivar uma tarefa própria concluída** e desarquivá-la depois. Não pode arquivar tarefa recebida por delegação (quem arquiva é o delegador, ao dar o ciente, RN-25) nem tarefa com delegação para baixo em aberto.
 - **RN-05b** (item 82) Não existe **apagar** tarefa (o número nunca é reaproveitado e o log não se apaga). Para tirar do quadro uma tarefa que não vai ser feita (por exemplo, criada por engano), o detentor usa **Descartar**, dentro da tarefa: vale para tarefa **própria e aberta** (a concluída se arquiva, RN-05a), que não foi recebida por delegação (essa se devolve, RN-23) e sem delegação para baixo em aberto (cancele antes, RN-28). Ela vai para **Arquivadas** com a etiqueta **“Descartada”**, sem concluir, e guarda o quadro, a fase e a posição; o aviso traz **Desfazer** e, depois, **Desarquivar** a devolve ao mesmo lugar com o mesmo número. Ninguém é avisado; o log registra “descartou a tarefa, sem concluir”. Na caixa de entrada, vale a RN-24b.
+- **RN-05c** (item 85) A **ordem das tarefas na fase é a prioridade** da pessoa (1º é o topo). O campo **Prioridade** da tarefa aberta mostra “Nª de total em [fase]” e muda a posição; essa mudança fica no log (“mudou a prioridade na fase”); arrastar no quadro ou na fase expandida não entra no log, como antes. Tarefa na caixa de entrada não tem prioridade. Na **fase expandida** (só no computador), as **ações em massa** valem só para tarefas da própria pessoa (se uma não for, nada acontece); as que a regra não deixa (por exemplo, descartar uma recebida por delegação ou arquivar uma aberta) **ficam de fora com o motivo** e as outras seguem. **Delegar e transferir continuam uma tarefa por vez** (RN-14). A fase pode ser **recolhida** e ter um **limite de tarefas** (só alerta: acima dele o contador fica laranja); as duas escolhas ficam gravadas na fase.
 
 ### 7.2 Tarefas
 
@@ -489,6 +490,9 @@ No topo de cada tela: título, campo de **busca** (texto ou código) e controle 
 - Arrastar e soltar entre fases. No celular, usar "Mover para" dentro do cartão.
 - **Arquivar tarefa concluída:** ícone de arquivo no cartão concluído (só em tarefa própria), **Arquivar** dentro da tarefa e **Arquivar as concluídas** no menu da fase, sempre com **Desfazer** no aviso. A arquivada continua na busca e pode ser **desarquivada** (volta à mesma fase, ou à primeira fase do quadro se a fase foi arquivada). Arquivar e desarquivar entram no log.
 - **Descartar** (item 82, RN-05b): dentro da tarefa própria e aberta, abaixo de Transferir, sem janela de confirmação: o aviso “Tarefa descartada.” traz **Desfazer**. Em Arquivadas, a descartada do quadro mostra a etiqueta “Descartada” e o quadro e a fase de onde saiu.
+- **Fase expandida** (item 85, RN-05c, só no computador): pelo menu **…** da fase (**Expandir fase**), pelo ícone ao lado do contador ou com duplo clique no nome. A fase abre em tela cheia como lista, no endereço `#/quadros?fase=…` (F5 e fechar uma tarefa voltam a ela); **Voltar ao quadro** ou **Esc** fecham. Colunas: **Prioridade** (1º, 2º…), Código e Tarefa sempre; Prazo, Situação, Delegação, Checklist, Criada em, Concluída em, Privada, Origem e Descrição pelo botão **Colunas** (lembrado no navegador; padrão: Prazo, Delegação, Checklist). **Busca** só na fase e atalhos com contadores: Todas, Atrasadas, Hoje, Próximos 7 dias, Sem prazo, Delegadas, Com cor, Concluídas; o filtro do topo também vale. Na ordem da prioridade, as linhas se **arrastam** (linha azul), **Alt+↑/↓** sobe ou desce uma posição e clicar no número abre a caixa para digitar a nova posição. Ordenar por outra coluna é só para olhar; **Aplicar esta ordem no quadro** grava, com Desfazer. **Ações em massa** (caixinhas, inclusive “marcar todas”): Mover para (quadro e fase; entram no fim), Para o topo, Para o fim, Prazo (data ou tirar), Cor (ou sem cor), Concluir, Arquivar (só as concluídas) e Descartar (com confirmação); o aviso diz quantas mudaram e quantas ficaram de fora, com o motivo, e traz **Desfazer**.
+- **Recolher fase** (item 85): no menu **…** da fase; ela vira uma faixa estreita com o contador e o nome em pé; clicar abre. Gravado na fase (vale em qualquer computador). No celular, a fase aparece aberta.
+- **Limite de tarefas** (item 85): no menu **…** da fase; acima do limite, o contador fica laranja (alerta de acúmulo; nada é bloqueado). **Tirar o limite** na mesma janela.
 - **Estado vazio:** "Você ainda não tem quadros…", com o botão de criar.
 
 ### 12.2a Tarefas: tabela e filtros (item 36)
@@ -528,6 +532,7 @@ No topo de cada tela: título, campo de **busca** (texto ou código) e controle 
 - Título editável, número (#12), status **com texto**, botão **Cor** (item 38: 8 cores + Sem cor; o cartão fica todo dessa cor no quadro, em tom sólido médio com texto escuro no tema claro e branco no escuro, item 40; só o dono vê e muda, não entra no log) e prazo.
 - Descrição.
 - Prazo. Quando é uma delegação, mostra também o prazo sugerido original.
+- **Prioridade** (item 85, RN-05c): “[N] de [total]” na fase em que a tarefa está; digitar outra posição e teclar Enter muda o quadro e fica no log. Só para quem tem a tarefa e só no quadro.
 - Checklist, com progresso.
 - Mover para outra fase.
 - Privacidade, só em tarefa própria que não tem nem teve delegação (item 43).
@@ -745,7 +750,7 @@ REST com JSON, sob `/api`. A autenticação usa cookie httpOnly de sessão. Toda
 | `GET /me` · `PATCH /me/prefs` `{workspaceBg?, emailDigest?, emailDue?}` | usuário logado, subordinados diretos, contadores do menu; preferências da própria pessoa (fundo, e-mails do item 46) |
 | `GET/POST /boards` · `PATCH /boards/:id` | quadros |
 | `POST /boards/:id/archive` · `POST /boards/:id/unarchive` `{back?}` · `GET /boards/archived` | arquivar quadro vazio e desarquivar (item 42) |
-| `POST /boards/:id/lists` · `PATCH /lists/:id` · `POST /lists/:id/archive` | fases (archive retorna 409 se não estiver vazia) |
+| `POST /boards/:id/lists` · `PATCH /lists/:id` `{name?, position?, collapsed?, cardLimit?}` · `POST /lists/:id/archive` | fases (archive retorna 409 se não estiver vazia); item 85: recolhida e limite de tarefas (`null` tira) |
 | `POST /cards` · `GET/PATCH /cards/:id` · `POST /cards/:id/move` | tarefas |
 | `GET /cards/by-code/:code` | abrir pelo código |
 | `POST /cards/:id/complete` · `POST /cards/:id/uncomplete` | concluir e desfazer |
@@ -755,6 +760,7 @@ REST com JSON, sob `/api`. A autenticação usa cookie httpOnly de sessão. Toda
 | `GET /inbox` · `POST /cards/:id/accept` `{listId}` · `POST /cards/:id/decline` `{reason}` | caixa de entrada |
 | `POST /cards/:id/accept-delegate` `{listId, toUserId, suggestedDue?, note?, noPass?}` · `POST /inbox/discard` `{ids}` · `POST /inbox/restore` `{ids}` | item 50: delegar direto da caixa e descartar (com desfazer) |
 | `POST /cards/:id/discard` | item 82: descartar a tarefa própria e aberta (do quadro ou da caixa); desfaz-se com `POST /cards/:id/unarchive` |
+| `POST /cards/:id/priority` `{rank}` · `POST /cards/bulk` `{action, ids \| items, …}` | item 85: prioridade (posição na fase, 1 = topo, fica no log) e ações em massa da fase expandida: `complete`, `uncomplete`, `archive`, `unarchive`, `discard` `{ids}`; `move` `{ids, listId, place: top\|end}`; `place` `{items: [{id, listId, position}]}` (desfazer e aplicar ordem); `due` `{items: [{id, dueDate}]}`; `color` `{items: [{id, color}]}`. Responde `{done, skipped: [{id, title, reason}]}`; até 1.000 tarefas |
 | `POST /delegations/:id/ack` · `POST /delegations/:id/reopen` `{comment}` · `POST /delegations/:id/cancel` · `POST /delegations/:id/redelegate` `{toUserId, suggestedDue?, noPass?}` · `POST /delegations/:id/no-pass` `{noPass}` · `POST /delegations/:id/undo-cancel` (item 48) | ações do delegador |
 | `POST /cards/:id/transfer` `{toUserId}` | transferir |
 | `GET /delegations?scope=mine` | dados da tela Tarefas delegadas (agrupados por subordinado, com contadores) |

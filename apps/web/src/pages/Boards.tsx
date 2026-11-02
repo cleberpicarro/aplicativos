@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useRef, useState, type CSSProperties, type DragEvent, type FormEvent } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { get, patch, post, type Board, type Card } from '../lib/api';
-import { go } from '../lib/router';
+import { go, useRoute } from '../lib/router';
 import { cardNo, firstName } from '../lib/format';
 import { CardStatusIcon, Dialog, Due, Menu, TipIcon, ErrorText, useMe, useToast } from '../components/ui';
 import { useQueryClient } from '@tanstack/react-query';
@@ -13,6 +13,7 @@ import { FilterBar, useTaskFilter } from '../components/TaskFilter';
 import { addPendingCard, changeCard, isPending } from '../lib/optimistic';
 import { NEW_TASK_EVENT, takeNewTaskRequest } from '../lib/shortcuts';
 import { CardPeek, setDragActive, useFitMeta, usePeek } from '../components/CardPeek';
+import { PhaseView } from './Phase';
 
 const STORE_KEY = 'synctasks.board';
 const ZOOM_KEY = 'synctasks.zoom';
@@ -49,8 +50,9 @@ export const WORKSPACE_COLORS: { id: string; label: string }[] = [
 type BoardTab = { id: string; name: string; color: string | null; position: number };
 
 /** `top`: espaço na barra do topo para os botões do filtro (item 59); sem ele, ficam na linha acima das fases. */
-export function BoardsPage({ top }: { top?: HTMLElement | null } = {}) {
+export function BoardsPage({ top, wide = true }: { top?: HTMLElement | null; wide?: boolean } = {}) {
   const me = useMe().data!;
+  const route = useRoute();
   const acting = !!me.substitution.acting;
   const boards = useQuery({ queryKey: ['boards'], queryFn: () => get<BoardTab[]>('/boards') });
   const [selected, setSelected] = useState<string | null>(rememberedBoard);
@@ -119,6 +121,16 @@ export function BoardsPage({ top }: { top?: HTMLElement | null } = {}) {
     placeBoard(id, target.after ? list[i + 1]?.id ?? null : target.id);
   };
   const boardIndex = boards.data?.findIndex((b) => b.id === boardId) ?? -1;
+
+  // Item 85: fase expandida (só no computador). Fica no endereço (?fase=…), então F5 e fechar uma tarefa voltam a ela.
+  const phaseParam = route.params.get('fase');
+  const phaseId = wide && phaseParam && board.data?.lists.some((l) => l.id === phaseParam) ? phaseParam : null;
+  const setPhase = (id: string | null) => {
+    const p = new URLSearchParams(route.params);
+    if (id) p.set('fase', id); else p.delete('fase');
+    const qs = p.toString();
+    go(qs ? `/quadros?${qs}` : '/quadros');
+  };
 
   if (!me.user.inHierarchy) {
     return <div className="page"><div className="empty">Administradores fora da hierarquia não têm quadros.</div></div>;
@@ -196,7 +208,12 @@ export function BoardsPage({ top }: { top?: HTMLElement | null } = {}) {
         </div>
       )}
       {board.isLoading && <p className="loading">Carregando o quadro…</p>}
-      {board.data && <Kanban board={board.data} today={me.today} zoom={zoom} match={matchIds} onNewList={() => setDialog('newList')} />}
+      {board.data && phaseId && (
+        <PhaseView key={phaseId} board={board.data} listId={phaseId} today={me.today} match={matchIds} onBack={() => setPhase(null)} />
+      )}
+      {board.data && !phaseId && (
+        <Kanban board={board.data} today={me.today} zoom={zoom} match={matchIds} wide={wide} onExpand={setPhase} onNewList={() => setDialog('newList')} />
+      )}
 
       {dialog === 'newBoard' && (
         <NameDialog title="Novo quadro" label="Nome do quadro" confirm="Criar" saveOnOutside onClose={() => setDialog(null)}
@@ -311,7 +328,9 @@ function useHiddenNotice(board: { data?: Board; dataUpdatedAt: number }, match: 
   }, [board.data, board.dataUpdatedAt, match.data, match.dataUpdatedAt, match.isFetching, matchIds, toast]);
 }
 
-function Kanban({ board, today, zoom, match, onNewList }: { board: Board; today: string; zoom: number; match: Set<string> | null; onNewList: () => void }) {
+function Kanban({ board, today, zoom, match, wide, onExpand, onNewList }: {
+  board: Board; today: string; zoom: number; match: Set<string> | null; wide: boolean; onExpand: (listId: string) => void; onNewList: () => void;
+}) {
   const { run, error } = useAction();
   const qc = useQueryClient();
   const toast = useToast();
@@ -319,6 +338,12 @@ function Kanban({ board, today, zoom, match, onNewList }: { board: Board; today:
   const [dropAt, setDropAt] = useState<DropAt>(null);
   const [renaming, setRenaming] = useState<{ id: string; name: string } | null>(null);
   const [archiving, setArchiving] = useState<{ id: string; name: string } | null>(null);
+  const [limiting, setLimiting] = useState<{ id: string; name: string; limit: number | null } | null>(null);
+  /** Item 85: recolher ou abrir a fase; já aparece assim na tela e fica gravado na conta. */
+  const setCollapsed = (id: string, collapsed: boolean) => {
+    qc.setQueryData<Board>(['board', board.id], (old) => old && { ...old, lists: old.lists.map((l) => (l.id === id ? { ...l, collapsed } : l)) });
+    run(() => patch(`/lists/${id}`, { collapsed }));
+  };
   // Item 78: a fase se arrasta pelo cabeçalho; a linha azul vertical mostra onde ela vai entrar.
   const [dragList, setDragList] = useState<string | null>(null);
   const [listDrop, setListDrop] = useState<{ id: string; after: boolean } | null>(null);
@@ -413,6 +438,28 @@ function Kanban({ board, today, zoom, match, onNewList }: { board: Board; today:
           const all = allOf(l.id);
           const here = dropAt?.listId === l.id;
           const listMark = listDrop?.id === l.id && dragList !== l.id ? (listDrop.after ? ' drop-after' : ' drop-before') : '';
+          const over = l.cardLimit !== null && all.length > l.cardLimit;
+          const countTip = [match ? 'Tarefas que atendem ao filtro, do total da fase' : '', over ? `Acima do limite de ${l.cardLimit} tarefas` : l.cardLimit !== null ? `Limite: ${l.cardLimit} tarefas` : ''].filter(Boolean).join('. ') || undefined;
+          // Item 85: fase recolhida vira uma faixa estreita com o nome e o contador (só no computador).
+          if (wide && l.collapsed) {
+            return (
+              <section key={l.id} className={`col folded${listMark}`} aria-label={`${l.name} (recolhida)`}
+                onDragOver={(e) => {
+                  if (!dragList) return;
+                  e.preventDefault();
+                  const r = e.currentTarget.getBoundingClientRect();
+                  const after = e.clientX > r.left + r.width / 2;
+                  if (listDrop?.id !== l.id || listDrop.after !== after) setListDrop({ id: l.id, after });
+                }}
+                onDrop={(e) => { if (dragList) { e.preventDefault(); dropList(); } }}>
+                <button className="fold-open" onClick={() => setCollapsed(l.id, false)} title={`Abrir a fase “${l.name}”`} aria-label={`Abrir a fase ${l.name}`}>
+                  <Icon name="chevR" />
+                  <span className={`n${over ? ' over' : ''}`} title={countTip}>{match ? `${cards.length} de ${all.length}` : all.length}</span>
+                  <span className="fold-name">{l.name}</span>
+                </button>
+              </section>
+            );
+          }
           return (
             <section key={l.id} className={`col${here ? ' over' : ''}${dragList === l.id ? ' dragging' : ''}${listMark}`} aria-label={l.name}
               onDragOver={(e) => {
@@ -437,12 +484,22 @@ function Kanban({ board, today, zoom, match, onNewList }: { board: Board; today:
               <div className="col-h" draggable={board.lists.length > 1} title={board.lists.length > 1 ? 'Arraste para mudar a ordem das fases' : undefined}
                 onDragStart={(e) => { if (e.target !== e.currentTarget) return; setDragList(l.id); e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', l.id); }}
                 onDragEnd={() => { setDragList(null); setListDrop(null); }}>
-                <b title={l.name}>{l.name}</b>
-                <span className="n" title={match ? 'Tarefas que atendem ao filtro, do total da fase' : undefined}>{match ? `${cards.length} de ${all.length}` : cards.length}</span>
+                <b title={wide ? `${l.name} (clique duas vezes para expandir)` : l.name} onDoubleClick={wide ? () => onExpand(l.id) : undefined}>{l.name}</b>
+                <span className={`n${over ? ' over' : ''}`} title={countTip}>{match ? `${cards.length} de ${all.length}` : cards.length}</span>
+                {wide && (
+                  <button className="b ghost icon sm col-x" onClick={() => onExpand(l.id)} aria-label={`Expandir a fase ${l.name}`} title="Expandir a fase (lista em tela cheia)">
+                    <Icon name="expand" />
+                  </button>
+                )}
                 <Menu label={`Opções da fase ${l.name}`} items={[
-                  ...SORTS.map((s) => ({ label: s.label, onClick: () => run(() => post(`/lists/${l.id}/sort`, { by: s.by }), `Fase “${l.name}” ordenada ${s.done}.`), disabled: all.length < 2 })),
+                  ...(wide ? [
+                    { label: 'Expandir fase', onClick: () => onExpand(l.id) },
+                    { label: 'Recolher fase', onClick: () => setCollapsed(l.id, true) },
+                  ] : []),
+                  ...SORTS.map((s, k) => ({ label: s.label, separator: wide && k === 0, onClick: () => run(() => post(`/lists/${l.id}/sort`, { by: s.by }), `Fase “${l.name}” ordenada ${s.done}.`), disabled: all.length < 2 })),
                   { label: 'Arquivar as concluídas', onClick: () => archiveDone(l.id, l.name), disabled: !all.some(archivable) },
                   { label: 'Renomear fase', onClick: () => setRenaming({ id: l.id, name: l.name }) },
+                  { label: l.cardLimit !== null ? `Limite de tarefas (${l.cardLimit})…` : 'Limite de tarefas…', onClick: () => setLimiting({ id: l.id, name: l.name, limit: l.cardLimit }) },
                   { label: 'Mover fase para a esquerda', onClick: () => moveList(i, -1), disabled: i === 0 },
                   { label: 'Mover fase para a direita', onClick: () => moveList(i, 1), disabled: i === board.lists.length - 1 },
                   { label: all.length ? 'Arquivar fase (mova as tarefas antes)' : 'Arquivar fase', onClick: () => all.length ? toast('Mova as tarefas desta fase antes de arquivá-la.', 'error') : setArchiving({ id: l.id, name: l.name }), danger: true },
@@ -475,11 +532,40 @@ function Kanban({ board, today, zoom, match, onNewList }: { board: Board; today:
         <NameDialog title="Renomear fase" label="Nome da fase" confirm="Salvar" initial={renaming.name} onClose={() => setRenaming(null)}
           onSave={(name) => patch(`/lists/${renaming.id}`, { name })} />
       )}
+      {limiting && <LimitDialog list={limiting} onClose={() => setLimiting(null)} />}
       {archiving && (
         <ConfirmDialog title="Arquivar fase" confirm="Arquivar" danger text={`Arquivar a fase “${archiving.name}”? Ela está vazia e deixa de aparecer no quadro.`}
           onConfirm={() => post(`/lists/${archiving.id}/archive`)} onClose={() => setArchiving(null)} />
       )}
     </div>
+  );
+}
+
+/** Item 85: limite de tarefas da fase. Acima dele, o contador fica laranja (é só um alerta; nada é bloqueado). */
+function LimitDialog({ list, onClose }: { list: { id: string; name: string; limit: number | null }; onClose: () => void }) {
+  const { run, busy, error } = useAction();
+  const [v, setV] = useState(list.limit ? String(list.limit) : '');
+  const saveIt = async (cardLimit: number | null) => {
+    if ((await run(() => patch(`/lists/${list.id}`, { cardLimit }), cardLimit ? `Limite da fase “${list.name}”: ${cardLimit} tarefas.` : `A fase “${list.name}” ficou sem limite.`)) !== undefined) onClose();
+  };
+  const n = Math.round(Number(v));
+  const ok = v.trim() !== '' && Number.isFinite(n) && n >= 1 && n <= 9999;
+  return (
+    <Dialog title="Limite de tarefas" onClose={onClose} footer={<>
+      {list.limit !== null && <button className="b" disabled={busy} onClick={() => saveIt(null)}>Tirar o limite</button>}
+      <span className="grow" />
+      <button className="b" onClick={onClose}>Cancelar</button>
+      <button className="b pri" form="dlg" disabled={busy || !ok}>Salvar</button>
+    </>}>
+      <form id="dlg" onSubmit={(e: FormEvent) => { e.preventDefault(); if (ok) saveIt(n); }}>
+        <p className="hint" style={{ marginTop: 0 }}>Quando a fase “{list.name}” passar deste número de tarefas, o contador dela fica laranja, como alerta de acúmulo. Nada é bloqueado.</p>
+        <label className="field">
+          <span className="label">No máximo</span>
+          <input className="input" type="number" min={1} max={9999} value={v} autoFocus onChange={(e) => setV(e.target.value)} />
+        </label>
+      </form>
+      <ErrorText error={error} />
+    </Dialog>
   );
 }
 
