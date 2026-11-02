@@ -15,6 +15,7 @@ import * as admin from './services/admin.js';
 import * as misc from './services/misc.js';
 import * as subs from './services/substitution.js';
 import * as followers from './services/followers.js';
+import * as phase from './services/phase.js';
 import { importTrello, trelloImportSchema } from './services/importer.js';
 import { exportAll } from './services/exporter.js';
 import { captureWeb } from './services/capture.js';
@@ -43,6 +44,7 @@ const SUBSTITUTE_ROUTES = new Set([
   'PATCH /api/lists/:id', 'POST /api/lists/:id/sort', 'POST /api/lists/:id/archive-done', 'POST /api/lists/:id/archive',
   'POST /api/cards', 'POST /api/cards/batch', 'POST /api/cards/undo-create', 'GET /api/cards/by-code/:code', 'GET /api/cards/:id', 'PATCH /api/cards/:id',
   'POST /api/cards/:id/move', 'POST /api/cards/:id/complete', 'POST /api/cards/:id/uncomplete', 'POST /api/cards/:id/archive', 'POST /api/cards/:id/unarchive', 'POST /api/cards/:id/discard',
+  'POST /api/cards/bulk', 'POST /api/cards/:id/priority',
   'POST /api/cards/:id/checklist', 'PATCH /api/cards/:id/checklist/:itemId', 'DELETE /api/cards/:id/checklist/:itemId', 'POST /api/cards/:id/comments',
   'POST /api/cards/:id/delegate', 'GET /api/inbox', 'POST /api/cards/:id/accept', 'POST /api/cards/:id/accept-delegate', 'POST /api/inbox/discard',
   'POST /api/inbox/restore', 'POST /api/cards/:id/decline', 'GET /api/cards/:id/transfer-targets', 'POST /api/cards/:id/transfer',
@@ -207,7 +209,12 @@ export async function buildApp({ pool, logger = false, serveWeb = false }: AppOp
   });
   app.patch('/api/lists/:id', async (req) => {
     const { id } = z.object({ id: uuid }).parse(req.params);
-    const body = z.object({ name: z.string().max(60).optional(), position: z.number().finite().optional() }).parse(req.body);
+    const body = z
+      .object({
+        name: z.string().max(60).optional(), position: z.number().finite().optional(),
+        collapsed: z.boolean().optional(), cardLimit: z.number().int().min(1).max(9999).nullable().optional(),
+      })
+      .parse(req.body);
     await inTx(req, (db) => boards.updateList(db, need(req), id, body));
     return { ok: true };
   });
@@ -265,6 +272,26 @@ export async function buildApp({ pool, logger = false, serveWeb = false }: AppOp
       .parse(req.body);
     await inTx(req, (db) => tasks.moveCard(db, need(req), id, listId, position, place));
     return { ok: true };
+  });
+  /* Item 85: prioridade (posição na fase) e ações em massa da fase expandida. */
+  app.post('/api/cards/:id/priority', async (req) => {
+    const { id } = z.object({ id: uuid }).parse(req.params);
+    const { rank } = z.object({ rank: z.number().int().min(1).max(100000) }).parse(req.body);
+    return inTx(req, (db) => phase.setPriority(db, need(req), id, rank));
+  });
+  app.post('/api/cards/bulk', async (req) => {
+    const ids = z.array(uuid).min(1).max(phase.MAX_BULK);
+    const items = <T extends z.ZodRawShape>(shape: T) => z.array(z.object({ id: uuid, ...shape })).min(1).max(phase.MAX_BULK);
+    const body = z
+      .discriminatedUnion('action', [
+        z.object({ action: z.enum(['complete', 'uncomplete', 'archive', 'unarchive', 'discard']), ids }),
+        z.object({ action: z.literal('move'), ids, listId: uuid, place: z.enum(['top', 'end']) }),
+        z.object({ action: z.literal('place'), items: items({ listId: uuid, position: z.number().finite() }) }),
+        z.object({ action: z.literal('due'), items: items({ dueDate: date }) }),
+        z.object({ action: z.literal('color'), items: items({ color: z.string().max(20).nullable() }) }),
+      ])
+      .parse(req.body);
+    return inTx(req, (db) => phase.bulk(db, need(req), body as phase.BulkInput));
   });
   app.post('/api/cards/:id/complete', async (req) => {
     const { id } = z.object({ id: uuid }).parse(req.params);

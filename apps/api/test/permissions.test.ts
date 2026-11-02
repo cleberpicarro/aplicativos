@@ -107,6 +107,11 @@ async function attemptsAgainstGest(who: string): Promise<Attempt[]> {
     { method: 'POST', url: `/api/cards/${id}/archive`, route: 'POST /api/cards/:id/archive' },
     { method: 'POST', url: `/api/cards/${id}/unarchive`, route: 'POST /api/cards/:id/unarchive' },
     { method: 'POST', url: `/api/cards/${id}/discard`, route: 'POST /api/cards/:id/discard' },
+    { method: 'POST', url: `/api/cards/${id}/priority`, body: { rank: 1 }, route: 'POST /api/cards/:id/priority' },
+    { method: 'POST', url: '/api/cards/bulk', body: { action: 'complete', ids: [id] }, route: 'POST /api/cards/bulk' },
+    { method: 'POST', url: '/api/cards/bulk', body: { action: 'discard', ids: [id] }, route: 'POST /api/cards/bulk' },
+    { method: 'POST', url: '/api/cards/bulk', body: { action: 'move', ids: [id], listId: myList, place: 'top' }, route: 'POST /api/cards/bulk' },
+    { method: 'POST', url: '/api/cards/bulk', body: { action: 'color', items: [{ id, color: 'roxo' }] }, route: 'POST /api/cards/bulk' },
     { method: 'POST', url: `/api/cards/${id}/checklist`, body: { text: 'x' }, route: 'POST /api/cards/:id/checklist' },
     { method: 'PATCH', url: `/api/cards/${id}/checklist/${s.item}`, body: { done: true }, route: 'PATCH /api/cards/:id/checklist/:itemId' },
     { method: 'DELETE', url: `/api/cards/${id}/checklist/${s.item}`, route: 'DELETE /api/cards/:id/checklist/:itemId' },
@@ -141,6 +146,7 @@ async function attemptsAgainstGest(who: string): Promise<Attempt[]> {
     { method: 'POST', url: `/api/boards/${s.board3}/unarchive`, route: 'POST /api/boards/:id/unarchive' },
     { method: 'PATCH', url: `/api/lists/${s.list}`, body: { name: 'invadida', position: 99 }, route: 'PATCH /api/lists/:id' },
     { method: 'POST', url: `/api/lists/${s.list}/sort`, body: { by: 'title' }, route: 'POST /api/lists/:id/sort' },
+    { method: 'PATCH', url: `/api/lists/${s.list}`, body: { collapsed: true, cardLimit: 5 }, route: 'PATCH /api/lists/:id' },
     { method: 'POST', url: `/api/lists/${s.list}/archive-done`, route: 'POST /api/lists/:id/archive-done' },
     { method: 'POST', url: `/api/lists/${s.list2}/archive`, route: 'POST /api/lists/:id/archive' },
     { method: 'POST', url: '/api/cards', body: { listId: s.list, title: 'enfiada no quadro alheio' }, route: 'POST /api/cards' },
@@ -165,7 +171,7 @@ describe('permissões em massa (frente 2)', () => {
     for (const who of OUTSIDERS) {
       for (const a of await attemptsAgainstGest(who)) {
         // func2 é o dono legítimo da tarefa na caixa de entrada: não é "intruso" dela.
-        if (who === 'func2' && a.url.includes(s.inboxCard)) continue;
+        if (who === 'func2' && (a.url.includes(s.inboxCard) || JSON.stringify(a.body ?? '').includes(s.inboxCard))) continue;
         total++;
         const r = await call(who, a.method, a.url, a.body);
         if (a.method === 'GET') {
@@ -315,7 +321,7 @@ describe('permissões em massa (frente 2)', () => {
       'GET /api/boards/:id', 'PATCH /api/boards/:id', 'POST /api/boards/:id/lists', 'PATCH /api/lists/:id', 'POST /api/lists/:id/sort',
       'POST /api/lists/:id/archive-done', 'POST /api/lists/:id/archive', 'POST /api/cards', 'POST /api/cards/batch', 'POST /api/cards/undo-create', 'GET /api/cards/:id', 'GET /api/cards/by-code/:code',
       'PATCH /api/cards/:id', 'POST /api/cards/:id/move', 'POST /api/cards/:id/complete', 'POST /api/cards/:id/uncomplete',
-      'POST /api/cards/:id/archive', 'POST /api/cards/:id/unarchive', 'POST /api/cards/:id/discard', 'POST /api/cards/:id/checklist', 'PATCH /api/cards/:id/checklist/:itemId',
+      'POST /api/cards/:id/archive', 'POST /api/cards/:id/unarchive', 'POST /api/cards/:id/discard', 'POST /api/cards/:id/priority', 'POST /api/cards/bulk', 'POST /api/cards/:id/checklist', 'PATCH /api/cards/:id/checklist/:itemId',
       'DELETE /api/cards/:id/checklist/:itemId', 'POST /api/cards/:id/comments', 'GET /api/cards/:id/events', 'POST /api/cards/:id/delegate',
       'POST /api/cards/:id/accept', 'POST /api/cards/:id/decline', 'GET /api/cards/:id/transfer-targets', 'POST /api/cards/:id/transfer',
       'POST /api/delegations/:id/ack', 'POST /api/delegations/:id/reopen', 'POST /api/delegations/:id/cancel', 'POST /api/delegations/:id/redelegate',

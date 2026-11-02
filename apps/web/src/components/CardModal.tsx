@@ -553,6 +553,7 @@ function describe(e: Ev): { text: string; change?: string } {
     case 'completion_undone': return { text: 'desfez a conclusão' };
     case 'archived': return { text: a.undo ? 'desfez a criação (tarefa arquivada)' : 'arquivou a tarefa' };
     case 'unarchived': return { text: a.inbox ? 'desarquivou a tarefa (de volta à caixa de entrada)' : 'desarquivou a tarefa' };
+    case 'priority_changed': return { text: 'mudou a prioridade na fase', change: `${b.rank}º → ${a.rank}º` };
     case 'discarded': return { text: a.board ? 'descartou a tarefa, sem concluir' : 'descartou a tarefa da caixa de entrada' };
     case 'acked': return { text: 'deu ciente: tarefa arquivada' };
     case 'reopened': return { text: 'reabriu a tarefa', change: `“${a.reason}”` };
