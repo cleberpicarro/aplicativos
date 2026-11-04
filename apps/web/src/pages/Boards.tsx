@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useRef, useState, type CSSProperties, type DragEvent, type FormEvent } from 'react';
+import { Fragment, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type DragEvent, type FormEvent } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { get, patch, post, type Board, type Card } from '../lib/api';
 import { go, useRoute } from '../lib/router';
@@ -167,6 +167,7 @@ export function BoardsPage({ top, wide = true }: { top?: HTMLElement | null; wid
                 disabled={zoom >= ZOOM_MAX} onClick={() => setZoom(zoom + ZOOM_STEP)}>+</button>
             </span>
           )}
+          {board.data && wide && <span className="board-tip"><TipIcon name="help" tip={BOARD_TIP} /></span>}
           <button className="b ghost sm quiet" onClick={() => setDialog('newBoard')}><Icon name="plus" />Quadro</button>
           {boards.data && (
             <Menu label="Opções do quadro" items={[
@@ -428,9 +429,10 @@ function Kanban({ board, today, zoom, match, wide, onExpand, onNewList }: {
   };
 
   const line = <div className="drop-line" aria-hidden="true" />;
+  const area = useFitHeight(wide);
 
   return (
-    <div className={`board-area${board.color ? ` colored bc-${board.color}` : ''}`}>
+    <div ref={area} className={`board-area${board.color ? ` colored bc-${board.color}` : ''}${wide ? ' fit' : ''}`}>
       <ErrorText error={error} />
       <div className="kanban" style={{ '--zoom': zoom / 100 } as CSSProperties}>
         {board.lists.map((l, i) => {
@@ -526,7 +528,8 @@ function Kanban({ board, today, zoom, match, wide, onExpand, onNewList }: {
           <button className="add-card" style={{ margin: 0 }} onClick={onNewList}><Icon name="plus" />Nova fase</button>
         </div>
       </div>
-      <p className="hint">Arraste as tarefas para mudar a ordem ou a fase, o nome da fase para mudar a ordem das fases e as abas para mudar a ordem dos quadros; a linha azul mostra onde vai entrar. No celular, abra a tarefa e use “Mover para”.</p>
+      {/* Item 86: no computador a dica virou o ícone ? ao lado do zoom, para o quadro ganhar a altura toda. */}
+      {!wide && <p className="hint">Arraste as tarefas para mudar a ordem ou a fase, o nome da fase para mudar a ordem das fases e as abas para mudar a ordem dos quadros; a linha azul mostra onde vai entrar. No celular, abra a tarefa e use “Mover para”.</p>}
 
       {renaming && (
         <NameDialog title="Renomear fase" label="Nome da fase" confirm="Salvar" initial={renaming.name} onClose={() => setRenaming(null)}
@@ -540,6 +543,42 @@ function Kanban({ board, today, zoom, match, wide, onExpand, onNewList }: {
     </div>
   );
 }
+
+/** Dica do quadro (item 86: no computador fica num ícone ?, no celular continua embaixo do quadro). */
+const BOARD_TIP = 'Arraste as tarefas para mudar a ordem ou a fase, o nome da fase para mudar a ordem das fases e as abas para mudar a ordem dos quadros; a linha azul mostra onde vai entrar. Para ir para os lados: barra no rodapé do quadro ou Shift + rodinha do mouse.';
+
+/**
+ * Item 86: no computador, o quadro ocupa exatamente a altura que sobra na janela, para a barra de rolagem
+ * lateral ficar sempre no rodapé da tela. Antes a altura vinha de uma folga fixa (100dvh - 11rem) e, quando a
+ * parte de cima ocupava mais que isso, a barra caía abaixo da janela. Grava a altura em --fit (px).
+ */
+function useFitHeight(on: boolean) {
+  const ref = useRef<HTMLDivElement | null>(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (!on) { el.style.removeProperty('--fit'); return; }
+    let last = '';
+    const measure = () => {
+      const cs = getComputedStyle(el);
+      const top = el.getBoundingClientRect().top + window.scrollY;
+      const pad = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
+      const v = `${Math.max(240, Math.floor(window.innerHeight - top - pad - FIT_GAP))}px`;
+      if (v !== last) { last = v; el.style.setProperty('--fit', v); }
+    };
+    measure();
+    window.addEventListener('resize', measure);
+    // O que fica acima do quadro (filtro ligado, aviso de erro, abas que quebram linha) muda a altura que sobra.
+    const ro = new ResizeObserver(measure);
+    const main = el.closest('main');
+    if (main) ro.observe(main);
+    ro.observe(document.documentElement);
+    return () => { window.removeEventListener('resize', measure); ro.disconnect(); };
+  });
+  return ref;
+}
+/** Espaço livre entre o quadro e o pé da janela, em px. */
+const FIT_GAP = 12;
 
 /** Item 85: limite de tarefas da fase. Acima dele, o contador fica laranja (é só um alerta; nada é bloqueado). */
 function LimitDialog({ list, onClose }: { list: { id: string; name: string; limit: number | null }; onClose: () => void }) {

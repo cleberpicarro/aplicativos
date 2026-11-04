@@ -933,3 +933,17 @@ table.t.phase tr:focus-visible { outline: 2px solid var(--accent); outline-offse
 .prio-field { display: flex; align-items: center; gap: 6px; font-size: 0.88rem; color: var(--muted); }
 .prio-field .input { width: 4.6rem; }
 .ph-title { text-transform: none; letter-spacing: 0; color: var(--fg); padding: 0; display: block; }
+
+/* Item 86: no computador, o quadro ocupa a altura que sobra na janela (--fit, medida em Boards.tsx) e a barra
+   de rolagem lateral fica sempre no rodapé da tela; as fases rolam por dentro. A página em si não rola. */
+@media (min-width: 821px) {
+  main:has(.board-area.fit) { padding-bottom: 0; }
+  .board-area.fit > .kanban { height: calc(var(--fit, 70vh) / var(--zoom, 1)); min-height: 0; padding-bottom: 6px; }
+  .board-area.fit > .kanban .col, .board-area.fit > .kanban .col.folded { max-height: 100%; }
+  .board-area.fit.colored { padding-bottom: 8px; }
+  .kanban { scrollbar-width: auto; }
+}
+.board-tip { display: inline-flex; align-items: center; margin-right: 4px; color: var(--faint); }
+.board-tip .ico { position: relative; display: inline-flex; }
+.board-tip .ico svg { width: 15px; height: 15px; }
+.board-tip [data-tip]::after { left: auto; right: 0; bottom: auto; top: calc(100% + 6px); transform: none; white-space: normal; width: 22rem; }
