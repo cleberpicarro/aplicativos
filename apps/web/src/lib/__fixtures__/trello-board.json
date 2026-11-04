@@ -1,0 +1,68 @@
+{
+  "id": "6650a1b2c3d4e5f600000001",
+  "name": "Marketing 2026",
+  "desc": "",
+  "closed": false,
+  "url": "https://trello.com/b/abc123/marketing-2026",
+  "labels": [
+    { "id": "lab1", "idBoard": "6650a1b2c3d4e5f600000001", "name": "Urgente", "color": "red" }
+  ],
+  "lists": [
+    { "id": "list-todo", "name": "A fazer", "closed": false, "pos": 16384, "idBoard": "6650a1b2c3d4e5f600000001" },
+    { "id": "list-done", "name": "Concluído", "closed": false, "pos": 49152, "idBoard": "6650a1b2c3d4e5f600000001" },
+    { "id": "list-old", "name": "Ideias antigas", "closed": true, "pos": 65536, "idBoard": "6650a1b2c3d4e5f600000001" },
+    { "id": "list-doing", "name": "Em andamento", "closed": false, "pos": 32768, "idBoard": "6650a1b2c3d4e5f600000001" }
+  ],
+  "cards": [
+    {
+      "id": "card-1", "name": "Campanha de lançamento", "desc": "Planejar a campanha do produto novo.",
+      "closed": false, "idList": "list-todo", "pos": 16384, "due": "2026-11-20T15:00:00.000Z", "dueComplete": false,
+      "idMembers": ["mem-ana", "mem-bruno"], "idLabels": ["lab1"], "labels": [{ "id": "lab1", "name": "Urgente", "color": "red" }],
+      "idChecklists": ["cl-1", "cl-2"], "badges": { "attachments": 2, "comments": 2 }
+    },
+    {
+      "id": "card-2", "name": "Revisar textos do site", "desc": "", "closed": false, "idList": "list-todo", "pos": 8192,
+      "due": null, "dueComplete": false, "idMembers": [], "idLabels": [], "idChecklists": [], "badges": { "attachments": 0 }
+    },
+    {
+      "id": "card-3", "name": "Fotos do evento", "desc": "Selecionar as 20 melhores.", "closed": false, "idList": "list-done", "pos": 16384,
+      "due": "2026-09-10T12:00:00.000Z", "dueComplete": true, "idMembers": ["mem-ana"], "idLabels": [], "idChecklists": [], "badges": { "attachments": 0 }
+    },
+    {
+      "id": "card-4", "name": "Cartão arquivado", "desc": "", "closed": true, "idList": "list-todo", "pos": 30000,
+      "due": null, "dueComplete": false, "idMembers": [], "idLabels": [], "idChecklists": []
+    },
+    {
+      "id": "card-5", "name": "Ideia de podcast", "desc": "", "closed": false, "idList": "list-old", "pos": 16384,
+      "due": null, "dueComplete": false, "idMembers": [], "idLabels": [], "idChecklists": []
+    },
+    {
+      "id": "card-6", "name": "Pesquisa com clientes", "desc": "", "closed": false, "idList": "list-doing", "pos": 16384,
+      "due": null, "dueComplete": false, "idMembers": ["mem-desconhecido"], "idLabels": [], "idChecklists": []
+    }
+  ],
+  "checklists": [
+    {
+      "id": "cl-2", "name": "Divulgação", "idCard": "card-1", "pos": 32768,
+      "checkItems": [
+        { "id": "ci-3", "name": "Post no Instagram", "state": "incomplete", "pos": 16384 }
+      ]
+    },
+    {
+      "id": "cl-1", "name": "Preparação", "idCard": "card-1", "pos": 16384,
+      "checkItems": [
+        { "id": "ci-2", "name": "Aprovar orçamento", "state": "incomplete", "pos": 32768 },
+        { "id": "ci-1", "name": "Definir público", "state": "complete", "pos": 16384 }
+      ]
+    }
+  ],
+  "members": [
+    { "id": "mem-ana", "fullName": "Ana Souza", "username": "anasouza" },
+    { "id": "mem-bruno", "fullName": "Bruno Lima", "username": "brunolima" }
+  ],
+  "actions": [
+    { "id": "act-3", "type": "commentCard", "date": "2026-10-02T13:30:00.000Z", "data": { "text": "Orçamento enviado para aprovação.", "card": { "id": "card-1", "name": "Campanha de lançamento" } }, "memberCreator": { "id": "mem-bruno", "fullName": "Bruno Lima", "username": "brunolima" } },
+    { "id": "act-2", "type": "updateCard", "date": "2026-10-01T10:00:00.000Z", "data": { "card": { "id": "card-1" } }, "memberCreator": { "id": "mem-ana", "fullName": "Ana Souza" } },
+    { "id": "act-1", "type": "commentCard", "date": "2026-09-30T09:15:00.000Z", "data": { "text": "Vamos começar pelo público-alvo.", "card": { "id": "card-1", "name": "Campanha de lançamento" } }, "memberCreator": { "id": "mem-ana", "fullName": "Ana Souza", "username": "anasouza" } }
+  ]
+}
