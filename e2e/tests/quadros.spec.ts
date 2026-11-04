@@ -362,6 +362,44 @@ test.describe('meus quadros', () => {
     await aviso(page, 'Tarefa concluída.');
   });
 
+  test('barra de rolagem lateral sempre no rodapé da tela, também com zoom (item 86)', async ({ page }) => {
+    await entrar(page, 'lucas');
+    const nome = unico('Largo');
+    const quadro = await api(page, 'POST', '/boards', { name: nome }) as { id: string };
+    for (let i = 1; i <= 6; i++) await api(page, 'POST', `/boards/${quadro.id}/lists`, { name: `Etapa ${i}` });
+    const b = await api(page, 'GET', `/boards/${quadro.id}`) as { lists: { id: string }[] };
+    await api(page, 'POST', '/cards/batch', { listId: b.lists[0].id, titles: Array.from({ length: 40 }, (_, i) => `Item ${i + 1}`) });
+    await page.reload();
+    await page.getByRole('tab', { name: nome }).click();
+    await expect(page.locator('.col-h b')).toHaveCount(9);
+    // A dica virou o ícone ? no computador.
+    await expect(page.getByRole('img', { name: /Arraste as tarefas/ })).toBeVisible();
+    await expect(page.locator('.board-area > p.hint')).toHaveCount(0);
+
+    const confere = async (quando: string) => {
+      const m = await page.evaluate(() => {
+        const k = document.querySelector('.kanban') as HTMLElement;
+        return { fundo: k.getBoundingClientRect().bottom, tela: window.innerHeight, pagina: document.documentElement.scrollHeight,
+          largura: k.scrollWidth, visivel: k.clientWidth };
+      });
+      expect(m.largura, `${quando}: o quadro deveria passar da largura da tela`).toBeGreaterThan(m.visivel);
+      expect(m.fundo, `${quando}: a barra lateral ficou abaixo da janela`).toBeLessThanOrEqual(m.tela);
+      expect(m.fundo, `${quando}: sobrou espaço demais embaixo do quadro`).toBeGreaterThan(m.tela - 40);
+      expect(m.pagina, `${quando}: a página rola para baixo`).toBeLessThanOrEqual(m.tela + 1);
+    };
+    await confere('normal');
+    await page.getByRole('button', { name: 'Aumentar o zoom' }).click();
+    await page.getByRole('button', { name: 'Aumentar o zoom' }).click();
+    await confere('com zoom');
+    await page.getByRole('button', { name: /Zoom em/ }).click();
+    await page.setViewportSize({ width: 1280, height: 640 });
+    await confere('janela mais baixa');
+    // A fase comprida rola por dentro.
+    const fase = page.getByRole('region', { name: 'A fazer', exact: true });
+    const alturas = await fase.locator('.col-list').evaluate((el) => ({ total: el.scrollHeight, visivel: el.clientHeight }));
+    expect(alturas.total).toBeGreaterThan(alturas.visivel);
+  });
+
   test('cartões do mesmo tamanho e balão com a tarefa completa ao parar o mouse (itens 60 e 61)', async ({ page }) => {
     await entrar(page, 'lucas');
     const curto = unico('Ligar');
