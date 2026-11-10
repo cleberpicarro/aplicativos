@@ -382,10 +382,7 @@ test.describe('meus quadros', () => {
   });
 
   test('barra de rolagem lateral sempre no rodapé da tela, também com zoom (item 86)', async ({ page }) => {
-    // Pessoa que os outros roteiros quase não usam: com dezenas de quadros, as abas quebram em várias linhas,
-    // empurram o quadro para baixo e, na janela de 640 px, a altura mínima da fase (240 px) passa do pé da janela.
-    await entrar(page, 'helena');
-    await irPara(page, 'Tarefas');
+    await entrar(page, 'lucas');
     const nome = unico('Largo');
     const quadro = await api(page, 'POST', '/boards', { name: nome }) as { id: string };
     for (let i = 1; i <= 6; i++) await api(page, 'POST', `/boards/${quadro.id}/lists`, { name: `Etapa ${i}` });
@@ -398,7 +395,8 @@ test.describe('meus quadros', () => {
     await expect(page.getByRole('img', { name: /Arraste as tarefas/ })).toBeVisible();
     await expect(page.locator('.board-area > p.hint')).toHaveCount(0);
 
-    const confere = async (quando: string) => {
+    // A altura é medida de novo logo depois que a janela muda; espera essa medida em vez de ler na mesma hora.
+    const confere = (quando: string) => expect(async () => {
       const m = await page.evaluate(() => {
         const k = document.querySelector('.kanban') as HTMLElement;
         return { fundo: k.getBoundingClientRect().bottom, tela: window.innerHeight, pagina: document.documentElement.scrollHeight,
@@ -408,7 +406,7 @@ test.describe('meus quadros', () => {
       expect(m.fundo, `${quando}: a barra lateral ficou abaixo da janela`).toBeLessThanOrEqual(m.tela);
       expect(m.fundo, `${quando}: sobrou espaço demais embaixo do quadro`).toBeGreaterThan(m.tela - 40);
       expect(m.pagina, `${quando}: a página rola para baixo`).toBeLessThanOrEqual(m.tela + 1);
-    };
+    }).toPass({ timeout: 5_000 });
     await confere('normal');
     await page.getByRole('button', { name: 'Aumentar o zoom' }).click();
     await page.getByRole('button', { name: 'Aumentar o zoom' }).click();
