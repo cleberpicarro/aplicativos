@@ -141,7 +141,7 @@ export interface Board {
   name: string;
   color: string | null;
   /** Item 85: fase recolhida no quadro e limite opcional de tarefas (acima dele o contador fica laranja). */
-  lists: { id: string; name: string; position: number; collapsed: boolean; cardLimit: number | null }[];
+  lists: { id: string; name: string; position: number; collapsed: boolean; cardLimit: number | null; color: string | null }[];
   cards: Card[];
 }
 

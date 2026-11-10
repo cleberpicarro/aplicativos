@@ -44,7 +44,7 @@ export async function boardDetail(db: Db, actor: Actor, boardId: string) {
   const board = await ownBoard(db, actor, boardId);
   const lists = await many(
     db,
-    'SELECT id, name, position, collapsed, card_limit AS "cardLimit" FROM lists WHERE board_id = $1 AND archived_at IS NULL ORDER BY position',
+    'SELECT id, name, position, collapsed, card_limit AS "cardLimit", color FROM lists WHERE board_id = $1 AND archived_at IS NULL ORDER BY position',
     [boardId],
   );
   // Cartões visíveis ao dono: não arquivados e sem delegação devolvida/cancelada.
@@ -99,7 +99,7 @@ export async function createList(db: Db, actor: Actor, boardId: string, name: st
 
 export async function updateList(
   db: Db, actor: Actor, listId: string,
-  patch: { name?: string; position?: number; collapsed?: boolean; cardLimit?: number | null },
+  patch: { name?: string; position?: number; collapsed?: boolean; cardLimit?: number | null; color?: string | null },
 ) {
   await ownList(db, actor, listId);
   if (patch.name !== undefined) {
@@ -110,6 +110,11 @@ export async function updateList(
   // Item 85: recolher a fase no quadro e o limite de tarefas (null tira o limite).
   if (patch.collapsed !== undefined) await db.query('UPDATE lists SET collapsed = $2 WHERE id = $1', [listId, patch.collapsed]);
   if (patch.cardLimit !== undefined) await db.query('UPDATE lists SET card_limit = $2 WHERE id = $1', [listId, patch.cardLimit]);
+  // Item 87: cor da fase (null tira a cor).
+  if (patch.color !== undefined) {
+    if (patch.color !== null && !(BOARD_COLORS as readonly string[]).includes(patch.color)) throw badRequest('Cor inválida.');
+    await db.query('UPDATE lists SET color = $2 WHERE id = $1', [listId, patch.color]);
+  }
 }
 
 /** RN-03: só arquiva fase vazia. */

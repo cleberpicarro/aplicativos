@@ -20,7 +20,7 @@ export interface TrelloImport {
   source: 'Trello' | 'SyncTasks';
   boardName: string;
   boardColor: string | null;
-  lists: { name: string; cards: ImportCard[] }[];
+  lists: { name: string; color: string | null; cards: ImportCard[] }[];
 }
 
 export interface TrelloPreview {
@@ -38,7 +38,7 @@ export interface TrelloPreview {
   };
 }
 
-interface TList { id: string; name?: string; closed?: boolean; pos?: number }
+interface TList { id: string; name?: string; closed?: boolean; pos?: number; synctasks?: { cor?: string | null } }
 interface TCard {
   id: string; name?: string; desc?: string; due?: string | null; dueComplete?: boolean; closed?: boolean;
   idList: string; pos?: number; idMembers?: string[]; synctasks?: { privada?: boolean; cor?: string | null }; idLabels?: string[]; labels?: unknown[]; attachments?: unknown[]; badges?: { attachments?: number };
@@ -125,7 +125,7 @@ export function parseTrello(raw: unknown, source: TrelloImport['source'] = 'Trel
           comments: cmts,
         };
       });
-    return { name: cut((l.name ?? '').trim() || 'Sem nome', 60), cards };
+    return { name: cut((l.name ?? '').trim() || 'Sem nome', 60), color: color(l.synctasks?.cor), cards };
   });
   // Cartões de listas arquivadas também ficam de fora.
   stats.archivedCards += data.cards.filter((c) => !activeIds.has(c.idList)).length;

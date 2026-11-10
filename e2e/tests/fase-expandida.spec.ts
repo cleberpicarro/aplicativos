@@ -119,3 +119,37 @@ test.describe('fase expandida (item 85)', () => {
     await expect(page.getByRole('button', { name: /^Expandir a fase/ })).toHaveCount(0);
   });
 });
+
+test.describe('cor da fase (item 87)', () => {
+  test('escolher a cor pinta a faixa do topo, fica gravada e sai com “Sem cor” @celular', async ({ page, isMobile }) => {
+    await entrar(page, 'lucas');
+    await quadroCom(page, ['Uma']);
+    const fase = page.getByRole('region', { name: 'A fazer', exact: true }).first();
+    await expect(fase.locator('.col-h')).not.toHaveClass(/phase-tone/);
+    await page.getByRole('button', { name: 'Opções da fase A fazer' }).first().click();
+    await page.getByRole('menuitem', { name: 'Cor da fase…' }).click();
+    await dialogo(page, 'Cor da fase').getByRole('radio', { name: 'Verde' }).click();
+    await aviso(page, 'Fase “A fazer” agora é verde.');
+    await expect(fase.locator('.col-h')).toHaveClass(/phase-tone bc-verde/);
+    // Só a faixa: os cartões continuam como estavam.
+    await expect(fase.locator('article.kc').first()).not.toHaveClass(/painted/);
+    await page.reload();
+    await expect(page.getByRole('region', { name: 'A fazer', exact: true }).first().locator('.col-h')).toHaveClass(/bc-verde/);
+    if (!isMobile) {
+      // A fase recolhida e a expandida mostram a mesma cor.
+      await page.getByRole('button', { name: 'Opções da fase A fazer' }).click();
+      await page.getByRole('menuitem', { name: 'Recolher fase' }).click();
+      await expect(page.locator('.col.folded .fold-open')).toHaveClass(/bc-verde/);
+      await page.getByRole('button', { name: 'Abrir a fase A fazer' }).click();
+      await page.getByRole('button', { name: 'Expandir a fase A fazer' }).click();
+      await expect(page.locator('.ph-title .ph-tone')).toHaveClass(/bc-verde/);
+      await page.getByRole('button', { name: /Voltar ao quadro/ }).click();
+    }
+    await page.getByRole('button', { name: 'Opções da fase A fazer' }).first().click();
+    await page.getByRole('menuitem', { name: 'Cor da fase…' }).click();
+    await dialogo(page, 'Cor da fase').getByRole('radio', { name: 'Sem cor' }).click();
+    await aviso(page, 'A fase “A fazer” ficou sem cor.');
+    await expect(page.getByRole('region', { name: 'A fazer', exact: true }).first().locator('.col-h')).not.toHaveClass(/phase-tone/);
+  });
+});
+
