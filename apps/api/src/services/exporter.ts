@@ -31,7 +31,7 @@ export async function exportAll(db: Db, actor: Actor) {
   );
   const lists = await many(
     db,
-    'SELECT id, board_id, name, position, archived_at FROM lists WHERE board_id = ANY($1) ORDER BY position, created_at',
+    'SELECT id, board_id, name, position, color, archived_at FROM lists WHERE board_id = ANY($1) ORDER BY position, created_at',
     [boards.map((b) => b.id)],
   );
   // Tarefas da pessoa (nos quadros e na caixa de entrada), menos as delegações que ela recebeu e que foram devolvidas ou canceladas.
@@ -110,7 +110,7 @@ export async function exportAll(db: Db, actor: Actor) {
       name: b.name,
       closed: !!b.archived_at,
       synctasks: { cor: b.color },
-      lists: bl.map((l, i) => ({ id: l.id, name: l.name, closed: !!l.archived_at, pos: i + 1 })),
+      lists: bl.map((l, i) => ({ id: l.id, name: l.name, closed: !!l.archived_at, pos: i + 1, synctasks: { cor: l.color } })),
       cards: bc.map((c, i) => toCard(c, c.list_id, i + 1)),
       ...extras(new Set(bc.map((c) => c.id))),
     };

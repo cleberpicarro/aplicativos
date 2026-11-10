@@ -467,6 +467,8 @@ describe('exportar tarefas em JSON (item 62)', () => {
     const b2 = (await call('gest', 'POST', '/api/boards', { name: 'Projetos' })).body;
     await call('gest', 'PATCH', `/api/boards/${b2.id}`, { color: 'azul' });
     const b2d = (await call('gest', 'GET', `/api/boards/${b2.id}`)).body;
+    // Item 87: fase com cor também vai e volta no arquivo
+    await call('gest', 'PATCH', `/api/lists/${b2d.lists[1].id}`, { color: 'laranja' });
     await call('gest', 'POST', '/api/cards', { listId: b2d.lists[1].id, title: 'Projeto novo' });
     // Caixa de entrada: delegação recebida do diretor
     const fromDir = await newTask(ctx, 'dir', 'Pedido do diretor');
@@ -511,6 +513,7 @@ describe('exportar tarefas em JSON (item 62)', () => {
     expect(detail.comments[0].body).toMatch(new RegExp(`^Comentário de ${'Gest Teste'} no SyncTasks em \\d\\d/\\d\\d/\\d{4} \\d\\d:\\d\\d:\nPrimeira versão pronta\\.$`));
     const b2back = (await call('func2', 'GET', `/api/boards/${ids[1]}`)).body;
     expect(b2back.color).toBe('azul');
+    expect(b2back.lists.map((l: any) => l.color)).toEqual([null, 'laranja', null]);
     expect(b2back.cards[0]).toMatchObject({ title: 'Projeto novo', listId: b2back.lists[1].id });
     // o arquivo do Trello continua funcionando como antes
     const { readFileSync } = await import('node:fs');

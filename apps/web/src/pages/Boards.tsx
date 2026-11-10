@@ -340,6 +340,7 @@ function Kanban({ board, today, zoom, match, wide, onExpand, onNewList }: {
   const [renaming, setRenaming] = useState<{ id: string; name: string } | null>(null);
   const [archiving, setArchiving] = useState<{ id: string; name: string } | null>(null);
   const [limiting, setLimiting] = useState<{ id: string; name: string; limit: number | null } | null>(null);
+  const [coloring, setColoring] = useState<{ id: string; name: string; color: string | null } | null>(null);
   /** Item 85: recolher ou abrir a fase; já aparece assim na tela e fica gravado na conta. */
   const setCollapsed = (id: string, collapsed: boolean) => {
     qc.setQueryData<Board>(['board', board.id], (old) => old && { ...old, lists: old.lists.map((l) => (l.id === id ? { ...l, collapsed } : l)) });
@@ -445,7 +446,7 @@ function Kanban({ board, today, zoom, match, wide, onExpand, onNewList }: {
           // Item 85: fase recolhida vira uma faixa estreita com o nome e o contador (só no computador).
           if (wide && l.collapsed) {
             return (
-              <section key={l.id} className={`col folded${listMark}`} aria-label={`${l.name} (recolhida)`}
+              <section key={l.id} className={`col folded${listMark}`} aria-label={`${l.name} (recolhida)`} data-color={l.color ?? undefined}
                 onDragOver={(e) => {
                   if (!dragList) return;
                   e.preventDefault();
@@ -454,7 +455,7 @@ function Kanban({ board, today, zoom, match, wide, onExpand, onNewList }: {
                   if (listDrop?.id !== l.id || listDrop.after !== after) setListDrop({ id: l.id, after });
                 }}
                 onDrop={(e) => { if (dragList) { e.preventDefault(); dropList(); } }}>
-                <button className="fold-open" onClick={() => setCollapsed(l.id, false)} title={`Abrir a fase “${l.name}”`} aria-label={`Abrir a fase ${l.name}`}>
+                <button className={`fold-open${l.color ? ` phase-tone bc-${l.color}` : ''}`} onClick={() => setCollapsed(l.id, false)} title={`Abrir a fase “${l.name}”`} aria-label={`Abrir a fase ${l.name}`}>
                   <Icon name="chevR" />
                   <span className={`n${over ? ' over' : ''}`} title={countTip}>{match ? `${cards.length} de ${all.length}` : all.length}</span>
                   <span className="fold-name">{l.name}</span>
@@ -463,7 +464,7 @@ function Kanban({ board, today, zoom, match, wide, onExpand, onNewList }: {
             );
           }
           return (
-            <section key={l.id} className={`col${here ? ' over' : ''}${dragList === l.id ? ' dragging' : ''}${listMark}`} aria-label={l.name}
+            <section key={l.id} className={`col${here ? ' over' : ''}${dragList === l.id ? ' dragging' : ''}${listMark}`} aria-label={l.name} data-color={l.color ?? undefined}
               onDragOver={(e) => {
                 if (dragList) {
                   e.preventDefault();
@@ -483,7 +484,8 @@ function Kanban({ board, today, zoom, match, wide, onExpand, onNewList }: {
               }}
               onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node) && here) setDropAt(null); }}
               onDrop={drop}>
-              <div className="col-h" draggable={board.lists.length > 1} title={board.lists.length > 1 ? 'Arraste para mudar a ordem das fases' : undefined}
+              {/* Item 87: a cor da fase pinta a faixa do topo (nome, contador e menu); o resto da fase continua claro. */}
+              <div className={`col-h${l.color ? ` phase-tone bc-${l.color}` : ''}`} draggable={board.lists.length > 1} title={board.lists.length > 1 ? 'Arraste para mudar a ordem das fases' : undefined}
                 onDragStart={(e) => { if (e.target !== e.currentTarget) return; setDragList(l.id); e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', l.id); }}
                 onDragEnd={() => { setDragList(null); setListDrop(null); }}>
                 <b title={wide ? `${l.name} (clique duas vezes para expandir)` : l.name} onDoubleClick={wide ? () => onExpand(l.id) : undefined}>{l.name}</b>
@@ -501,6 +503,7 @@ function Kanban({ board, today, zoom, match, wide, onExpand, onNewList }: {
                   ...SORTS.map((s, k) => ({ label: s.label, separator: wide && k === 0, onClick: () => run(() => post(`/lists/${l.id}/sort`, { by: s.by }), `Fase “${l.name}” ordenada ${s.done}.`), disabled: all.length < 2 })),
                   { label: 'Arquivar as concluídas', onClick: () => archiveDone(l.id, l.name), disabled: !all.some(archivable) },
                   { label: 'Renomear fase', onClick: () => setRenaming({ id: l.id, name: l.name }) },
+                  { label: 'Cor da fase…', onClick: () => setColoring({ id: l.id, name: l.name, color: l.color }) },
                   { label: l.cardLimit !== null ? `Limite de tarefas (${l.cardLimit})…` : 'Limite de tarefas…', onClick: () => setLimiting({ id: l.id, name: l.name, limit: l.cardLimit }) },
                   { label: 'Mover fase para a esquerda', onClick: () => moveList(i, -1), disabled: i === 0 },
                   { label: 'Mover fase para a direita', onClick: () => moveList(i, 1), disabled: i === board.lists.length - 1 },
@@ -536,6 +539,7 @@ function Kanban({ board, today, zoom, match, wide, onExpand, onNewList }: {
           onSave={(name) => patch(`/lists/${renaming.id}`, { name })} />
       )}
       {limiting && <LimitDialog list={limiting} onClose={() => setLimiting(null)} />}
+      {coloring && <ListColorDialog list={coloring} onClose={() => setColoring(null)} />}
       {archiving && (
         <ConfirmDialog title="Arquivar fase" confirm="Arquivar" danger text={`Arquivar a fase “${archiving.name}”? Ela está vazia e deixa de aparecer no quadro.`}
           onConfirm={() => post(`/lists/${archiving.id}/archive`)} onClose={() => setArchiving(null)} />
@@ -579,6 +583,31 @@ function useFitHeight(on: boolean) {
 }
 /** Espaço livre entre o quadro e o pé da janela, em px. */
 const FIT_GAP = 12;
+
+/** Item 87: cor da fase. Pinta só a faixa do topo, com os tons firmes das tarefas (texto sempre legível). */
+function ListColorDialog({ list, onClose }: { list: { id: string; name: string; color: string | null }; onClose: () => void }) {
+  const { run, error } = useAction();
+  const pick = async (color: string | null) => {
+    const label = BOARD_COLORS.find((c) => c.id === color)?.label.toLowerCase();
+    if ((await run(() => patch(`/lists/${list.id}`, { color }), color ? `Fase “${list.name}” agora é ${label}.` : `A fase “${list.name}” ficou sem cor.`)) !== undefined) onClose();
+  };
+  return (
+    <Dialog title="Cor da fase" onClose={onClose}>
+      <p className="hint" style={{ margin: 0 }}>A cor pinta a faixa do topo da fase “{list.name}” e aparece em qualquer computador.</p>
+      <div className="swatches" role="radiogroup" aria-label="Cor da fase">
+        <button role="radio" aria-checked={!list.color} className="sw-opt" onClick={() => pick(null)}>
+          <span className="swatch big none" aria-hidden="true" />Sem cor
+        </button>
+        {BOARD_COLORS.map((c) => (
+          <button key={c.id} role="radio" aria-checked={list.color === c.id} className="sw-opt" onClick={() => pick(c.id)}>
+            <span className={`swatch big phase-tone bc-${c.id}`} aria-hidden="true" />{c.label}
+          </button>
+        ))}
+      </div>
+      <ErrorText error={error} />
+    </Dialog>
+  );
+}
 
 /** Item 85: limite de tarefas da fase. Acima dele, o contador fica laranja (é só um alerta; nada é bloqueado). */
 function LimitDialog({ list, onClose }: { list: { id: string; name: string; limit: number | null }; onClose: () => void }) {

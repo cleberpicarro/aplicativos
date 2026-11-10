@@ -488,32 +488,32 @@ table.t tr.off td { color: var(--faint); }
 /* Item 38: cartão pintado com a cor que a pessoa escolheu.
    Item 40: tons sólidos médios, só nos cartões (o fundo do quadro continua suave). --ink é a cor do texto:
    escura no tema claro e branca no escuro; o contraste do título fica entre 5,7 e 11,9. */
-:is(.kc.painted, .card-tone).bc-azul { --bc: #a9c8f5; --ink: #1b1d1f; }
-:is(.kc.painted, .card-tone).bc-verde { --bc: #9fd8b6; --ink: #1b1d1f; }
-:is(.kc.painted, .card-tone).bc-amarelo { --bc: #f5d76e; --ink: #1b1d1f; }
-:is(.kc.painted, .card-tone).bc-laranja { --bc: #f7b98a; --ink: #1b1d1f; }
-:is(.kc.painted, .card-tone).bc-vermelho { --bc: #f2a7a7; --ink: #1b1d1f; }
-:is(.kc.painted, .card-tone).bc-roxo { --bc: #c9b5ef; --ink: #1b1d1f; }
-:is(.kc.painted, .card-tone).bc-rosa { --bc: #f1aecf; --ink: #1b1d1f; }
-:is(.kc.painted, .card-tone).bc-cinza { --bc: #c7cdd2; --ink: #1b1d1f; }
+:is(.kc.painted, .card-tone, .phase-tone).bc-azul { --bc: #a9c8f5; --ink: #1b1d1f; }
+:is(.kc.painted, .card-tone, .phase-tone).bc-verde { --bc: #9fd8b6; --ink: #1b1d1f; }
+:is(.kc.painted, .card-tone, .phase-tone).bc-amarelo { --bc: #f5d76e; --ink: #1b1d1f; }
+:is(.kc.painted, .card-tone, .phase-tone).bc-laranja { --bc: #f7b98a; --ink: #1b1d1f; }
+:is(.kc.painted, .card-tone, .phase-tone).bc-vermelho { --bc: #f2a7a7; --ink: #1b1d1f; }
+:is(.kc.painted, .card-tone, .phase-tone).bc-roxo { --bc: #c9b5ef; --ink: #1b1d1f; }
+:is(.kc.painted, .card-tone, .phase-tone).bc-rosa { --bc: #f1aecf; --ink: #1b1d1f; }
+:is(.kc.painted, .card-tone, .phase-tone).bc-cinza { --bc: #c7cdd2; --ink: #1b1d1f; }
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) :is(.kc.painted, .card-tone).bc-azul { --bc: #27497a; --ink: #ffffff; }
-  :root:not([data-theme='light']) :is(.kc.painted, .card-tone).bc-verde { --bc: #22573a; --ink: #ffffff; }
-  :root:not([data-theme='light']) :is(.kc.painted, .card-tone).bc-amarelo { --bc: #6b5717; --ink: #ffffff; }
-  :root:not([data-theme='light']) :is(.kc.painted, .card-tone).bc-laranja { --bc: #7a4320; --ink: #ffffff; }
-  :root:not([data-theme='light']) :is(.kc.painted, .card-tone).bc-vermelho { --bc: #7a2f2f; --ink: #ffffff; }
-  :root:not([data-theme='light']) :is(.kc.painted, .card-tone).bc-roxo { --bc: #4f3a80; --ink: #ffffff; }
-  :root:not([data-theme='light']) :is(.kc.painted, .card-tone).bc-rosa { --bc: #7a2e55; --ink: #ffffff; }
-  :root:not([data-theme='light']) :is(.kc.painted, .card-tone).bc-cinza { --bc: #464c52; --ink: #ffffff; }
+  :root:not([data-theme='light']) :is(.kc.painted, .card-tone, .phase-tone).bc-azul { --bc: #27497a; --ink: #ffffff; }
+  :root:not([data-theme='light']) :is(.kc.painted, .card-tone, .phase-tone).bc-verde { --bc: #22573a; --ink: #ffffff; }
+  :root:not([data-theme='light']) :is(.kc.painted, .card-tone, .phase-tone).bc-amarelo { --bc: #6b5717; --ink: #ffffff; }
+  :root:not([data-theme='light']) :is(.kc.painted, .card-tone, .phase-tone).bc-laranja { --bc: #7a4320; --ink: #ffffff; }
+  :root:not([data-theme='light']) :is(.kc.painted, .card-tone, .phase-tone).bc-vermelho { --bc: #7a2f2f; --ink: #ffffff; }
+  :root:not([data-theme='light']) :is(.kc.painted, .card-tone, .phase-tone).bc-roxo { --bc: #4f3a80; --ink: #ffffff; }
+  :root:not([data-theme='light']) :is(.kc.painted, .card-tone, .phase-tone).bc-rosa { --bc: #7a2e55; --ink: #ffffff; }
+  :root:not([data-theme='light']) :is(.kc.painted, .card-tone, .phase-tone).bc-cinza { --bc: #464c52; --ink: #ffffff; }
 }
-:root[data-theme='dark'] :is(.kc.painted, .card-tone).bc-azul { --bc: #27497a; --ink: #ffffff; }
-:root[data-theme='dark'] :is(.kc.painted, .card-tone).bc-verde { --bc: #22573a; --ink: #ffffff; }
-:root[data-theme='dark'] :is(.kc.painted, .card-tone).bc-amarelo { --bc: #6b5717; --ink: #ffffff; }
-:root[data-theme='dark'] :is(.kc.painted, .card-tone).bc-laranja { --bc: #7a4320; --ink: #ffffff; }
-:root[data-theme='dark'] :is(.kc.painted, .card-tone).bc-vermelho { --bc: #7a2f2f; --ink: #ffffff; }
-:root[data-theme='dark'] :is(.kc.painted, .card-tone).bc-roxo { --bc: #4f3a80; --ink: #ffffff; }
-:root[data-theme='dark'] :is(.kc.painted, .card-tone).bc-rosa { --bc: #7a2e55; --ink: #ffffff; }
-:root[data-theme='dark'] :is(.kc.painted, .card-tone).bc-cinza { --bc: #464c52; --ink: #ffffff; }
+:root[data-theme='dark'] :is(.kc.painted, .card-tone, .phase-tone).bc-azul { --bc: #27497a; --ink: #ffffff; }
+:root[data-theme='dark'] :is(.kc.painted, .card-tone, .phase-tone).bc-verde { --bc: #22573a; --ink: #ffffff; }
+:root[data-theme='dark'] :is(.kc.painted, .card-tone, .phase-tone).bc-amarelo { --bc: #6b5717; --ink: #ffffff; }
+:root[data-theme='dark'] :is(.kc.painted, .card-tone, .phase-tone).bc-laranja { --bc: #7a4320; --ink: #ffffff; }
+:root[data-theme='dark'] :is(.kc.painted, .card-tone, .phase-tone).bc-vermelho { --bc: #7a2f2f; --ink: #ffffff; }
+:root[data-theme='dark'] :is(.kc.painted, .card-tone, .phase-tone).bc-roxo { --bc: #4f3a80; --ink: #ffffff; }
+:root[data-theme='dark'] :is(.kc.painted, .card-tone, .phase-tone).bc-rosa { --bc: #7a2e55; --ink: #ffffff; }
+:root[data-theme='dark'] :is(.kc.painted, .card-tone, .phase-tone).bc-cinza { --bc: #464c52; --ink: #ffffff; }
 .kc.painted { background: var(--bc); border-color: color-mix(in srgb, var(--bc), #000 18%); }
 .kc.painted:hover { border-color: var(--fg); }
 .kc.painted .t { color: var(--ink); font-weight: 500; }
@@ -950,3 +950,16 @@ table.t.phase tr:focus-visible { outline: 2px solid var(--accent); outline-offse
 .board-tip .ico { position: relative; display: inline-flex; }
 .board-tip .ico svg { width: 15px; height: 15px; }
 .board-tip [data-tip]::after { left: auto; right: 0; bottom: auto; top: calc(100% + 6px); transform: none; white-space: normal; width: 22rem; }
+
+/* Item 87: cor da fase. Faixa do topo com os tons firmes das tarefas; o resto da fase continua claro. */
+.col-h.phase-tone { background: var(--bc); color: var(--ink); border-radius: 7px 7px 0 0; margin: -1px -1px 6px; padding-top: 9px; padding-left: 11px; }
+.col-h.phase-tone b { font-weight: 600; }
+.col-h.phase-tone .menu-pop { color: var(--fg); font-weight: 400; }
+.col-h.phase-tone .n { color: color-mix(in srgb, var(--ink) 75%, transparent); }
+.col-h.phase-tone .n.over { color: var(--attn); }
+.col-h.phase-tone .b.ghost, .col-h.phase-tone .b.ghost svg { color: var(--ink); }
+.col-h.phase-tone .b.ghost:hover { background: color-mix(in srgb, var(--ink) 12%, transparent); }
+.col.folded .fold-open.phase-tone { background: var(--bc); color: var(--ink); }
+.col.folded .fold-open.phase-tone:hover { background: color-mix(in srgb, var(--bc), var(--ink) 10%); }
+.col.folded .fold-open.phase-tone svg, .col.folded .fold-open.phase-tone .n { color: color-mix(in srgb, var(--ink) 75%, transparent); }
+.ph-tone { background: var(--bc); color: var(--ink); padding: 1px 10px; border-radius: 6px; }

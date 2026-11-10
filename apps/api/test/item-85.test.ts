@@ -156,3 +156,17 @@ describe('fase recolhida e limite (item 85)', () => {
     expect((await call('gest', 'PATCH', `/api/lists/${f.listId}`, { cardLimit: 0 })).status).toBe(422);
   });
 });
+
+describe('cor da fase (item 87)', () => {
+  it('a cor fica gravada na fase, volta no quadro e sai com null; cor fora da paleta é recusada', async () => {
+    const f = await freshList('gest', 'Com cor', ['A']);
+    expect((await boardOf('gest')).lists.find((x: any) => x.id === f.listId).color).toBeNull();
+    expect((await call('gest', 'PATCH', `/api/lists/${f.listId}`, { color: 'verde' })).status).toBe(200);
+    expect((await boardOf('gest')).lists.find((x: any) => x.id === f.listId).color).toBe('verde');
+    expect((await call('gest', 'PATCH', `/api/lists/${f.listId}`, { color: 'dourado' })).status).toBe(422);
+    expect((await call('gest', 'PATCH', `/api/lists/${f.listId}`, { color: null })).status).toBe(200);
+    expect((await boardOf('gest')).lists.find((x: any) => x.id === f.listId).color).toBeNull();
+    // Fase de outra pessoa: nem enxerga.
+    expect((await call('gest2', 'PATCH', `/api/lists/${f.listId}`, { color: 'azul' })).status).toBe(404);
+  });
+});

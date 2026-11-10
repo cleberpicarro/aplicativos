@@ -16,6 +16,8 @@ export const trelloImportSchema = z.object({
     .array(
       z.object({
         name: z.string().max(60),
+        // Item 87: cor da fase, só no arquivo do SyncTasks.
+        color: z.enum(BOARD_COLORS).nullable().default(null),
         cards: z
           .array(
             z.object({
@@ -70,7 +72,7 @@ export async function importTrello(db: Db, actor: Actor, data: TrelloImport) {
   for (let i = 0; i < data.lists.length; i++) {
     const l = data.lists[i];
     const listName = l.name.trim() || 'Sem nome';
-    const list = await one(db, 'INSERT INTO lists (board_id, name, position) VALUES ($1, $2, $3) RETURNING id', [board.id, listName, i + 1]);
+    const list = await one(db, 'INSERT INTO lists (board_id, name, position, color) VALUES ($1, $2, $3, $4) RETURNING id', [board.id, listName, i + 1, l.color]);
     for (let j = 0; j < l.cards.length; j++) {
       const c = l.cards[j];
       const members = c.members.filter((m) => m.trim());

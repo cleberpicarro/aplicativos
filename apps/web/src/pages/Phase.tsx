@@ -249,7 +249,7 @@ export function PhaseView({ board, listId, today, match, onBack }: {
     <div className="phase-view">
       <div className="ph-bar">
         <button className="b sm" onClick={onBack} title="Voltar ao quadro (Esc)"><span aria-hidden="true">←</span> Voltar ao quadro</button>
-        <h2 className="ph-title"><span className="muted">{board.name} /</span> {list.name}</h2>
+        <h2 className="ph-title"><span className="muted">{board.name} /</span> {list.color ? <span className={`ph-tone phase-tone bc-${list.color}`}>{list.name}</span> : list.name}</h2>
         <span className={`ph-count${over ? ' over' : ''}`} title={over ? `Acima do limite de ${list.cardLimit} tarefas` : undefined}>
           {plural(full.length, 'tarefa', 'tarefas')}{list.cardLimit !== null && ` · limite ${list.cardLimit}`}
         </span>
