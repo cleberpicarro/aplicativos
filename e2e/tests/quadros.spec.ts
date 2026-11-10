@@ -38,6 +38,25 @@ test.describe('meus quadros', () => {
     await dlg.getByRole('checkbox', { name: 'Coletar dados' }).click();
     await expect(dlg.getByRole('checkbox', { name: 'Coletar dados' })).toBeChecked();
     await expect(dlg.locator('.cl').first()).toHaveText('1/2');
+    // Item 89: clicar no texto do item edita; Enter salva, Esc cancela, vazio não salva.
+    await dlg.getByRole('button', { name: 'Editar “Montar gráficos”' }).click();
+    const editar = dlg.getByLabel('Editar item do checklist');
+    await expect(editar).toBeFocused();
+    await editar.fill('Montar gráficos 90%');
+    await editar.press('Enter');
+    await expect(editar).toHaveCount(0);
+    await expect(dlg.getByRole('button', { name: 'Editar “Montar gráficos 90%”' })).toBeVisible();
+    await expect(dlg.getByRole('checkbox', { name: 'Coletar dados' })).toBeChecked(); // editar não muda o marcado
+    await dlg.getByRole('button', { name: 'Editar “Montar gráficos 90%”' }).click();
+    await editar.fill('Texto que não fica');
+    await editar.press('Escape');
+    await expect(dlg).toBeVisible(); // Esc fecha só a edição, não a tarefa
+    await expect(dlg.getByRole('button', { name: 'Editar “Montar gráficos 90%”' })).toBeVisible();
+    await dlg.getByRole('button', { name: 'Editar “Montar gráficos 90%”' }).click();
+    await editar.fill('   ');
+    await dlg.getByLabel('Novo item do checklist').click(); // clicar fora com vazio: volta o texto
+    await expect(dlg.getByRole('button', { name: 'Editar “Montar gráficos 90%”' })).toBeVisible();
+    await expect(dlg.locator('.cl').first()).toHaveText('1/2');
     await dlg.getByLabel('Prazo').fill('2030-12-20');
     await aviso(page, 'Prazo atualizado.');
     await dlg.getByLabel('Novo comentário').fill('Começando hoje');
@@ -376,7 +395,8 @@ test.describe('meus quadros', () => {
     await expect(page.getByRole('img', { name: /Arraste as tarefas/ })).toBeVisible();
     await expect(page.locator('.board-area > p.hint')).toHaveCount(0);
 
-    const confere = async (quando: string) => {
+    // A altura é medida de novo logo depois que a janela muda; espera essa medida em vez de ler na mesma hora.
+    const confere = (quando: string) => expect(async () => {
       const m = await page.evaluate(() => {
         const k = document.querySelector('.kanban') as HTMLElement;
         return { fundo: k.getBoundingClientRect().bottom, tela: window.innerHeight, pagina: document.documentElement.scrollHeight,
@@ -386,7 +406,7 @@ test.describe('meus quadros', () => {
       expect(m.fundo, `${quando}: a barra lateral ficou abaixo da janela`).toBeLessThanOrEqual(m.tela);
       expect(m.fundo, `${quando}: sobrou espaço demais embaixo do quadro`).toBeGreaterThan(m.tela - 40);
       expect(m.pagina, `${quando}: a página rola para baixo`).toBeLessThanOrEqual(m.tela + 1);
-    };
+    }).toPass({ timeout: 5_000 });
     await confere('normal');
     await page.getByRole('button', { name: 'Aumentar o zoom' }).click();
     await page.getByRole('button', { name: 'Aumentar o zoom' }).click();
