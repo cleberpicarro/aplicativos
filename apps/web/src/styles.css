@@ -313,6 +313,9 @@ h2 .c.attn { color: var(--attn); }
 .checklist .it:hover { background: var(--hover); }
 .checklist .it.done span { text-decoration: line-through; color: var(--muted); }
 .checklist .it .x { opacity: 0; }
+.checklist .it .edit-text { cursor: text; border-radius: 4px; padding: 2px 0; overflow-wrap: anywhere; }
+.checklist .it .edit-text:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.checklist .it .cl-edit { resize: none; overflow: hidden; min-height: 0; padding: 3px 6px; line-height: 1.35; font: inherit; }
 .checklist .it:hover .x, .checklist .it .x:focus-visible { opacity: 1; }
 .progress { height: 4px; border-radius: 2px; background: var(--hover); overflow: hidden; }
 .progress i { display: block; height: 100%; background: var(--muted); }

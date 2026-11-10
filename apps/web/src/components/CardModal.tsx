@@ -7,7 +7,7 @@ import { Icon } from './Icons';
 import { AcceptDialog, ConfirmDialog, DeclineDialog, DelegateDialog, RedelegateDialog, ReopenDialog, TransferDialog, useAction, useCancelDelegation, useDiscard, useDiscardCard, useResume } from './dialogs';
 import { go } from '../lib/router';
 import { BOARD_COLORS } from '../pages/Boards';
-import { cardFromBoards, changeCard, changeChecklistItem } from '../lib/optimistic';
+import { cardFromBoards, changeCard, changeChecklistItem, changeChecklistText } from '../lib/optimistic';
 import { isCtrlEnter, isTyping } from '../lib/shortcuts';
 import { Linked } from './Linked';
 
@@ -374,7 +374,7 @@ function Checklist({ cardId, items, editable }: { cardId: string; items: CardDet
           <div key={i.id} className={`it${i.done ? ' done' : ''}`}>
             <input type="checkbox" checked={i.done} disabled={!editable} aria-label={i.text}
               onChange={(e) => { const done = e.target.checked; run(() => patch(`/cards/${cardId}/checklist/${i.id}`, { done }), undefined, { optimistic: () => changeChecklistItem(qc, cardId, i.id, done), scope: 'card' }); }} />
-            <span>{i.text}</span>
+            <ChecklistText cardId={cardId} id={i.id} text={i.text} editable={editable} />
             {editable && <button className="b ghost icon sm x" aria-label={`Remover “${i.text}”`} onClick={() => run(() => del(`/cards/${cardId}/checklist/${i.id}`))}><Icon name="x" /></button>}
           </div>
         ))}
@@ -387,6 +387,46 @@ function Checklist({ cardId, items, editable }: { cardId: string; items: CardDet
       )}
       <ErrorText error={error} />
     </div>
+  );
+}
+
+/** Item 89: clicar no texto do item abre a edição; Enter ou clicar fora salva, Esc cancela. Vazio não salva. */
+function ChecklistText({ cardId, id, text, editable }: { cardId: string; id: string; text: string; editable: boolean }) {
+  const { run } = useAction();
+  const qc = useQueryClient();
+  const [draft, setDraft] = useState<string | null>(null);
+  const ref = useRef<HTMLTextAreaElement>(null);
+  const cancelled = useRef(false);
+  const fit = () => { const t = ref.current; if (t) { t.style.height = 'auto'; t.style.height = `${t.scrollHeight}px`; } };
+  useEffect(() => {
+    if (draft === null) return;
+    fit();
+    const t = ref.current;
+    if (t && document.activeElement !== t) { t.focus(); t.select(); }
+  }, [draft]);
+  if (!editable) return <span>{text}</span>;
+  if (draft === null) {
+    return (
+      <span className="edit-text" role="button" tabIndex={0} title="Clique para editar" aria-label={`Editar “${text}”`}
+        onClick={() => { cancelled.current = false; setDraft(text); }}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); cancelled.current = false; setDraft(text); } }}>{text}</span>
+    );
+  }
+  const save = () => {
+    if (cancelled.current) return;
+    const next = draft.replace(/\s+/g, ' ').trim();
+    setDraft(null);
+    if (!next || next === text) return;
+    run(() => patch(`/cards/${cardId}/checklist/${id}`, { text: next }), undefined, { optimistic: () => changeChecklistText(qc, cardId, id, next), scope: 'card' });
+  };
+  return (
+    <textarea ref={ref} className="input cl-edit" rows={1} value={draft} maxLength={300} aria-label="Editar item do checklist"
+      onChange={(e) => { setDraft(e.target.value); fit(); }}
+      onBlur={save}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur(); }
+        else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); cancelled.current = true; setDraft(null); }
+      }} />
   );
 }
 

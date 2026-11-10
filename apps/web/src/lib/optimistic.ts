@@ -28,6 +28,17 @@ export function changeCard(qc: QueryClient, id: string, change: Partial<Card> | 
   return restore(qc, saved);
 }
 
+/** Item 89: troca o texto de um item do checklist na tarefa aberta. */
+export function changeChecklistText(qc: QueryClient, cardId: string, itemId: string, text: string): () => void {
+  const saved: Saved = [];
+  for (const [key, data] of qc.getQueriesData<CardDetail>({ queryKey: ['card'] })) {
+    if (data?.card?.id !== cardId || !data.checklistItems.some((i) => i.id === itemId)) continue;
+    saved.push([key, data]);
+    qc.setQueryData(key, { ...data, checklistItems: data.checklistItems.map((i) => (i.id === itemId ? { ...i, text } : i)) });
+  }
+  return restore(qc, saved);
+}
+
 /** Marca ou desmarca um item do checklist na tarefa aberta e atualiza a contagem no cartão do quadro. */
 export function changeChecklistItem(qc: QueryClient, cardId: string, itemId: string, done: boolean): () => void {
   const saved: Saved = [];

@@ -38,6 +38,25 @@ test.describe('meus quadros', () => {
     await dlg.getByRole('checkbox', { name: 'Coletar dados' }).click();
     await expect(dlg.getByRole('checkbox', { name: 'Coletar dados' })).toBeChecked();
     await expect(dlg.locator('.cl').first()).toHaveText('1/2');
+    // Item 89: clicar no texto do item edita; Enter salva, Esc cancela, vazio não salva.
+    await dlg.getByRole('button', { name: 'Editar “Montar gráficos”' }).click();
+    const editar = dlg.getByLabel('Editar item do checklist');
+    await expect(editar).toBeFocused();
+    await editar.fill('Montar gráficos 90%');
+    await editar.press('Enter');
+    await expect(editar).toHaveCount(0);
+    await expect(dlg.getByRole('button', { name: 'Editar “Montar gráficos 90%”' })).toBeVisible();
+    await expect(dlg.getByRole('checkbox', { name: 'Coletar dados' })).toBeChecked(); // editar não muda o marcado
+    await dlg.getByRole('button', { name: 'Editar “Montar gráficos 90%”' }).click();
+    await editar.fill('Texto que não fica');
+    await editar.press('Escape');
+    await expect(dlg).toBeVisible(); // Esc fecha só a edição, não a tarefa
+    await expect(dlg.getByRole('button', { name: 'Editar “Montar gráficos 90%”' })).toBeVisible();
+    await dlg.getByRole('button', { name: 'Editar “Montar gráficos 90%”' }).click();
+    await editar.fill('   ');
+    await dlg.getByLabel('Novo item do checklist').click(); // clicar fora com vazio: volta o texto
+    await expect(dlg.getByRole('button', { name: 'Editar “Montar gráficos 90%”' })).toBeVisible();
+    await expect(dlg.locator('.cl').first()).toHaveText('1/2');
     await dlg.getByLabel('Prazo').fill('2030-12-20');
     await aviso(page, 'Prazo atualizado.');
     await dlg.getByLabel('Novo comentário').fill('Começando hoje');
