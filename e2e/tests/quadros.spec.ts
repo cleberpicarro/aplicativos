@@ -382,7 +382,10 @@ test.describe('meus quadros', () => {
   });
 
   test('barra de rolagem lateral sempre no rodapé da tela, também com zoom (item 86)', async ({ page }) => {
-    await entrar(page, 'lucas');
+    // Pessoa que os outros roteiros quase não usam: com dezenas de quadros, as abas quebram em várias linhas,
+    // empurram o quadro para baixo e, na janela de 640 px, a altura mínima da fase (240 px) passa do pé da janela.
+    await entrar(page, 'helena');
+    await irPara(page, 'Tarefas');
     const nome = unico('Largo');
     const quadro = await api(page, 'POST', '/boards', { name: nome }) as { id: string };
     for (let i = 1; i <= 6; i++) await api(page, 'POST', `/boards/${quadro.id}/lists`, { name: `Etapa ${i}` });
