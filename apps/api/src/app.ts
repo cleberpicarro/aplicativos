@@ -213,6 +213,7 @@ export async function buildApp({ pool, logger = false, serveWeb = false }: AppOp
       .object({
         name: z.string().max(60).optional(), position: z.number().finite().optional(),
         collapsed: z.boolean().optional(), cardLimit: z.number().int().min(1).max(9999).nullable().optional(),
+        color: z.string().max(20).nullable().optional(),
       })
       .parse(req.body);
     await inTx(req, (db) => boards.updateList(db, need(req), id, body));
