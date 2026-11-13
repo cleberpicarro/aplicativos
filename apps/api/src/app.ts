@@ -602,6 +602,18 @@ export async function buildApp({ pool, logger = false, serveWeb = false }: AppOp
   });
 
   /* ---------------- administração ---------------- */
+  // Item 94: destaque em cor sólida das atrasadas e das que vencem hoje (vale para todos).
+  app.get('/api/admin/settings', async (req) => {
+    needAdmin(req);
+    return admin.getSettings(pool);
+  });
+  app.patch('/api/admin/settings', async (req) => {
+    const a = needAdmin(req);
+    const body = z
+      .object({ lateOn: z.boolean().optional(), lateColor: z.enum(admin.LATE_COLORS).optional(), todayOn: z.boolean().optional(), todayColor: z.enum(admin.TODAY_COLORS).optional() })
+      .parse(req.body);
+    return inTx(req, (db) => admin.updateSettings(db, a, body));
+  });
   app.get('/api/admin/users', async (req) => {
     needAdmin(req);
     return admin.listUsers(pool);

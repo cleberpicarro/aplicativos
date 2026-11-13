@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { get, type Card } from '../lib/api';
 import { go } from '../lib/router';
-import { cardNo, fullDate } from '../lib/format';
+import { cardNo, dueTone, fullDate } from '../lib/format';
 import { Dialog, Due, ErrorText, useMe, useToast } from '../components/ui';
 import { Icon } from '../components/Icons';
 import { COLOR_VALUES, COLUMNS, DEFAULT_COLUMNS, SOURCE_VALUES, toCsv, type Column } from '../lib/tableFilter';
@@ -109,7 +109,7 @@ export function TablePage({ top }: { top?: HTMLElement | null }) {
             </thead>
             <tbody>
               {list.map((r) => (
-                <tr key={r.id} className="clickable" onClick={() => go(`/tarefa/${r.id}`)}>
+                <tr key={r.id} className={`clickable${dueTone(r, me.today)}`} onClick={() => go(`/tarefa/${r.id}`)}>
                   {shown.map((c) => <td key={c.id} className={`c-${c.id}`}>{cellView(r, c.id, me.today)}</td>)}
                 </tr>
               ))}

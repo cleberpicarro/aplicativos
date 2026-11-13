@@ -105,6 +105,8 @@ export interface Me {
   fresh?: { id: string; text: string; cardId: string | null; type?: string }[];
   /** Item 46: resumo diário e avisos de prazo por e-mail (ligados por padrão). */
   prefs: { workspaceBg: string | null; emailDigest: boolean; emailDue: boolean; hideInactive: boolean };
+  /** Item 94: cor do destaque das atrasadas e das de hoje (null = desligado), escolhida pelo Admin. */
+  highlight: { late: string | null; today: string | null };
   today: string;
   /** Item 72: quem a pessoa substitui (seletor do topo), em nome de quem está agindo agora e quem a substitui. */
   substitution: {

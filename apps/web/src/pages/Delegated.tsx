@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { get, post, type Card, type Overview } from '../lib/api';
 import { go, useRoute } from '../lib/router';
-import { TIPS, cardNo, daysBetween, firstName, nudgeLine, plural } from '../lib/format';
+import { TIPS, cardNo, daysBetween, dueTone, firstName, nudgeLine, plural } from '../lib/format';
 import { Avatar, CardStatusIcon, Due, TipIcon, ErrorText } from '../components/ui';
 import { Icon } from '../components/Icons';
 import { ConfirmDialog, NudgeDialog, RedelegateDialog, ReopenDialog, useAction, useCancelDelegation, useResume } from '../components/dialogs';
@@ -97,7 +97,7 @@ export function DelegatedPage() {
   const personName = personFilter ? data?.groups.find((g) => g.person.id === personFilter)?.person.name : null;
 
   const row = (c: Card, withPerson: boolean) => (
-    <div key={c.id} className="row dl">
+    <div key={c.id} className={`row dl${dueTone(c, data!.today)}`}>
       <CardStatusIcon card={c} />
       <div className="title">
         <button className={c.archivedAt ? 'done-t' : ''} onClick={() => go(`/tarefa/${c.id}`)} title={c.title}>{c.title}</button>

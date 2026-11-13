@@ -281,3 +281,28 @@ export async function deactivate(db: Db, admin: Actor, userId: string, successor
   await db.query('UPDATE users SET active = false, updated_at = now() WHERE id = $1', [userId]);
   return result;
 }
+
+/* ---------- Item 94: configurações que valem para todos ---------- */
+export const LATE_COLORS = ['vermelho', 'laranja', 'vinho', 'roxo', 'azul', 'grafite'] as const;
+export const TODAY_COLORS = ['amarelo', 'laranja-claro', 'verde', 'azul', 'lilas', 'cinza'] as const;
+export interface AppSettings { lateOn: boolean; lateColor: string; todayOn: boolean; todayColor: string }
+
+export async function getSettings(db: Db): Promise<AppSettings> {
+  const r = await one(db, 'SELECT late_on, late_color, today_on, today_color FROM app_settings WHERE id');
+  return { lateOn: r.late_on, lateColor: r.late_color, todayOn: r.today_on, todayColor: r.today_color };
+}
+
+/** O que cada pessoa recebe em /api/me: a cor de cada destaque, ou null se estiver desligado. */
+export async function highlight(db: Db) {
+  const s = await getSettings(db);
+  return { late: s.lateOn ? s.lateColor : null, today: s.todayOn ? s.todayColor : null };
+}
+
+export async function updateSettings(db: Db, actor: Actor, patch: Partial<AppSettings>) {
+  await db.query(
+    `UPDATE app_settings SET late_on = coalesce($1, late_on), late_color = coalesce($2, late_color),
+       today_on = coalesce($3, today_on), today_color = coalesce($4, today_color), updated_by = $5, updated_at = now() WHERE id`,
+    [patch.lateOn ?? null, patch.lateColor ?? null, patch.todayOn ?? null, patch.todayColor ?? null, actor.id],
+  );
+  return getSettings(db);
+}

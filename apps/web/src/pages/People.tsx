@@ -4,7 +4,7 @@ import { get, patch, post } from '../lib/api';
 import { Avatar, Dialog, ErrorText, Menu, useMe, useToast } from '../components/ui';
 import { SubstitutionBox } from '../components/Substitution';
 import { Icon } from '../components/Icons';
-import { firstName } from '../lib/format';
+import { LATE_TONES, TODAY_TONES, firstName, toneOf } from '../lib/format';
 import { ConfirmDialog, useAction } from '../components/dialogs';
 
 interface Person {
@@ -28,7 +28,7 @@ const managerName = (p: Person) => `${p.name} (${LEVELS[p.level!]})`;
 export function PeoplePage() {
   const me = useMe().data!;
   const q = useQuery({ queryKey: ['people'], queryFn: () => get<Person[]>('/admin/users') });
-  const [dlg, setDlg] = useState<null | { kind: 'new' } | { kind: 'edit' | 'toggle' | 'deactivate' | 'substitution'; person: Person }>(null);
+  const [dlg, setDlg] = useState<null | { kind: 'new' } | { kind: 'settings' } | { kind: 'edit' | 'toggle' | 'deactivate' | 'substitution'; person: Person }>(null);
   const qc = useQueryClient();
   /** Item 66: a escolha fica gravada na conta; a tela muda na hora e o servidor guarda em seguida. */
   const [hideChoice, setHideChoice] = useState<boolean | null>(null);
@@ -51,6 +51,7 @@ export function PeoplePage() {
           {inactive > 0 && (
             <label className="check"><input type="checkbox" checked={hideInactive} onChange={(e) => setHideInactive(e.target.checked)} />Esconder inativas ({inactive})</label>
           )}
+          <button className="b" onClick={() => setDlg({ kind: 'settings' })}><Icon name="sliders" />Configurações</button>
           <button className="b pri" onClick={() => setDlg({ kind: 'new' })}><Icon name="plus" />Nova pessoa</button>
         </span>
       </div>
@@ -89,6 +90,7 @@ export function PeoplePage() {
       <p className="hint" style={{ marginTop: 10 }}>Ao trocar o superior direto em Editar dados, as delegações em aberto passam ao novo superior e o histórico fica com o antigo.</p>
 
       {dlg?.kind === 'new' && <NewPersonDialog people={people} onClose={() => setDlg(null)} />}
+      {dlg?.kind === 'settings' && <SettingsDialog onClose={() => setDlg(null)} />}
       {dlg?.kind === 'edit' && <EditPersonDialog person={dlg.person} people={people} self={dlg.person.id === me.user.id} onClose={() => setDlg(null)} />}
       {dlg?.kind === 'substitution' && (
         <Dialog title={`Substituto de ${dlg.person.name}`} onClose={() => setDlg(null)} footer={<button className="b pri" onClick={() => setDlg(null)}>Pronto</button>}>
@@ -301,6 +303,55 @@ function DeactivateDialog({ person, onClose }: { person: Person; onClose: () => 
           </ul>
         )}
         <ErrorText error={error} />
+      </form>
+    </Dialog>
+  );
+}
+
+/* ---------- Item 94: configurações que valem para todos ---------- */
+interface AppSettings { lateOn: boolean; lateColor: string; todayOn: boolean; todayColor: string }
+
+function SettingsDialog({ onClose }: { onClose: () => void }) {
+  const q = useQuery({ queryKey: ['admin-settings'], queryFn: () => get<AppSettings>('/admin/settings') });
+  const [draft, setDraft] = useState<AppSettings | null>(null);
+  const s = draft ?? q.data ?? null;
+  const set = (p: Partial<AppSettings>) => s && setDraft({ ...s, ...p });
+  const { run, busy, error } = useAction();
+  const save = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!s) return;
+    if ((await run(() => patch('/admin/settings', s), 'Configurações salvas. Valem para todos.')) !== undefined) onClose();
+  };
+  const part = (key: 'late' | 'today', label: string, tones: typeof LATE_TONES | typeof TODAY_TONES, example: string) => {
+    if (!s) return null;
+    const on = key === 'late' ? s.lateOn : s.todayOn;
+    const color = key === 'late' ? s.lateColor : s.todayColor;
+    const tone = toneOf(tones, color);
+    return (
+      <fieldset className="hl-part">
+        <label className="check"><input type="checkbox" checked={on} onChange={(e) => set(key === 'late' ? { lateOn: e.target.checked } : { todayOn: e.target.checked })} /><b>{label}</b></label>
+        <div className="swatches hl-swatches" role="radiogroup" aria-label={key === 'late' ? 'Cor das atrasadas' : 'Cor das que vencem hoje'}>
+          {tones.map((t) => (
+            <button key={t.id} type="button" role="radio" aria-checked={color === t.id} className="sw-opt" disabled={!on}
+              onClick={() => set(key === 'late' ? { lateColor: t.id } : { todayColor: t.id })}>
+              <span className="swatch big" style={{ background: t.bg }} aria-hidden="true" />{t.label}
+            </button>
+          ))}
+        </div>
+        {on && tone && <div className="hl-sample" style={{ background: tone.bg, color: tone.ink }}>Exemplo: {example}</div>}
+      </fieldset>
+    );
+  };
+  return (
+    <Dialog title="Configurações para todos" onClose={onClose}
+      footer={<><button className="b" onClick={onClose}>Cancelar</button><button className="b pri" type="submit" form="dlg" disabled={busy || !s}>Salvar</button></>}>
+      <form id="dlg" onSubmit={save} className="hl-form">
+        <p className="hint" style={{ margin: 0 }}>Valem para todas as pessoas: cartões do Quadro e linhas da Tabela, de Tarefas delegadas e da Caixa de entrada.</p>
+        {q.isLoading && <p className="loading">Carregando…</p>}
+        <ErrorText error={q.error ?? error} />
+        {part('late', 'Destacar tarefas atrasadas', LATE_TONES, 'Atualizar planilha · 12 nov')}
+        {part('today', 'Destacar tarefas que vencem hoje', TODAY_TONES, 'Mapear processos · hoje')}
+        {s && <p className="hint" style={{ margin: 0 }}>As letras ficam em negrito, brancas ou pretas, conforme a cor, para ler bem. Tarefa concluída ou aguardando o seu ciente não é pintada.</p>}
       </form>
     </Dialog>
   );

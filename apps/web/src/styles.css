@@ -970,3 +970,29 @@ table.t.phase tr:focus-visible { outline: 2px solid var(--accent); outline-offse
 .nudge-box > svg { flex: none; margin-top: 2px; }
 .row.dl .nudged { display: inline-flex; align-items: center; gap: 2px; color: var(--late, #c0392b); font-size: 0.78rem; flex: none; }
 .row.dl .nudged svg { width: 14px; height: 14px; }
+
+/* Item 94: destaque em cor sólida das tarefas atrasadas (hl-late) e das que vencem hoje (hl-today), ligado pelo Admin.
+   As cores vêm de --hl-*-bg/--hl-*-ink (App.tsx). Passa por cima da cor do cartão; letras em negrito na cor que lê bem. */
+:root[data-hl-late] .hl-late { --hl-bg: var(--hl-late-bg); --hl-ink: var(--hl-late-ink); }
+:root[data-hl-today] .hl-today { --hl-bg: var(--hl-today-bg); --hl-ink: var(--hl-today-ink); }
+:root[data-hl-late] .kc.hl-late, :root[data-hl-today] .kc.hl-today { background: var(--hl-bg); border-color: color-mix(in srgb, var(--hl-bg), #000 25%); }
+:root[data-hl-late] .kc.hl-late:hover, :root[data-hl-today] .kc.hl-today:hover { border-color: var(--fg); }
+:root[data-hl-late] .kc.hl-late :is(.t, .code, .due, .due.late, .due.today, .cl, .ico, .arch, .more),
+:root[data-hl-today] .kc.hl-today :is(.t, .code, .due, .due.late, .due.today, .cl, .ico, .arch, .more) { color: var(--hl-ink); font-weight: 700; background: none; padding: 0; }
+:root[data-hl-late] .kc.hl-late .ck, :root[data-hl-today] .kc.hl-today .ck { border-color: var(--hl-ink); color: var(--hl-bg); }
+:root[data-hl-late] .kc.hl-late .dtag, :root[data-hl-today] .kc.hl-today .dtag { background: color-mix(in srgb, var(--hl-ink) 20%, transparent); color: var(--hl-ink); font-weight: 600; }
+:root[data-hl-late] :is(.row, tr).hl-late, :root[data-hl-today] :is(.row, tr).hl-today { background: var(--hl-bg); }
+:root[data-hl-late] tr.hl-late td, :root[data-hl-today] tr.hl-today td,
+:root[data-hl-late] tr.hl-late:hover td, :root[data-hl-today] tr.hl-today:hover td { background: var(--hl-bg); }
+:root[data-hl-late] :is(.row, tr).hl-late *:not(.b.pri, .b.pri *, .b.primary, .b.primary *),
+:root[data-hl-today] :is(.row, tr).hl-today *:not(.b.pri, .b.pri *, .b.primary, .b.primary *) { color: var(--hl-ink); font-weight: 700; }
+:root[data-hl-late] :is(.row, tr).hl-late :is(.b:not(.pri, .primary), .tag, .pill, .dtag),
+:root[data-hl-today] :is(.row, tr).hl-today :is(.b:not(.pri, .primary), .tag, .pill, .dtag) { background: color-mix(in srgb, var(--hl-ink) 18%, transparent); border-color: color-mix(in srgb, var(--hl-ink) 55%, transparent); }
+:root[data-hl-late] :is(.row, tr).hl-late:hover, :root[data-hl-today] :is(.row, tr).hl-today:hover { filter: brightness(1.06); }
+/* Exemplo ao vivo na janela de Configurações do Admin. */
+.hl-sample { border-radius: 7px; padding: 8px 10px; font-weight: 700; }
+.hl-form { display: flex; flex-direction: column; gap: 14px; }
+.hl-part { border: 0; margin: 0; padding: 0 0 12px; display: flex; flex-direction: column; gap: 10px; border-bottom: 1px solid var(--line); min-width: 0; }
+.hl-part:last-of-type { border-bottom: 0; padding-bottom: 0; }
+.hl-swatches { grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr)); }
+.hl-swatches .sw-opt:disabled { opacity: 0.45; cursor: default; }
