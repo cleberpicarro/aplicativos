@@ -1,0 +1,169 @@
+import type { Card, DelegationStatus } from './api';
+
+const MONTHS = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+
+/** Item 37: número da tarefa no quadro, sem prefixo. */
+export function cardNo(num: number | null | undefined): string {
+  return num == null ? '' : `#${num}`;
+}
+
+export function localToday(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+export function daysBetween(from: string, to: string): number {
+  const a = Date.UTC(+from.slice(0, 4), +from.slice(5, 7) - 1, +from.slice(8, 10));
+  const b = Date.UTC(+to.slice(0, 4), +to.slice(5, 7) - 1, +to.slice(8, 10));
+  return Math.round((b - a) / 86400000);
+}
+
+export function shortDate(d: string): string {
+  return `${+d.slice(8, 10)} ${MONTHS[+d.slice(5, 7) - 1]}`;
+}
+
+export function fullDate(d: string): string {
+  return `${d.slice(8, 10)}/${d.slice(5, 7)}/${d.slice(0, 4)}`;
+}
+
+/** Item 79: dia de um instante (dd/mm/aaaa), no fuso de Brasília. */
+export function dayOf(iso: string): string {
+  return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'America/Sao_Paulo' });
+}
+
+export function dateTime(iso: string): string {
+  const d = new Date(iso);
+  return d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' });
+}
+
+export function relative(iso: string): string {
+  const diff = (Date.now() - new Date(iso).getTime()) / 1000;
+  if (diff < 60) return 'agora';
+  if (diff < 3600) return `há ${Math.floor(diff / 60)} min`;
+  if (diff < 86400) return `há ${Math.floor(diff / 3600)} h`;
+  if (diff < 86400 * 7) return `há ${Math.floor(diff / 86400)} d`;
+  return dateTime(iso).slice(0, 8);
+}
+
+export function initials(name: string): string {
+  return name.split(/\s+/).filter(Boolean).map((p) => p[0]).slice(0, 2).join('');
+}
+
+export function firstName(name: string): string {
+  return name.split(' ')[0];
+}
+
+export type StatusKey = 'own' | 'inbox' | 'active' | 'reopened' | 'awaiting' | 'declined' | 'acked' | 'canceled' | 'done' | 'archived';
+
+export const STATUS: Record<StatusKey, { label: string; tip: string; tone: '' | 'attn' }> = {
+  own: { label: 'Em andamento', tip: 'Em andamento', tone: '' },
+  inbox: { label: 'Aguardando aceite', tip: 'Aguardando aceite: está na caixa de entrada', tone: '' },
+  active: { label: 'Em andamento', tip: 'Em andamento', tone: '' },
+  reopened: { label: 'Reaberta', tip: 'Reaberta: devolvida para refazer', tone: '' },
+  awaiting: { label: 'Concluída, aguardando ciente', tip: 'Concluída: aguardando o ciente de quem delegou', tone: 'attn' },
+  declined: { label: 'Devolvida', tip: 'Devolvida com justificativa', tone: 'attn' },
+  acked: { label: 'Arquivada', tip: 'Arquivada: ciente dado', tone: '' },
+  canceled: { label: 'Cancelada', tip: 'Delegação cancelada', tone: '' },
+  done: { label: 'Concluída', tip: 'Concluída', tone: '' },
+  archived: { label: 'Arquivada', tip: 'Concluída e arquivada', tone: '' },
+};
+
+export function statusOf(c: Card): StatusKey {
+  if (c.delegation) return delegationKey(c.delegation.status, c.delegation.reopened);
+  if (c.archivedAt) return 'archived';
+  if (c.completedAt) return 'done';
+  if (c.inInbox) return 'inbox';
+  return 'own';
+}
+
+export function delegationKey(s: DelegationStatus, reopened: boolean): StatusKey {
+  switch (s) {
+    case 'PENDING_ACCEPT': return 'inbox';
+    case 'IN_PROGRESS': return reopened ? 'reopened' : 'active';
+    case 'AWAITING_ACK': return 'awaiting';
+    case 'DECLINED': return 'declined';
+    case 'ACKED': return 'acked';
+    case 'CANCELED': return 'canceled';
+  }
+}
+
+export function plural(n: number, one: string, many: string) {
+  return n === 1 ? one : many;
+}
+
+/** Dicas exibidas ao passar o mouse nos botões de ação. */
+export const TIPS = {
+  complete: 'Marca a tarefa como feita. Se ela foi delegada a você, quem delegou é avisado para dar o ciente.',
+  uncomplete: 'Volta a tarefa para “em andamento”.',
+  delegate: 'Entrega esta tarefa a um subordinado direto. Ele recebe um cartão ligado a este e você acompanha até dar o ciente.',
+  transfer: 'Passa a tarefa para outra pessoa (subordinado, colega do mesmo nível ou seu superior). Você deixa de acompanhar.',
+  decline: 'Devolve a tarefa a quem delegou, com uma justificativa obrigatória.',
+  accept: 'Escolhe em qual quadro e fase a tarefa vai ficar.',
+  delegateInbox: 'Coloca a tarefa num quadro seu (para acompanhar) e já a entrega a um subordinado direto, de uma vez.',
+  discard: 'Tira a tarefa da caixa de entrada sem concluir. Ela vai para Arquivadas, de onde dá para desarquivar. Ninguém é avisado.',
+  discardCard: 'Tira a tarefa do quadro sem concluir (por exemplo, criada por engano). Ela vai para Arquivadas, de onde dá para desarquivar. Ninguém é avisado.',
+  ack: 'Valida a conclusão. A tarefa é arquivada e a pessoa é avisada.',
+  reopen: 'Não aceita a conclusão: a tarefa volta para a pessoa, com o seu comentário.',
+  redelegate: 'Envia a tarefa devolvida para a mesma ou outra pessoa da sua equipe. O código é mantido.',
+  cancel: 'Encerra a delegação. A tarefa sai do quadro da pessoa e ela é avisada.',
+  cancelDeclined: 'Encerra a delegação e arquiva a sua tarefa. Ela vai para Arquivadas, de onde dá para desarquivar.',
+  resume: 'Você mesmo fica com a tarefa: ela volta para a sua caixa de entrada, com a justificativa da devolução como comentário.',
+  resumeOpen: 'Você mesmo fica com a tarefa: a delegação é encerrada, a pessoa é avisada e a tarefa sai do quadro dela. A sua tarefa continua onde está.',
+  cancelOpen: 'Desiste da tarefa: a delegação é encerrada, a pessoa é avisada e a sua tarefa vai para Arquivadas (dá para desfazer logo em seguida).',
+  nudge: 'Cobra a pessoa: ela recebe na hora um aviso na tela e um e-mail, com um recado seu se quiser. Fica registrado no histórico da tarefa.',
+};
+
+/** Item 90: "cobrada 2× · última em 12/11 às 14:05". */
+export function nudgeLine(at: string, count: number): string {
+  const d = new Date(at);
+  const day = d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+  const time = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  return `${count > 1 ? `Cobrada ${count} vezes, a última` : 'Cobrada'} em ${day} às ${time}`;
+}
+
+/**
+ * Item 94: classe que pinta o cartão ou a linha em cor sólida quando a tarefa está atrasada (' hl-late') ou vence hoje (' hl-today').
+ * Só tem efeito se o Admin ligou o destaque (atributos data-hl-* na página). Concluída, arquivada ou com a parte delegada
+ * já entregue (aguardando o seu ciente) não é pintada.
+ */
+export function dueTone(c: { dueDate: string | null; completedAt: string | null; archivedAt?: string | null; child?: { status: string } | null }, today: string): '' | ' hl-late' | ' hl-today' {
+  if (!c.dueDate || c.completedAt || c.archivedAt || c.child?.status === 'AWAITING_ACK') return '';
+  if (c.dueDate < today) return ' hl-late';
+  if (c.dueDate === today) return ' hl-today';
+  return '';
+}
+
+/** Item 94: cores sólidas que o Admin escolhe (fundo e letra). A letra é escolhida para ler bem em cada fundo. */
+export const LATE_TONES = [
+  { id: 'vermelho', label: 'Vermelho', bg: '#c62828', ink: '#ffffff' },
+  { id: 'laranja', label: 'Laranja', bg: '#d84315', ink: '#ffffff' },
+  { id: 'vinho', label: 'Vinho', bg: '#880e4f', ink: '#ffffff' },
+  { id: 'roxo', label: 'Roxo', bg: '#6a1b9a', ink: '#ffffff' },
+  { id: 'azul', label: 'Azul', bg: '#1565c0', ink: '#ffffff' },
+  { id: 'grafite', label: 'Grafite', bg: '#37474f', ink: '#ffffff' },
+] as const;
+export const TODAY_TONES = [
+  { id: 'amarelo', label: 'Amarelo', bg: '#f9c623', ink: '#1b1d1f' },
+  { id: 'laranja-claro', label: 'Laranja claro', bg: '#ffa94d', ink: '#1b1d1f' },
+  { id: 'verde', label: 'Verde', bg: '#2e7d32', ink: '#ffffff' },
+  { id: 'azul', label: 'Azul', bg: '#1565c0', ink: '#ffffff' },
+  { id: 'lilas', label: 'Lilás', bg: '#b39ddb', ink: '#1b1d1f' },
+  { id: 'cinza', label: 'Cinza', bg: '#90a4ae', ink: '#1b1d1f' },
+] as const;
+export const toneOf = (list: readonly { id: string; bg: string; ink: string }[], id: string | null) => (id ? list.find((t) => t.id === id) ?? null : null);
+
+/** Item 94: liga ou desliga o destaque na página inteira (atributos data-hl-* e as variáveis de cor). */
+export function applyHighlight(late: { bg: string; ink: string } | null, today: { bg: string; ink: string } | null) {
+  const root = document.documentElement;
+  for (const [key, tone] of [['late', late], ['today', today]] as const) {
+    if (tone) {
+      root.setAttribute(`data-hl-${key}`, '');
+      root.style.setProperty(`--hl-${key}-bg`, tone.bg);
+      root.style.setProperty(`--hl-${key}-ink`, tone.ink);
+    } else {
+      root.removeAttribute(`data-hl-${key}`);
+      root.style.removeProperty(`--hl-${key}-bg`);
+      root.style.removeProperty(`--hl-${key}-ink`);
+    }
+  }
+}
