@@ -25,6 +25,7 @@ const P: Record<string, ReactElement> = {
   check: <path d="M5 12.5l4.5 4.5L19 7.5" />,
   checks: <><rect x="4" y="4" width="16" height="16" rx="3" /><path d="M8 12l3 3 5-6" /></>,
   plus: <path d="M12 5v14M5 12h14" />,
+  sliders: <><path d="M4 7h10M18 7h2M4 17h4M12 17h8" /><circle cx="16" cy="7" r="2" /><circle cx="10" cy="17" r="2" /></>,
   dots: <><circle cx="6" cy="12" r="1.2" /><circle cx="12" cy="12" r="1.2" /><circle cx="18" cy="12" r="1.2" /></>,
   car: <path d="M6 9l6 6 6-6" />,
   logout: <><path d="M14 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4" /><path d="M10 16l-4-4 4-4M6 12h10" /></>,

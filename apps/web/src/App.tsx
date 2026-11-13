@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { del, get, patch, post, setActingAs, type Card } from './lib/api';
 import { go, useRoute } from './lib/router';
-import { STATUS, cardNo, type StatusKey } from './lib/format';
+import { LATE_TONES, STATUS, TODAY_TONES, applyHighlight, cardNo, toneOf, type StatusKey } from './lib/format';
 import { Avatar, CardStatusIcon, Dialog, ErrorText, StatusIcon, TipIcon, useMe } from './components/ui';
 import { Icon, type IconName } from './components/Icons';
 import { CardModal } from './components/CardModal';
@@ -143,6 +143,11 @@ function Shell() {
   }, [menu]); // eslint-disable-line react-hooks/exhaustive-deps
   // Virou tela larga (celular deitado, janela maior): o menu volta a ser a barra lateral.
   useEffect(() => { if (wide && menu) closeMenu(); }, [wide]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Item 94: destaque em cor sólida das atrasadas e das de hoje, ligado pelo Admin (vale para todos).
+  const hlLate = toneOf(LATE_TONES, me.highlight?.late ?? null);
+  const hlToday = toneOf(TODAY_TONES, me.highlight?.today ?? null);
+  useEffect(() => { applyHighlight(hlLate, hlToday); }, [hlLate, hlToday]);
 
   const hasReports = me.directReports.length > 0;
   // Item 72: agindo como a pessoa substituída (seletor do topo). Dados pessoais, avisos e administração ficam de fora.
@@ -537,6 +542,9 @@ function ShortcutsDialog({ onClose }: { onClose: () => void }) {
 }
 
 function LegendDialog({ onClose }: { onClose: () => void }) {
+  const me = useMe().data;
+  const hlLate = toneOf(LATE_TONES, me?.highlight?.late ?? null);
+  const hlToday = toneOf(TODAY_TONES, me?.highlight?.today ?? null);
   const keys: StatusKey[] = ['active', 'inbox', 'awaiting', 'declined', 'reopened', 'acked', 'canceled', 'done'];
   return (
     <Dialog title="Legenda" onClose={onClose}>
@@ -548,6 +556,8 @@ function LegendDialog({ onClose }: { onClose: () => void }) {
         <div><TipIcon name="lock" tip="Privada" />Privada: nenhum superior vê</div>
         <div><span className="due late">3 out</span>Prazo atrasado</div>
         <div><span className="due today">hoje</span>Vence hoje</div>
+        {hlLate && <div><span className="hl-sample" style={{ background: hlLate.bg, color: hlLate.ink, padding: '1px 8px' }}>3 out</span>Cartão ou linha nesta cor: atrasada</div>}
+        {hlToday && <div><span className="hl-sample" style={{ background: hlToday.bg, color: hlToday.ink, padding: '1px 8px' }}>hoje</span>Cartão ou linha nesta cor: vence hoje</div>}
         <div><span className="pill attn">âmbar</span>Precisa da sua ação</div>
       </div>
     </Dialog>

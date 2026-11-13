@@ -2,6 +2,7 @@ import { one, many, type Db } from '../lib/db.js';
 import { subWhere, type Actor } from './actors.js';
 import { directReports } from './actors.js';
 import * as subs from './substitution.js';
+import { highlight } from './admin.js';
 import { cardIdByCode, loadCard, parseCode, parseNum, selectCards } from './cards.js';
 import { badRequest } from '../lib/errors.js';
 
@@ -68,6 +69,7 @@ export async function me(db: Db, actor: Actor) {
     counts: { inbox: counts.inbox, needAction: counts.need_action, unread: counts.unread },
     fresh: fresh.map((n) => ({ id: n.id as string, text: n.text as string, cardId: (n.card_id as string | null) ?? null, type: n.type as string })),
     prefs: { workspaceBg: counts.workspace_bg as string | null, emailDigest: counts.email_digest as boolean, emailDue: counts.email_due as boolean, hideInactive: counts.hide_inactive as boolean },
+    highlight: await highlight(db),
     today: counts.today,
   };
 }

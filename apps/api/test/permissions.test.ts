@@ -24,7 +24,7 @@ const AUDITORS = ['admin', 'ceo', 'dir'];
 
 /** Fotografia das tabelas de dados: qualquer mudança aparece como diferença. */
 async function snapshot() {
-  const tables = ['boards', 'lists', 'cards', 'checklist_items', 'comments', 'delegations', 'card_events', 'users', 'manager_changes', 'saved_filters', 'card_followers'];
+  const tables = ['boards', 'lists', 'cards', 'checklist_items', 'comments', 'delegations', 'card_events', 'users', 'manager_changes', 'saved_filters', 'card_followers', 'app_settings'];
   const out: Record<string, string> = {};
   for (const t of tables) {
     const r = await ctx.pool.query(`SELECT md5(coalesce(string_agg(x::text, '|' ORDER BY x::text), '')) AS h FROM ${t} x`);
@@ -274,6 +274,8 @@ describe('permissões em massa (frente 2)', () => {
       { method: 'POST', url: `/api/admin/users/${target}/invite`, route: 'POST /api/admin/users/:id/invite' },
       { method: 'GET', url: `/api/admin/users/${target}/deactivation`, route: 'GET /api/admin/users/:id/deactivation' },
       { method: 'POST', url: `/api/admin/users/${target}/deactivate`, body: { successorId: null }, route: 'POST /api/admin/users/:id/deactivate' },
+      { method: 'GET', url: '/api/admin/settings', route: 'GET /api/admin/settings' },
+      { method: 'PATCH', url: '/api/admin/settings', body: { lateOn: true }, route: 'PATCH /api/admin/settings' },
     ];
     for (const who of ['ceo', 'dir', 'gest', 'func']) {
       for (const r of routes) expect((await call(who, r.method, r.url, r.body)).status, `${who} ${r.method} ${r.url}`).toBe(403);
@@ -329,7 +331,7 @@ describe('permissões em massa (frente 2)', () => {
       'POST /api/delegations/:id/ack', 'POST /api/delegations/:id/reopen', 'POST /api/delegations/:id/cancel', 'POST /api/delegations/:id/redelegate',
       'POST /api/delegations/:id/no-pass', 'POST /api/delegations/:id/undo-cancel', 'POST /api/delegations/:id/resume', 'POST /api/delegations/:id/nudge', 'GET /api/boards/:id/match', 'POST /api/boards/:id/archive', 'POST /api/boards/:id/unarchive',
       'GET /api/admin/users/:id/deactivation', 'POST /api/admin/users/:id/deactivate',
-      'GET /api/admin/users', 'POST /api/admin/users', 'PATCH /api/admin/users/:id', 'POST /api/admin/users/:id/transfer-management',
+      'GET /api/admin/users', 'POST /api/admin/users', 'GET /api/admin/settings', 'PATCH /api/admin/settings', 'PATCH /api/admin/users/:id', 'POST /api/admin/users/:id/transfer-management',
       'POST /api/admin/users/:id/active', 'POST /api/admin/users/:id/invite', 'PATCH /api/filters/:id', 'DELETE /api/filters/:id',
       'POST /api/cards/:id/accept-delegate', 'POST /api/inbox/discard', 'POST /api/inbox/restore',
       'POST /api/cards/:id/followers', 'POST /api/cards/:id/followers/remove',

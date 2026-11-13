@@ -383,6 +383,7 @@ stateDiagram-v2
 - **RN-52** O log fica acessível **a qualquer momento**, inclusive depois de a tarefa ser arquivada ou cancelada, pelo código.
 - **RN-53** **Por enquanto, só administrador, CEO e diretores** veem o log. A abrangência está em aberto (seção 20).
 - **RN-53a** (item 81) **Seguidores** de uma tarefa recebem o log dela por e-mail (12.4), sem acesso ao app.
+- **RN-53b** (item 94) **Destaque de atrasadas e de hoje:** o administrador liga ou desliga, para todos, o destaque em cor sólida (cartão ou linha inteira, letras em negrito) das tarefas atrasadas e das que vencem hoje (dia em America/Sao_Paulo), escolhendo a cor de cada um. Concluída, arquivada ou aguardando ciente não é destacada.
 
 **Eventos registrados**
 

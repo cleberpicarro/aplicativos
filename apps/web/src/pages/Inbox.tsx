@@ -4,7 +4,7 @@ import { get, post, type Card } from '../lib/api';
 import { go } from '../lib/router';
 import { Avatar, CardStatusIcon, Due, useMe, useToast } from '../components/ui';
 import { Icon } from '../components/Icons';
-import { TIPS, cardNo, plural } from '../lib/format';
+import { TIPS, cardNo, dueTone, plural } from '../lib/format';
 import { BookmarkletButton } from './Capture';
 import { AcceptDialog, DeclineDialog, DelegateDialog, acceptPlace, saveAcceptPlace, useAction, useDiscard } from '../components/dialogs';
 
@@ -108,7 +108,7 @@ export function InboxPage() {
             const { web, from, how } = origin(c);
             const note = c.description ? c.description.split('\n')[0] : '';
             return (
-              <div key={c.id} className={`row inbox${picked.has(c.id) ? ' picked' : ''}`}>
+              <div key={c.id} className={`row inbox${picked.has(c.id) ? ' picked' : ''}${dueTone(c, me.today)}`}>
                 {discardable(c)
                   ? <input type="checkbox" className="pick" checked={picked.has(c.id)} onChange={() => toggle(c.id)} aria-label={`Selecionar ${c.title}`} />
                   : <CardStatusIcon card={c} />}

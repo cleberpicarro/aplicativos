@@ -7,6 +7,7 @@ import { Icon } from '../components/Icons';
 import { ConfirmDialog, useAction } from '../components/dialogs';
 import { load, save } from '../components/TaskFilter';
 import { changeCard } from '../lib/optimistic';
+import { dueTone } from '../lib/format';
 import { cellView, ColumnsDialog, type Row } from './Table';
 import { BOARD_COLORS } from './Boards';
 
@@ -301,7 +302,7 @@ export function PhaseView({ board, listId, today, match, onBack }: {
                 const on = sel.has(c.id);
                 const mark = dropAt?.id === c.id && dragId !== c.id ? (dropAt.after ? ' drop-after' : ' drop-before') : '';
                 return (
-                  <tr key={c.id} className={`clickable${on ? ' picked' : ''}${dragId === c.id ? ' dragging' : ''}${mark}`} tabIndex={0} data-id={c.id}
+                  <tr key={c.id} className={`clickable${on ? ' picked' : ''}${dragId === c.id ? ' dragging' : ''}${mark}${dueTone(c, today)}`} tabIndex={0} data-id={c.id}
                     draggable={byPriority}
                     onDragStart={(e) => { setDragId(c.id); e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', c.id); }}
                     onDragEnd={() => { setDragId(null); setDropAt(null); }}

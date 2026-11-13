@@ -120,3 +120,50 @@ export function nudgeLine(at: string, count: number): string {
   const time = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
   return `${count > 1 ? `Cobrada ${count} vezes, a última` : 'Cobrada'} em ${day} às ${time}`;
 }
+
+/**
+ * Item 94: classe que pinta o cartão ou a linha em cor sólida quando a tarefa está atrasada (' hl-late') ou vence hoje (' hl-today').
+ * Só tem efeito se o Admin ligou o destaque (atributos data-hl-* na página). Concluída, arquivada ou com a parte delegada
+ * já entregue (aguardando o seu ciente) não é pintada.
+ */
+export function dueTone(c: { dueDate: string | null; completedAt: string | null; archivedAt?: string | null; child?: { status: string } | null }, today: string): '' | ' hl-late' | ' hl-today' {
+  if (!c.dueDate || c.completedAt || c.archivedAt || c.child?.status === 'AWAITING_ACK') return '';
+  if (c.dueDate < today) return ' hl-late';
+  if (c.dueDate === today) return ' hl-today';
+  return '';
+}
+
+/** Item 94: cores sólidas que o Admin escolhe (fundo e letra). A letra é escolhida para ler bem em cada fundo. */
+export const LATE_TONES = [
+  { id: 'vermelho', label: 'Vermelho', bg: '#c62828', ink: '#ffffff' },
+  { id: 'laranja', label: 'Laranja', bg: '#d84315', ink: '#ffffff' },
+  { id: 'vinho', label: 'Vinho', bg: '#880e4f', ink: '#ffffff' },
+  { id: 'roxo', label: 'Roxo', bg: '#6a1b9a', ink: '#ffffff' },
+  { id: 'azul', label: 'Azul', bg: '#1565c0', ink: '#ffffff' },
+  { id: 'grafite', label: 'Grafite', bg: '#37474f', ink: '#ffffff' },
+] as const;
+export const TODAY_TONES = [
+  { id: 'amarelo', label: 'Amarelo', bg: '#f9c623', ink: '#1b1d1f' },
+  { id: 'laranja-claro', label: 'Laranja claro', bg: '#ffa94d', ink: '#1b1d1f' },
+  { id: 'verde', label: 'Verde', bg: '#2e7d32', ink: '#ffffff' },
+  { id: 'azul', label: 'Azul', bg: '#1565c0', ink: '#ffffff' },
+  { id: 'lilas', label: 'Lilás', bg: '#b39ddb', ink: '#1b1d1f' },
+  { id: 'cinza', label: 'Cinza', bg: '#90a4ae', ink: '#1b1d1f' },
+] as const;
+export const toneOf = (list: readonly { id: string; bg: string; ink: string }[], id: string | null) => (id ? list.find((t) => t.id === id) ?? null : null);
+
+/** Item 94: liga ou desliga o destaque na página inteira (atributos data-hl-* e as variáveis de cor). */
+export function applyHighlight(late: { bg: string; ink: string } | null, today: { bg: string; ink: string } | null) {
+  const root = document.documentElement;
+  for (const [key, tone] of [['late', late], ['today', today]] as const) {
+    if (tone) {
+      root.setAttribute(`data-hl-${key}`, '');
+      root.style.setProperty(`--hl-${key}-bg`, tone.bg);
+      root.style.setProperty(`--hl-${key}-ink`, tone.ink);
+    } else {
+      root.removeAttribute(`data-hl-${key}`);
+      root.style.removeProperty(`--hl-${key}-bg`);
+      root.style.removeProperty(`--hl-${key}-ink`);
+    }
+  }
+}

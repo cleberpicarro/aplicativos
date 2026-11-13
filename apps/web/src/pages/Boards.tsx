@@ -2,7 +2,7 @@ import { Fragment, useEffect, useLayoutEffect, useRef, useState, type CSSPropert
 import { useQuery } from '@tanstack/react-query';
 import { get, patch, post, type Board, type Card } from '../lib/api';
 import { go, useRoute } from '../lib/router';
-import { cardNo, firstName } from '../lib/format';
+import { cardNo, dueTone, firstName } from '../lib/format';
 import { CardStatusIcon, Dialog, Due, Menu, TipIcon, ErrorText, useMe, useToast } from '../components/ui';
 import { useQueryClient } from '@tanstack/react-query';
 import { Icon } from '../components/Icons';
@@ -664,7 +664,7 @@ function Tile({ card, today, dragging, onDragStart, onDragEnd, onDragOver, onDro
   const child = card.child && card.child.status !== 'CANCELED' ? card.child : null;
   return (
     <article ref={self} data-id={pending ? undefined : card.id} aria-busy={pending || undefined}
-      className={`kc${done ? ' done' : ''}${dragging ? ' dragging' : ''}${pending ? ' pending' : ''}${card.color ? ` painted bc-${card.color}` : ''}`} draggable={!pending}
+      className={`kc${done ? ' done' : ''}${dragging ? ' dragging' : ''}${pending ? ' pending' : ''}${card.color ? ` painted bc-${card.color}` : ''}${dueTone(card, today)}`} draggable={!pending}
       onDragStart={(e) => { peek.close(); setDragActive(true); onDragStart(e); }} onDragEnd={() => { setDragActive(false); onDragEnd(); }}
       onDragOver={onDragOver} onDrop={onDrop} {...peek.handlers}>
       <button className={`ck${done ? ' on' : ''}`} onClick={toggle} disabled={!canToggle} aria-label={done ? `Desfazer conclusão de ${card.title}` : `Concluir ${card.title}`}>
