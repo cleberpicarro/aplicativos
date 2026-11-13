@@ -244,6 +244,7 @@ describe('desfazer o cancelamento da delegação (item 48)', () => {
     const p2 = await newTask(ctx, 'gest', 'Delegada de novo');
     const d2 = await delegateTask(ctx, 'gest', p2.id, 'func');
     await call('gest', 'POST', `/api/delegations/${d2.delegationId}/cancel`);
+    await call('gest', 'POST', `/api/cards/${p2.id}/unarchive`); // item 93: cancelar arquiva também a origem
     await delegateTask(ctx, 'gest', p2.id, 'func2');
     expect((await call('gest', 'POST', `/api/delegations/${d2.delegationId}/undo-cancel`)).status).toBe(409);
     // Delegação que não foi cancelada também não.

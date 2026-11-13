@@ -384,6 +384,7 @@ table.t tr.off td { color: var(--faint); }
 .arrival-open b { display: block; font-weight: 500; font-size: 0.92rem; overflow-wrap: anywhere; }
 .arrival-open small { display: block; color: var(--muted); font-size: 0.8rem; margin-top: 2px; }
 .arrival-open:hover b { text-decoration: underline; }
+.arrival.nudge .arrival-open > svg { color: var(--late, #c0392b); }
 .arrival-x { border: 0; background: none; color: var(--faint); cursor: pointer; padding: 8px; border-radius: 6px; display: inline-flex; }
 .arrival-x:hover { color: var(--fg); }
 @keyframes arrival-in { from { transform: translateY(12px); opacity: 0; } }
@@ -963,3 +964,9 @@ table.t.phase tr:focus-visible { outline: 2px solid var(--accent); outline-offse
 .col.folded .fold-open.phase-tone:hover { background: color-mix(in srgb, var(--bc), var(--ink) 10%); }
 .col.folded .fold-open.phase-tone svg, .col.folded .fold-open.phase-tone .n { color: color-mix(in srgb, var(--ink) 75%, transparent); }
 .ph-tone { background: var(--bc); color: var(--ink); padding: 1px 10px; border-radius: 6px; }
+
+/* Item 90: cobrança (Cobrar na tarefa delegada) */
+.nudge-box { display: flex; gap: 8px; align-items: flex-start; }
+.nudge-box > svg { flex: none; margin-top: 2px; }
+.row.dl .nudged { display: inline-flex; align-items: center; gap: 2px; color: var(--late, #c0392b); font-size: 0.78rem; flex: none; }
+.row.dl .nudged svg { width: 14px; height: 14px; }

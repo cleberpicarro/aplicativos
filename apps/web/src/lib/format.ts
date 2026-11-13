@@ -108,4 +108,15 @@ export const TIPS = {
   cancel: 'Encerra a delegação. A tarefa sai do quadro da pessoa e ela é avisada.',
   cancelDeclined: 'Encerra a delegação e arquiva a sua tarefa. Ela vai para Arquivadas, de onde dá para desarquivar.',
   resume: 'Você mesmo fica com a tarefa: ela volta para a sua caixa de entrada, com a justificativa da devolução como comentário.',
+  resumeOpen: 'Você mesmo fica com a tarefa: a delegação é encerrada, a pessoa é avisada e a tarefa sai do quadro dela. A sua tarefa continua onde está.',
+  cancelOpen: 'Desiste da tarefa: a delegação é encerrada, a pessoa é avisada e a sua tarefa vai para Arquivadas (dá para desfazer logo em seguida).',
+  nudge: 'Cobra a pessoa: ela recebe na hora um aviso na tela e um e-mail, com um recado seu se quiser. Fica registrado no histórico da tarefa.',
 };
+
+/** Item 90: "cobrada 2× · última em 12/11 às 14:05". */
+export function nudgeLine(at: string, count: number): string {
+  const d = new Date(at);
+  const day = d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+  const time = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  return `${count > 1 ? `Cobrada ${count} vezes, a última` : 'Cobrada'} em ${day} às ${time}`;
+}

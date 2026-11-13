@@ -187,6 +187,7 @@ Só o administrador:
    - a seção **Equipe** traz uma linha por subordinado, com contadores (abertas, atrasadas, aguardando ciente, devolvidas, próprias) e a lista de tarefas delegadas a cada um.
 4. Para tarefas concluídas: **Dar ciente** (arquiva) ou **Reabrir** (com comentário obrigatório).
 5. Para tarefas devolvidas: **Redelegar**, para a mesma ou outra pessoa, **Retomar** (a tarefa volta para a caixa de entrada de quem delegou) ou **Cancelar** (a tarefa de origem vai para Arquivadas) (item 75).
+5a. Para tarefas aguardando aceite ou em andamento: **Cobrar** (item 90, RN-29c), **Retomar** (item 93, RN-29b) ou **Cancelar** (desistir: a tarefa de origem vai para Arquivadas, item 93).
 6. Decide se pode mandar mais trabalho olhando os contadores. Por enquanto, a avaliação é só visual.
 
 ### 6.3 Delegação em cadeia (diretor, gestor e funcionário)
@@ -255,10 +256,12 @@ Só o administrador:
 - **RN-25** **Dar ciente** em tarefa concluída arquiva a tarefa e avisa o detentor.
 - **RN-26** **Reabrir** exige comentário com o motivo. A tarefa volta para "em andamento", marcada como reaberta, e o detentor é avisado.
 - **RN-27** Sem ciente, a tarefa fica pendente na tela do delegador **indefinidamente**. Não há prazo automático.
-- **RN-28** **Cancelar** uma delegação, aguardando aceite, em andamento ou devolvida, arquiva o cartão do subordinado como cancelado e o avisa. O cartão de origem fica livre para nova delegação. Quem delegou cancela pela tela Tarefas delegadas, ao abrir a tarefa repassada ou **de dentro da própria tarefa**, no bloco “Repassada para” (item 48). Na **devolvida** (item 75), cancelar também **arquiva a tarefa de origem**, que vai para Arquivadas com a etiqueta “Cancelada” e volta ao quadro ao ser desarquivada; o Desfazer (RN-28a) a traz de volta junto. Exceção: se a tarefa de origem chegou a quem delegou por delegação de cima, ainda em aberto, ela continua no quadro.
+- **RN-28** **Cancelar** uma delegação, aguardando aceite, em andamento ou devolvida, arquiva o cartão do subordinado como cancelado e o avisa. O cartão de origem fica livre para nova delegação. Quem delegou cancela pela tela Tarefas delegadas, ao abrir a tarefa repassada ou **de dentro da própria tarefa**, no bloco “Repassada para” (item 48). Na **devolvida** (item 75) e, desde o item 93, também na **aguardando aceite ou em andamento** (cancelar é **desistir** da tarefa; para ficar com ela existe Retomar), cancelar também **arquiva a tarefa de origem**, que vai para Arquivadas com a etiqueta “Cancelada” e volta ao quadro ao ser desarquivada; o Desfazer (RN-28a) a traz de volta junto. Exceção: se a tarefa de origem chegou a quem delegou por delegação de cima, ainda em aberto, ela continua no quadro.
 - **RN-28a** (item 48) Logo depois de cancelar, o aviso traz **Desfazer**: só quem delegou, em até **10 minutos**, enquanto a tarefa de origem não foi delegada de novo nem arquivada, a pessoa continua ativa e a fase onde o cartão estava ainda existe. A delegação volta à situação anterior e o cartão volta ao mesmo quadro, fase, posição e **número** da pessoa, com o que ela tinha escrito; o log registra “desfez o cancelamento” e a pessoa recebe aviso e e-mail (menos na devolvida, que já tinha saído dela).
 - **RN-29** **Redelegar** uma tarefa devolvida a envia para o mesmo ou outro subordinado direto, opcionalmente com novo prazo. É o **mesmo cartão**: chega à caixa de entrada de quem recebe, com o número de lá (item 37).
 - **RN-29a** (item 75) **Retomar** uma tarefa devolvida: só quem delegou. A delegação é encerrada (fica como cancelada, sem aviso a quem devolveu) e a tarefa de origem vai para a **caixa de entrada** de quem delegou, com o número de lá, desmarcada se estava concluída; a justificativa da devolução vira um comentário (“Devolvida por Fulano: …”). O log registra “retomou a tarefa devolvida”. Se a tarefa de origem chegou por delegação de cima, ainda em aberto, ela continua no quadro (não pode voltar à caixa de entrada sem desfazer a delegação recebida). Tarefa de origem arquivada não se retoma.
+- **RN-29b** (item 93) **Retomar** também a delegação **aguardando aceite ou em andamento**: só quem delegou. A delegação é encerrada (fica como cancelada), o cartão de quem recebeu vai para Arquivadas e a pessoa recebe aviso e e-mail (“Fulano retomou a tarefa: você não precisa mais fazê-la”). A tarefa de origem continua onde está, livre para nova delegação. O log registra “retomou a tarefa delegada”.
+- **RN-29c** (item 90) **Cobrar** a tarefa delegada **aguardando aceite ou em andamento**: só quem delegou (ou o substituto dele), com recado opcional (até 500 caracteres). Quem recebeu ganha um **balão** na tela, aviso no sino e e-mail (“Fulano cobrou (prazo vencido): título · “recado””); a tarefa dela mostra “Fulano cobrou esta tarefa”, com data, hora, quantas vezes e o recado. O log registra “cobrou Fulano (2ª vez): “recado””. Intervalo mínimo de **1 hora** entre duas cobranças da mesma tarefa. Redelegar zera as cobranças. Pessoa desativada não pode ser cobrada.
 
 ### 7.6 Transferência de tarefa
 
@@ -343,8 +346,10 @@ Desde o item 37 (09/10/2026), o código que aparece é **só um número, com num
 | `AWAITING_ACK` | Dar ciente | delegador | `ACKED` | arquiva; aviso e e-mail ao subordinado |
 | `AWAITING_ACK` | Reabrir (comentário) | delegador | `IN_PROGRESS` + `reopened` | aviso e e-mail ao subordinado |
 | `DECLINED` | Redelegar | delegador | `PENDING_ACCEPT` | mesmo código; novo destinatário possível |
-| `PENDING_ACCEPT` / `IN_PROGRESS` / `DECLINED` | Cancelar | delegador | `CANCELED` | arquiva; aviso ao subordinado; na devolvida, arquiva também a tarefa de origem (item 75) |
+| `PENDING_ACCEPT` / `IN_PROGRESS` / `DECLINED` | Cancelar | delegador | `CANCELED` | arquiva; aviso ao subordinado; arquiva também a tarefa de origem (itens 75 e 93) |
 | `DECLINED` | Retomar | delegador | `CANCELED` | tarefa de origem vai para a caixa de entrada de quem delegou, com a justificativa como comentário; sem aviso (item 75, RN-29a) |
+| `PENDING_ACCEPT` / `IN_PROGRESS` | Retomar | delegador | `CANCELED` | cartão do subordinado arquivado; aviso e e-mail a ele; a origem continua onde está (item 93, RN-29b) |
+| `PENDING_ACCEPT` / `IN_PROGRESS` | Cobrar (recado opcional) | delegador | (mesmo) | balão, aviso e e-mail ao subordinado; registro no log; no máximo 1 por hora (item 90, RN-29c) |
 | `CANCELED` (até 10 min) | Desfazer cancelamento | delegador | situação anterior | mesmo quadro, fase e número; aviso ao subordinado (item 48, RN-28a) |
 | qualquer aberto | Alterar prazo | subordinado | (mesmo) | aviso e e-mail ao delegador |
 | qualquer aberto | Transferir | detentor | `PENDING_ACCEPT` no destino | delegador mantido (RN-32) |
@@ -443,7 +448,7 @@ Saem sozinhos, sem aviso no app. O servidor (sempre ligado no plano Starter) con
 
 - Os dias contam em **America/Sao_Paulo**. Se o prazo mudar, os avisos valem para a nova data. Tarefas atrasadas há mais tempo não recebem o “vencido” de novo.
 - Não entram: tarefa concluída, arquivada, devolvida ou cancelada, nem a tarefa de origem de uma delegação em aberto (quem cuida dela é quem recebeu; quem delegou recebe só o “vencido”).
-- O resumo traz, cada um com número e link: o que vence hoje, o que está atrasado, as delegações aguardando aceite na caixa de entrada e as tarefas concluídas aguardando o ciente da pessoa (até 30 por grupo). Dia sem nada, sem e-mail. Se o servidor reiniciar de manhã, o resumo ainda sai até o meio-dia.
+- O resumo traz, cada um com número e link: o que vence hoje, o que está atrasado (com quem delegou, se for o caso), as delegações aguardando aceite na caixa de entrada, as tarefas concluídas aguardando o ciente da pessoa e, desde o item 92, as **tarefas que ela delegou e estão atrasadas** (com quem está cada uma, o prazo e a data da última cobrança; o link abre a tarefa de origem, onde fica o Cobrar) (até 30 por grupo). Dia sem nada, sem e-mail. Se o servidor reiniciar de manhã, o resumo ainda sai até o meio-dia.
 - Tarefa privada só aparece no e-mail do dono. Pessoas desativadas e administradores fora da hierarquia não recebem.
 - Em **Meus dados** (clique no nome, no menu à esquerda), cada pessoa liga ou desliga **Receber resumo diário por e-mail** e **Receber avisos de prazo por e-mail** (ligados por padrão). Os avisos de delegação continuam sempre.
 

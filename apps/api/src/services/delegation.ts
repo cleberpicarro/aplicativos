@@ -152,11 +152,14 @@ export async function cancel(db: Db, actor: Actor, delegationId: string) {
   await db.query('UPDATE cards SET archived_at = now(), list_id = NULL, updated_at = now() WHERE id = $1', [card.id]);
   await logEvent(db, card.id, actor.id, 'canceled');
   // Item 75: cancelar uma devolvida arquiva também a tarefa de origem, que sai do quadro de quem delegou.
+  // Item 93: vale também para a delegação em aberto: Cancelar é desistir da tarefa (para ficar com ela, existe Retomar).
   const parent = d.parent_card_id ? await parentCard(db, d.parent_card_id) : null;
-  const archiveParent = d.status === 'DECLINED' && !!parent && !parent.archived_at && !parent.received;
+  const archiveParent = !!parent && !parent.archived_at && !parent.received;
   if (archiveParent) await db.query('UPDATE cards SET archived_at = now(), updated_at = now() WHERE id = $1', [parent.id]);
   if (parent) await logEvent(db, parent.id, actor.id, 'child_canceled', undefined, { childNum: card.num, ...(archiveParent ? { archived: true } : {}) });
-  await notify(db, card.owner_id, 'canceled', `${first(actor.name)} cancelou a delegação`, cardRef(card));
+  // A devolvida já saiu da pessoa: o cancelamento não muda nada para ela, mas o aviso fica (como antes).
+  await notify(db, card.owner_id, 'canceled', `${first(actor.name)} cancelou a delegação: você não precisa mais fazer esta tarefa`, cardRef(card));
+  return { parentArchived: archiveParent };
 }
 
 /**
@@ -179,7 +182,8 @@ async function parentCard(db: Db, parentId: string) {
  */
 export async function resume(db: Db, actor: Actor, delegationId: string) {
   const { d, card } = await delegatorDelegation(db, actor, delegationId);
-  if (d.status !== 'DECLINED') throw conflict('Só é possível retomar uma tarefa devolvida.');
+  if (['PENDING_ACCEPT', 'IN_PROGRESS'].includes(d.status)) return resumeOpen(db, actor, d, card);
+  if (d.status !== 'DECLINED') throw conflict('Só é possível retomar uma tarefa delegada em aberto ou devolvida.');
   const parent = d.parent_card_id ? await parentCard(db, d.parent_card_id) : null;
   if (!parent) throw conflict('Esta tarefa não tem uma tarefa de origem para retomar. Use Redelegar ou Cancelar.');
   if (parent.archived_at) throw conflict('A tarefa de origem está arquivada. Desarquive-a em Arquivadas ou use Redelegar.');
@@ -196,6 +200,24 @@ export async function resume(db: Db, actor: Actor, delegationId: string) {
   return { cardId: parent.id, inbox };
 }
 
+/**
+ * Item 93: "Retomar" uma delegação ainda em aberto (na caixa de entrada ou em andamento com quem recebeu). A delegação é
+ * encerrada, a tarefa sai do quadro de quem recebeu (que é avisado) e quem delegou fica com a tarefa de origem onde ela
+ * já está. O que a pessoa tinha marcado no checklist ou comentado continua no log da tarefa dela, que vai para Arquivadas.
+ */
+async function resumeOpen(db: Db, actor: Actor, d: any, card: { id: string; num: number; code: string; title: string; owner_id: string }) {
+  const parent = d.parent_card_id ? await parentCard(db, d.parent_card_id) : null;
+  if (!parent) throw conflict('Esta tarefa não tem uma tarefa de origem para retomar. Use Cancelar.');
+  if (parent.archived_at) throw conflict('A tarefa de origem está arquivada. Desarquive-a em Arquivadas ou use Cancelar.');
+  await db.query(`UPDATE delegations SET status = 'CANCELED', canceled_at = now(), updated_at = now() WHERE id = $1`, [d.id]);
+  await db.query('UPDATE cards SET archived_at = now(), list_id = NULL, updated_at = now() WHERE id = $1', [card.id]);
+  const inPhase = await one(db, 'SELECT list_id IS NOT NULL AS ok FROM cards WHERE id = $1', [parent.id]);
+  await logEvent(db, card.id, actor.id, 'resumed', undefined, { open: true });
+  await logEvent(db, parent.id, actor.id, 'child_resumed', undefined, { childNum: card.num, inbox: !inPhase.ok, open: true, num: await numOf(db, parent.id) });
+  await notify(db, card.owner_id, 'canceled', `${first(actor.name)} retomou a tarefa: você não precisa mais fazê-la`, cardRef(card));
+  return { cardId: parent.id, inbox: !inPhase.ok };
+}
+
 /** Item 48: por quanto tempo, depois de cancelar, o "Desfazer" ainda funciona. */
 export const UNDO_CANCEL_MINUTES = 10;
 
@@ -209,14 +231,14 @@ export async function undoCancel(db: Db, actor: Actor, delegationId: string) {
   const recent = await one(db, `SELECT $1::timestamptz > now() - make_interval(mins => $2) AS ok`, [d.canceled_at, UNDO_CANCEL_MINUTES]);
   if (!recent.ok) throw conflict('Já passou o tempo para desfazer o cancelamento. Se precisar, delegue a tarefa de novo.');
   if (d.parent_card_id) {
-    // Item 75: a devolvida cancelada arquivou junto a tarefa de origem (no mesmo instante); o Desfazer a traz de volta.
+    // Itens 75 e 93: o cancelamento arquivou junto a tarefa de origem (no mesmo instante); o Desfazer a traz de volta.
     // (Compara no banco: o horário em JavaScript perde os microssegundos.)
     const parent = await one(
       db,
       'SELECT c.archived_at, c.archived_at = d.canceled_at AS by_cancel FROM cards c, delegations d WHERE c.id = $1 AND d.id = $2 FOR UPDATE OF c',
       [d.parent_card_id, d.id],
     );
-    if (parent?.archived_at && !(d.cancel_prev_status === 'DECLINED' && parent.by_cancel)) {
+    if (parent?.archived_at && !parent.by_cancel) {
       throw conflict('A tarefa de origem foi arquivada: não dá para desfazer o cancelamento.');
     }
     const again = await one(db, `SELECT 1 FROM delegations WHERE parent_card_id = $1 AND id <> $2 AND status <> 'CANCELED'`, [d.parent_card_id, d.id]);
@@ -260,7 +282,8 @@ export async function redelegate(db: Db, actor: Actor, delegationId: string, inp
   const due = input.suggestedDue === undefined ? card.due_date : input.suggestedDue;
   const noPass = input.noPass ?? d.no_pass;
   await db.query(
-    `UPDATE delegations SET status = 'PENDING_ACCEPT', decline_reason = NULL, reopened = false, suggested_due = $2, no_pass = $3, updated_at = now() WHERE id = $1`,
+    `UPDATE delegations SET status = 'PENDING_ACCEPT', decline_reason = NULL, reopened = false, suggested_due = $2, no_pass = $3,
+       nudged_at = NULL, nudge_count = 0, nudge_message = NULL, updated_at = now() WHERE id = $1`,
     [d.id, due, noPass],
   );
   await db.query(
@@ -270,6 +293,39 @@ export async function redelegate(db: Db, actor: Actor, delegationId: string, inp
   const to = await one(db, 'SELECT name FROM users WHERE id = $1', [input.toUserId]);
   await logEvent(db, card.id, actor.id, 'redelegated', undefined, { to: to.name, suggestedDue: due, ...(noPass ? { noPass } : {}) });
   await notify(db, input.toUserId, 'delegated', `${first(actor.name)} delegou: ${card.title}`, { ...cardRef(card), num: await numOf(db, card.id) });
+}
+
+/** Item 90: intervalo mínimo entre duas cobranças da mesma tarefa (evita aviso repetido por clique duplo ou insistência). */
+export const NUDGE_MIN_MINUTES = 60;
+
+/**
+ * Item 90: cobrar a tarefa delegada. Quem recebeu ganha um aviso na hora (balão + sino + e-mail); a cobrança fica no log
+ * e aparece na tarefa de quem recebeu ("Cobrada por ... em ..."). Só o delegador, com a delegação em aberto.
+ */
+export async function nudge(db: Db, actor: Actor, delegationId: string, message?: string) {
+  const { d, card } = await delegatorDelegation(db, actor, delegationId);
+  if (!['PENDING_ACCEPT', 'IN_PROGRESS'].includes(d.status)) throw conflict('Só é possível cobrar uma tarefa delegada que ainda está em aberto.');
+  const owner = await one(db, 'SELECT name, active FROM users WHERE id = $1', [card.owner_id]);
+  if (!owner.active) throw conflict(`${owner.name} foi desativado(a) e não recebe mais avisos.`);
+  const recent = await one(
+    db,
+    `SELECT to_char(nudged_at AT TIME ZONE 'America/Sao_Paulo', 'HH24:MI') AS at FROM delegations
+      WHERE id = $1 AND nudged_at > now() - make_interval(mins => $2)`,
+    [d.id, NUDGE_MIN_MINUTES],
+  );
+  if (recent) throw conflict(`Você já cobrou esta tarefa às ${recent.at}. Espere pelo menos 1 hora para cobrar de novo.`);
+  const msg = (message ?? '').trim() || null;
+  const upd = await one(
+    db,
+    `UPDATE delegations SET nudged_at = now(), nudge_count = nudge_count + 1, nudge_message = $2, updated_at = now() WHERE id = $1
+     RETURNING nudge_count`,
+    [d.id, msg],
+  );
+  await logEvent(db, card.id, actor.id, 'nudged', undefined, { to: owner.name, count: upd.nudge_count, ...(msg ? { message: msg } : {}) });
+  const late = card.due_date && (await one(db, `SELECT $1::date < (now() AT TIME ZONE 'America/Sao_Paulo')::date AS late`, [card.due_date])).late;
+  const text = `${first(actor.name)} cobrou${late ? ' (prazo vencido)' : ''}: ${card.title}${msg ? ` · “${msg}”` : ''}`;
+  await notify(db, card.owner_id, 'nudged', text, { ...cardRef(card), num: await numOf(db, card.id) });
+  return { count: upd.nudge_count as number };
 }
 
 /** Item 41: só o delegador liga ou desliga a marca "não pode ser repassada", enquanto a delegação está em aberto. */

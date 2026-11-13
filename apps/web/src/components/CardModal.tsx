@@ -1,17 +1,17 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { del, get, patch, post, type CardDetail, type Follower } from '../lib/api';
-import { TIPS, cardNo, dateTime, dayOf, delegationKey, firstName, fullDate, relative, statusOf } from '../lib/format';
+import { TIPS, cardNo, dateTime, dayOf, delegationKey, firstName, fullDate, nudgeLine, relative, statusOf } from '../lib/format';
 import { Avatar, Dialog, ErrorText, StatusPill, useMe, useToast } from './ui';
 import { Icon } from './Icons';
-import { AcceptDialog, ConfirmDialog, DeclineDialog, DelegateDialog, RedelegateDialog, ReopenDialog, TransferDialog, useAction, useCancelDelegation, useDiscard, useDiscardCard, useResume } from './dialogs';
+import { AcceptDialog, ConfirmDialog, DeclineDialog, DelegateDialog, NudgeDialog, RedelegateDialog, ReopenDialog, TransferDialog, useAction, useCancelDelegation, useDiscard, useDiscardCard, useResume } from './dialogs';
 import { go } from '../lib/router';
 import { BOARD_COLORS } from '../pages/Boards';
 import { cardFromBoards, changeCard, changeChecklistItem, changeChecklistText } from '../lib/optimistic';
 import { isCtrlEnter, isTyping } from '../lib/shortcuts';
 import { Linked } from './Linked';
 
-type Sub = null | 'delegate' | 'transfer' | 'decline' | 'reopen' | 'redelegate' | 'accept' | 'cancel' | 'cancelChild';
+type Sub = null | 'delegate' | 'transfer' | 'decline' | 'reopen' | 'redelegate' | 'accept' | 'cancel' | 'cancelChild' | 'nudge' | 'nudgeChild';
 
 export function CardModal({ code, onClose }: { code: string; onClose: () => void }) {
   const me = useMe().data!;
@@ -129,6 +129,14 @@ export function CardModal({ code, onClose }: { code: string; onClose: () => void
           <button className="b" title={TIPS.reopen} onClick={() => setSub('reopen')}>Reabrir</button>
         </>
       )}
+      {/* Itens 90 e 93: na delegação em aberto, cobrar ou retomar a tarefa. */}
+      {['PENDING_ACCEPT', 'IN_PROGRESS'].includes(d.status) && (
+        <>
+          <button className="b pri" title={TIPS.nudge} onClick={() => setSub('nudge')}><Icon name="bell" />Cobrar</button>
+          {d.nudgedAt && <span className="hint">{nudgeLine(d.nudgedAt, d.nudgeCount)}.</span>}
+          <button className="b" title={TIPS.resumeOpen} disabled={busy} onClick={async () => { if (await resume(d.id)) onClose(); }}><Icon name="undo" />Retomar</button>
+        </>
+      )}
       {d.status === 'DECLINED' && (
         <>
           <button className="b pri" title={TIPS.redelegate} onClick={() => setSub('redelegate')}>Redelegar</button>
@@ -136,7 +144,7 @@ export function CardModal({ code, onClose }: { code: string; onClose: () => void
         </>
       )}
       {['PENDING_ACCEPT', 'IN_PROGRESS', 'DECLINED'].includes(d.status) && (
-        <button className="b danger" title={d.status === 'DECLINED' ? TIPS.cancelDeclined : TIPS.cancel} onClick={() => setSub('cancel')}>Cancelar delegação</button>
+        <button className="b danger" title={d.status === 'DECLINED' ? TIPS.cancelDeclined : TIPS.cancelOpen} onClick={() => setSub('cancel')}>Cancelar delegação</button>
       )}
     </>
   );
@@ -190,6 +198,16 @@ export function CardModal({ code, onClose }: { code: string; onClose: () => void
               {d?.status === 'DECLINED' && (
                 <div className="box attn"><b style={{ fontWeight: 500 }}>Justificativa da devolução:</b> “{d.declineReason}”</div>
               )}
+              {/* Item 90: quem recebeu vê que a tarefa foi cobrada (e o recado). */}
+              {owner && d?.nudgedAt && ['PENDING_ACCEPT', 'IN_PROGRESS'].includes(d.status) && !card.completedAt && (
+                <div className="box attn nudge-box">
+                  <Icon name="bell" />
+                  <span>
+                    <b style={{ fontWeight: 500 }}>{firstName(d.delegatorName)} cobrou esta tarefa.</b> {nudgeLine(d.nudgedAt, d.nudgeCount)}.
+                    {d.nudgeMessage && <> “{d.nudgeMessage}”</>}
+                  </span>
+                </div>
+              )}
               {card.child && (
                 <div className="box">
                   <div className="meta-line" style={{ color: 'inherit' }}>
@@ -207,8 +225,16 @@ export function CardModal({ code, onClose }: { code: string; onClose: () => void
                   {owner && !archived && card.child.status === 'DECLINED' && (
                     <button className="b sm child-cancel" title={TIPS.resume} onClick={() => resume(card.child!.delegationId)}><Icon name="undo" />Retomar</button>
                   )}
+                  {/* Itens 90 e 93: cobrar ou retomar a delegação em aberto daqui mesmo. */}
+                  {owner && !archived && ['PENDING_ACCEPT', 'IN_PROGRESS'].includes(card.child.status) && (
+                    <>
+                      {card.child.nudgedAt && <p className="hint" style={{ margin: '6px 0 0' }}>{nudgeLine(card.child.nudgedAt, card.child.nudgeCount)}.</p>}
+                      <button className="b sm child-cancel" title={TIPS.nudge} onClick={() => setSub('nudgeChild')}><Icon name="bell" />Cobrar</button>
+                      <button className="b sm child-cancel" title={TIPS.resumeOpen} onClick={() => resume(card.child!.delegationId)}><Icon name="undo" />Retomar</button>
+                    </>
+                  )}
                   {owner && !archived && ['PENDING_ACCEPT', 'IN_PROGRESS', 'DECLINED'].includes(card.child.status) && (
-                    <button className="b sm danger child-cancel" title={card.child.status === 'DECLINED' ? TIPS.cancelDeclined : TIPS.cancel} onClick={() => setSub('cancelChild')}>Cancelar delegação</button>
+                    <button className="b sm danger child-cancel" title={card.child.status === 'DECLINED' ? TIPS.cancelDeclined : TIPS.cancelOpen} onClick={() => setSub('cancelChild')}>Cancelar delegação</button>
                   )}
                 </div>
               )}
@@ -272,7 +298,7 @@ export function CardModal({ code, onClose }: { code: string; onClose: () => void
         <ConfirmDialog title="Cancelar delegação" danger confirm="Cancelar delegação"
           text={d!.status === 'DECLINED'
             ? `Cancelar “${card.title}”? A delegação é encerrada e a sua tarefa vai para Arquivadas.`
-            : `Cancelar “${card.title}”? ${firstName(card.ownerName)} é avisado(a) e a tarefa sai do quadro dessa pessoa.`}
+            : `Desistir de “${card.title}”? ${firstName(card.ownerName)} é avisado(a), a tarefa sai do quadro dessa pessoa e a sua vai para Arquivadas. Para ficar com ela, use Retomar.`}
           onConfirm={() => cancelDelegation(d!.id, card.ownerName, d!.status === 'DECLINED')}
           onClose={() => setSub(null)} />
       )}
@@ -280,9 +306,17 @@ export function CardModal({ code, onClose }: { code: string; onClose: () => void
         <ConfirmDialog title="Cancelar delegação" danger confirm="Cancelar delegação"
           text={card.child.status === 'DECLINED'
             ? `Cancelar a delegação de “${card.title}”, que ${firstName(card.child.ownerName)} devolveu? Esta tarefa vai para Arquivadas.`
-            : `Cancelar a delegação de “${card.title}” para ${card.child.ownerName}? ${firstName(card.child.ownerName)} é avisado(a) e a tarefa sai do quadro dessa pessoa. Esta tarefa continua com você.`}
-          onConfirm={async () => { const declined = card.child!.status === 'DECLINED'; await cancelDelegation(card.child!.delegationId, card.child!.ownerName, declined); if (declined) onClose(); return true; }}
+            : `Desistir de “${card.title}”? ${firstName(card.child.ownerName)} é avisado(a), a tarefa sai do quadro dessa pessoa e esta vai para Arquivadas. Para ficar com ela, use Retomar.`}
+          onConfirm={async () => { await cancelDelegation(card.child!.delegationId, card.child!.ownerName, card.child!.status === 'DECLINED'); onClose(); return true; }}
           onClose={() => setSub(null)} />
+      )}
+      {sub === 'nudge' && d && (
+        <NudgeDialog delegationId={d.id} num={d.parentNum ?? card.num} title={card.title} ownerName={card.ownerName}
+          nudgedAt={d.nudgedAt} nudgeCount={d.nudgeCount} onClose={() => setSub(null)} />
+      )}
+      {sub === 'nudgeChild' && card.child && (
+        <NudgeDialog delegationId={card.child.delegationId} num={card.num} title={card.title} ownerName={card.child.ownerName}
+          nudgedAt={card.child.nudgedAt} nudgeCount={card.child.nudgeCount} onClose={() => setSub(null)} />
       )}
     </>
   );
@@ -601,8 +635,9 @@ function describe(e: Ev): { text: string; change?: string } {
     case 'reopened': return { text: 'reabriu a tarefa', change: `“${a.reason}”` };
     case 'canceled': return { text: 'cancelou a delegação' };
     case 'child_canceled': return { text: a.archived ? 'cancelou a delegação devolvida e arquivou a tarefa' : 'cancelou a delegação para baixo', change: a.childNum ? `#${a.childNum}` : a.childCode };
-    case 'resumed': return { text: 'retomou a tarefa devolvida (delegação encerrada)' };
-    case 'child_resumed': return { text: a.inbox ? 'retomou a tarefa devolvida: voltou para a caixa de entrada' : 'retomou a tarefa devolvida', change: a.childNum ? `#${a.childNum}` : undefined };
+    case 'resumed': return { text: a.open ? 'retomou a tarefa (delegação encerrada)' : 'retomou a tarefa devolvida (delegação encerrada)' };
+    case 'child_resumed': return { text: a.open ? 'retomou a tarefa delegada' : a.inbox ? 'retomou a tarefa devolvida: voltou para a caixa de entrada' : 'retomou a tarefa devolvida', change: a.childNum ? `#${a.childNum}` : undefined };
+    case 'nudged': return { text: `cobrou ${a.to}${a.count > 1 ? ` (${a.count}ª vez)` : ''}`, change: a.message ? `“${cut(a.message)}”` : undefined };
     case 'cancel_undone': return { text: 'desfez o cancelamento da delegação' };
     case 'child_cancel_undone': return { text: 'desfez o cancelamento da delegação para baixo', change: a.childNum ? `#${a.childNum}` : undefined };
     case 'redelegated': return { text: `redelegou para ${a.to}`, change: `Prazo sugerido: ${df(a.suggestedDue)}${a.noPass ? ' · não pode ser repassada' : ''}` };

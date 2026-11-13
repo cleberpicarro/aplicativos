@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { get, post, type Card } from '../lib/api';
-import { cardNo, firstName } from '../lib/format';
+import { cardNo, firstName, nudgeLine } from '../lib/format';
 import { go } from '../lib/router';
 import { Dialog, ErrorText, useMe, useToast } from './ui';
 
@@ -54,9 +54,10 @@ export function useCancelDelegation() {
   const qc = useQueryClient();
   const toast = useToast();
   return async (delegationId: string, ownerName: string, declined = false) => {
-    await post(`/delegations/${delegationId}/cancel`);
-    // Item 75: a devolvida cancelada leva junto a tarefa de origem para Arquivadas.
-    toast(declined ? 'Delegação cancelada. A tarefa foi para Arquivadas.' : `Delegação cancelada. ${firstName(ownerName)} foi avisado(a).`, 'ok', {
+    const r = await post<{ parentArchived?: boolean }>(`/delegations/${delegationId}/cancel`);
+    // Itens 75 e 93: cancelar leva junto a tarefa de origem para Arquivadas (menos quando ela mesma veio de cima).
+    const archived = r?.parentArchived ? ' A sua tarefa foi para Arquivadas.' : '';
+    toast(declined ? `Delegação cancelada.${archived}` : `Delegação cancelada. ${firstName(ownerName)} foi avisado(a).${archived}`, 'ok', {
       label: 'Desfazer',
       onClick: () => post(`/delegations/${delegationId}/undo-cancel`).then(
         async () => { await qc.invalidateQueries(); toast(declined ? 'Cancelamento desfeito: a tarefa voltou para o seu quadro.' : `Cancelamento desfeito: a tarefa voltou para ${firstName(ownerName)}.`); },
@@ -296,6 +297,37 @@ export function DeclineDialog({ card, onClose }: { card: Card; onClose: Close })
           <label htmlFor="x-reason">Justificativa (obrigatória)</label>
           <textarea id="x-reason" className="textarea" value={reason} onChange={(e) => setReason(e.target.value)} required minLength={3}
             placeholder="Por exemplo: prazo inviável, falta informação, não é da minha área" />
+        </div>
+        <ErrorText error={error} />
+      </form>
+    </Dialog>
+  );
+}
+
+/**
+ * Item 90: cobrar a tarefa delegada. Recado opcional; a pessoa recebe aviso na tela (balão) e e-mail na hora.
+ */
+export function NudgeDialog({ delegationId, num, title, ownerName, nudgedAt, nudgeCount, onClose }: {
+  delegationId: string; num: number; title: string; ownerName: string; nudgedAt: string | null; nudgeCount: number; onClose: Close;
+}) {
+  const { run, busy, error } = useAction();
+  const [message, setMessage] = useState('');
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (await run(() => post(`/delegations/${delegationId}/nudge`, { message }), `Cobrança enviada. ${firstName(ownerName)} recebeu um aviso e um e-mail.`)) onClose();
+  };
+  return (
+    <Dialog title="Cobrar tarefa" onClose={onClose} footer={<Footer busy={busy} onClose={onClose} label="Cobrar" />}>
+      <form id="dlg" onSubmit={submit} className="dialog-b" style={{ padding: 0 }}>
+        <p style={{ margin: 0 }}><span className="code">{cardNo(num)}</span> {title}</p>
+        <p className="hint" style={{ margin: 0 }}>
+          {firstName(ownerName)} recebe na hora um aviso na tela e um e-mail. A cobrança fica no histórico da tarefa.
+          {nudgedAt && <> {nudgeLine(nudgedAt, nudgeCount)}.</>}
+        </p>
+        <div className="field">
+          <label htmlFor="nd-m">Recado (opcional)</label>
+          <textarea id="nd-m" className="textarea" value={message} maxLength={500} onChange={(e) => setMessage(e.target.value)}
+            placeholder="Ex.: Preciso disso até amanhã às 10h." autoFocus />
         </div>
         <ErrorText error={error} />
       </form>

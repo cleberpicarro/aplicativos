@@ -95,7 +95,7 @@ describe('delegação (RN-14 a RN-19)', () => {
     expect(ov.needAction).toHaveLength(0);
   });
 
-  it('redelegar mantém o código; cancelar arquiva e libera o cartão de origem', async () => {
+  it('redelegar mantém o código; retomar arquiva e libera o cartão de origem', async () => {
     const t = await newTask(ctx, 'gest', 'Mapear processos');
     const d = await delegateTask(ctx, 'gest', t.id, 'func');
     await call('func', 'POST', `/api/cards/${d.cardId}/decline`, { reason: 'Estou de férias' });
@@ -103,7 +103,7 @@ describe('delegação (RN-14 a RN-19)', () => {
     const inbox2 = (await call('func2', 'GET', '/api/inbox')).body;
     expect(inbox2.map((c: any) => c.code)).toEqual([d.code]);
 
-    expect((await call('gest', 'POST', `/api/delegations/${d.delegationId}/cancel`)).status).toBe(200);
+    expect((await call('gest', 'POST', `/api/delegations/${d.delegationId}/resume`)).status).toBe(200);
     expect((await call('func2', 'GET', '/api/inbox')).body).toHaveLength(0);
     const again = await delegateTask(ctx, 'gest', t.id, 'func');
     expect(again.code).not.toBe(d.code);
@@ -971,10 +971,10 @@ describe('sétima rodada', () => {
     await call('func', 'POST', `/api/cards/${d.cardId}/complete`);
     await call('gest', 'POST', `/api/delegations/${d.delegationId}/ack`);
     expect((await call('gest', 'PATCH', `/api/cards/${t.id}`, { isPrivate: true })).status).toBe(409);
-    // delegação cancelada libera
-    const t2 = await newTask(ctx, 'gest', 'Cancelada');
+    // delegação retomada (item 93) libera
+    const t2 = await newTask(ctx, 'gest', 'Retomada');
     const d2 = await delegateTask(ctx, 'gest', t2.id, 'func');
-    await call('gest', 'POST', `/api/delegations/${d2.delegationId}/cancel`);
+    await call('gest', 'POST', `/api/delegations/${d2.delegationId}/resume`);
     expect((await call('gest', 'PATCH', `/api/cards/${t2.id}`, { isPrivate: true })).status).toBe(200);
   });
 

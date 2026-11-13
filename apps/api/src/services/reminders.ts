@@ -7,6 +7,7 @@ import { queueEmail } from './notify.js';
  * - Prazo amanhã (véspera) e prazo vencido (no dia seguinte ao prazo), uma vez cada, para o dono atual da tarefa aberta.
  *   Na tarefa delegada, quem delegou recebe também o de vencido.
  * - Resumo diário às 7h (Brasília), de segunda a sexta, só quando há algo para mostrar.
+ *   Item 92: o resumo traz também as tarefas que a pessoa delegou e estão atrasadas (com quem está cada uma).
  * O servidor roda isto de tempos em tempos (server.ts); o que já foi enviado fica marcado e não se repete.
  */
 
@@ -98,7 +99,7 @@ async function dueLate(db: Db, today: string): Promise<number> {
     if (r.d_id && r.d_wants && !r.is_private) {
       const num = r.parent_num ?? r.num;
       await queueEmail(db, r.d_email, `[#${num}] Prazo vencido: ${r.title} (com ${first(r.name)})`,
-        `Olá, ${first(r.d_name)}.\n\nA tarefa que você delegou para ${r.name} venceu ontem (${br(r.due)}) e ainda está aberta:\n#${num} ${r.title}\n\nAbrir no SyncTasks: ${link(r.parent_id ?? r.id)}\n\n${OFF_DUE}`);
+        `Olá, ${first(r.d_name)}.\n\nA tarefa que você delegou para ${r.name} venceu ontem (${br(r.due)}) e ainda está aberta:\n#${num} ${r.title}\n\nPara cobrar, abra a tarefa e clique em Cobrar: ${link(r.parent_id ?? r.id)}\n\n${OFF_DUE}`);
       sent++;
     }
   }
@@ -108,7 +109,7 @@ async function dueLate(db: Db, today: string): Promise<number> {
 const OFF_DUE = 'Para não receber mais os avisos de prazo, desmarque a opção em Meus dados (clique no seu nome no SyncTasks).';
 const OFF_DIGEST = 'Para não receber mais o resumo diário, desmarque a opção em Meus dados (clique no seu nome no SyncTasks).';
 
-interface Item { id: string; num: number; title: string; due: string | null; who?: string }
+interface Item { id: string; num: number; title: string; due: string | null; who?: string | null; nudged?: string | null }
 
 /** Resumo diário de cada pessoa: vencem hoje, atrasadas, para aceitar e aguardando o seu ciente. */
 async function dailyDigests(db: Db, today: string): Promise<number> {
@@ -124,8 +125,8 @@ async function dailyDigests(db: Db, today: string): Promise<number> {
     await db.query('UPDATE users SET digest_sent_on = $2::date WHERE id = $1', [u.id, today]);
     const own = await many<Item & { late: boolean }>(
       db,
-      `SELECT c.id, c.num, c.title, c.due_date::text AS due, c.due_date < $2::date AS late
-         FROM cards c LEFT JOIN delegations d ON d.card_id = c.id
+      `SELECT c.id, c.num, c.title, c.due_date::text AS due, c.due_date < $2::date AS late, du.name AS who
+         FROM cards c LEFT JOIN delegations d ON d.card_id = c.id LEFT JOIN users du ON du.id = d.delegator_id
         WHERE c.owner_id = $1 AND c.completed_at IS NULL AND c.archived_at IS NULL AND c.due_date <= $2::date AND ${LIVE}
           AND (d.id IS NULL OR d.status <> 'PENDING_ACCEPT')
         ORDER BY c.due_date, c.num`,
@@ -148,15 +149,28 @@ async function dailyDigests(db: Db, today: string): Promise<number> {
         ORDER BY c.completed_at`,
       [u.id],
     );
+    // Item 92: delegadas pela pessoa, ainda em aberto com quem recebeu, com o prazo vencido. Link para a tarefa de origem (onde fica o Cobrar).
+    const teamLate = await many<Item>(
+      db,
+      `SELECT coalesce(pc.id, c.id) AS id, coalesce(pc.num, c.num) AS num, c.title, c.due_date::text AS due, o.name AS who,
+              to_char(d.nudged_at AT TIME ZONE 'America/Sao_Paulo', 'DD/MM') AS nudged
+         FROM delegations d JOIN cards c ON c.id = d.card_id JOIN users o ON o.id = c.owner_id
+         LEFT JOIN cards pc ON pc.id = d.parent_card_id
+        WHERE d.delegator_id = $1 AND d.status IN ('PENDING_ACCEPT','IN_PROGRESS') AND c.completed_at IS NULL AND c.archived_at IS NULL
+          AND c.due_date < $2::date AND o.active
+        ORDER BY c.due_date, o.name, c.num`,
+      [u.id, today],
+    );
     const dueToday = own.filter((c) => !c.late);
     const late = own.filter((c) => c.late);
-    if (!dueToday.length && !late.length && !inbox.length && !ack.length) continue;
+    if (!dueToday.length && !late.length && !inbox.length && !ack.length && !teamLate.length) continue;
 
     const parts = [
       dueToday.length && `${dueToday.length} ${dueToday.length === 1 ? 'vence' : 'vencem'} hoje`,
       late.length && `${late.length} ${late.length === 1 ? 'atrasada' : 'atrasadas'}`,
       inbox.length && `${inbox.length} para aceitar`,
       ack.length && `${ack.length} ${ack.length === 1 ? 'aguarda' : 'aguardam'} seu ciente`,
+      teamLate.length && `${teamLate.length} ${teamLate.length === 1 ? 'delegada atrasada' : 'delegadas atrasadas'}`,
     ].filter(Boolean);
     const section = (title: string, items: Item[], extra: (c: Item) => string) => {
       if (!items.length) return '';
@@ -167,9 +181,11 @@ async function dailyDigests(db: Db, today: string): Promise<number> {
     const body =
       `Olá, ${first(u.name)}. Este é o seu resumo de hoje (${br(today)}) no SyncTasks.\n\n` +
       section('Vencem hoje', dueToday, () => '') +
-      section('Atrasadas', late, (c) => ` (prazo ${br(c.due!)})`) +
+      section('Atrasadas', late, (c) => ` (prazo ${br(c.due!)}${c.who ? `, delegada por ${first(c.who)}` : ''})`) +
       section('Delegadas para você, aguardando aceite na caixa de entrada', inbox, (c) => ` (de ${first(c.who!)})`) +
       section('Concluídas por quem você delegou, aguardando o seu ciente', ack, (c) => ` (${first(c.who!)})`) +
+      section('Delegadas por você e atrasadas (abra a tarefa e clique em Cobrar, se quiser)', teamLate,
+        (c) => ` (com ${first(c.who!)}, prazo ${br(c.due!)}${c.nudged ? `, cobrada em ${c.nudged}` : ''})`) +
       `Abrir o SyncTasks: ${config.appUrl}\n\n${OFF_DIGEST}`;
     await queueEmail(db, u.email, `Resumo do dia: ${parts.join(', ')}`, body);
     sent++;

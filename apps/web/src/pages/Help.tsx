@@ -262,6 +262,12 @@ export function HelpPage({ isAdmin }: { isAdmin: boolean }) {
           <li><b>Retomar:</b> você mesmo fica com a tarefa. Ela vai para a sua <b>caixa de entrada</b>, com a justificativa da devolução como comentário, e dali você organiza, faz ou delega de novo. Quem devolveu não é avisado de novo. (Se a tarefa veio de cima para você por delegação, ela continua no seu quadro.)</li>
           <li><b>Cancelar:</b> encerra a delegação e a sua tarefa vai para <b>Arquivadas</b>, com a etiqueta <b>Cancelada</b>. Se precisar, desarquive: ela volta ao quadro.</li>
         </ul>
+        <p>Enquanto a tarefa delegada está <b>aguardando aceite ou em andamento</b>, quem delegou tem, na linha dela em Tarefas delegadas (e dentro da tarefa):</p>
+        <ul>
+          <li><b>Cobrar:</b> a pessoa recebe na hora um <b>balão</b> na tela, um aviso e um <b>e-mail</b>, com um recado seu se quiser (“Preciso até amanhã às 10h”). Dentro da tarefa dela aparece “Paulo cobrou esta tarefa”, com a data e o recado. A cobrança fica no log; na sua lista aparece um sininho vermelho na tarefa cobrada. Dá para cobrar de novo depois de 1 hora.</li>
+          <li><b>Retomar:</b> você mesmo fica com a tarefa. A delegação é encerrada, a pessoa é avisada e a tarefa sai do quadro dela; a sua continua onde está.</li>
+          <li><b>Cancelar:</b> desiste da tarefa. A delegação é encerrada, a pessoa é avisada e a sua tarefa vai para <b>Arquivadas</b>.</li>
+        </ul>
         <p>Todo cancelamento tem <b>Desfazer</b> no aviso, logo depois de cancelar.</p>
       </Sec>
 
@@ -285,10 +291,10 @@ export function HelpPage({ isAdmin }: { isAdmin: boolean }) {
           <li><b>Ver a tarefa sem abrir:</b> no computador, pare o mouse sobre um cartão por meio segundo: aparece um balão com o título completo, a descrição, com quem está, o prazo e o checklist. Dá para levar o mouse até o balão: ele continua aberto, os links dele abrem numa aba nova e o ícone de copiar, no canto, copia a descrição (ou o título, se não houver descrição). Ele some ao tirar o mouse do cartão e do balão, rolar ou arrastar. No celular, toque para abrir a tarefa.</li>
           <li><b>Links:</b> endereços (https://…, www.…) e e-mails escritos na descrição, nos comentários ou no título viram links e abrem numa aba nova. Na tarefa aberta, a descrição aparece como texto: clique num link para abri-lo, ou no resto do texto (ou em Editar) para editar.</li>
           <li><b>Cor do cartão:</b> na tarefa aberta, clique em <b>Cor</b> (ao lado do número) e escolha uma das cores, ou <b>Sem cor</b>. O cartão fica todo dessa cor no quadro, em tom sólido médio; o texto fica escuro no tema claro e branco no tema escuro para ler bem, e o prazo atrasado aparece numa etiqueta branca. A cor é só sua: numa tarefa delegada, o cartão de quem recebe começa sem cor, e quem recebe por transferência também vê sem cor.</li>
-          <li><b>Balão de tarefa nova:</b> quando chega uma tarefa delegada ou transferida para você, aparece um balão no canto de baixo da tela (“Marina delegou: … · Clique para ver”). Clique para abrir a tarefa; várias juntas abrem a caixa de entrada. Ele some sozinho em 10 segundos, e o aviso continua em <b>Avisos</b>.</li>
+          <li><b>Balão de tarefa nova:</b> quando chega uma tarefa delegada ou transferida para você, ou quando quem delegou <b>cobra</b> uma tarefa sua (sininho vermelho), aparece um balão no canto de baixo da tela (“Marina delegou: … · Clique para ver”). Clique para abrir a tarefa; várias juntas abrem a caixa de entrada. Ele some sozinho em 10 segundos, e o aviso continua em <b>Avisos</b>.</li>
           <li><b>Avisos</b> chegam no app e por e-mail quando: uma tarefa é delegada a você, aceita, devolvida, concluída, reaberta, arquivada com ciente, cancelada (ou o cancelamento é desfeito), transferida para você, ou quando o prazo de uma tarefa que você delegou muda.</li>
           <li><b>Avisos de prazo por e-mail:</b> na <b>véspera</b> do prazo (“Prazo amanhã”) e no <b>dia seguinte</b>, se a tarefa continuar aberta (“Prazo vencido”), uma vez cada. Vão para quem está com a tarefa; numa tarefa delegada, quem delegou recebe também o de vencido. Se o prazo mudar, o aviso vale para a nova data.</li>
-          <li><b>Resumo diário por e-mail:</b> às <b>7h</b>, de segunda a sexta, com o que vence hoje, o que está atrasado, as delegações aguardando o seu aceite e as tarefas aguardando o seu ciente, cada uma com o número e o link. Dia sem nada, sem e-mail.</li>
+          <li><b>Resumo diário por e-mail:</b> às <b>7h</b>, de segunda a sexta, com o que vence hoje, o que está atrasado (e quem delegou), as delegações aguardando o seu aceite, as tarefas aguardando o seu ciente e as <b>tarefas que você delegou e estão atrasadas</b> (com quem está cada uma e se já foi cobrada), cada uma com o número e o link. Dia sem nada, sem e-mail.</li>
           <li><b>Meus dados:</b> clique no seu nome, no alto do menu à esquerda (ou em <b>Meus dados</b>, embaixo; no celular, dentro do <b>☰</b>), para desligar o resumo diário ou os avisos de prazo. Os avisos de delegação continuam chegando sempre.</li>
         </ul>
       </Sec>
