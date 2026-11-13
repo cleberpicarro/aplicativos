@@ -116,7 +116,7 @@ async function runChaos(seed: number) {
       await act(who, 'POST', `/api/cards/${c.id}/${c.completed_at && r.chance(0.7) ? 'uncomplete' : 'complete'}`);
     },
     async responder() {
-      // delegador dá ciente, reabre, cancela, redelega ou retoma (item 75)
+      // delegador dá ciente, reabre, cancela, redelega, retoma (itens 75 e 93) ou cobra (item 90)
       const who = r.pick(PEOPLE.filter((p) => reportsOf(p).length));
       const mine = await q(`SELECT id, status FROM delegations WHERE delegator_id = $1 AND status NOT IN ('ACKED','CANCELED') ORDER BY created_at, id`, [idOf(who)]);
       if (!mine.length) return;
@@ -128,7 +128,9 @@ async function runChaos(seed: number) {
       else if (d.status === 'DECLINED' && roll < 0.5) await act(who, 'POST', `/api/delegations/${d.id}/redelegate`, { toUserId: idOf(r.pick(reportsOf(who))) });
       else if (d.status === 'DECLINED' && roll < 0.65) await act(who, 'POST', `/api/delegations/${d.id}/resume`);
       else if (roll < 0.12) await act(who, 'POST', `/api/delegations/${d.id}/cancel`);
+      else if (roll < 0.18) await act(who, 'POST', `/api/delegations/${d.id}/resume`); // item 93: em aberto também
       else if (roll < 0.25) await act(who, 'POST', `/api/delegations/${d.id}/no-pass`, { noPass: r.chance(0.5) }); // item 41
+      else if (roll < 0.35) await act(who, 'POST', `/api/delegations/${d.id}/nudge`, { message: 'E aí?' }); // item 90
       else await act(who, 'POST', `/api/delegations/${d.id}/ack`); // muitas vezes inválido de propósito
     },
     async transferir() {

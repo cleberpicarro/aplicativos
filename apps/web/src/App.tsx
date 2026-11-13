@@ -300,16 +300,19 @@ function Shell() {
 function ArrivalBalloon() {
   const me = useMe().data;
   const qc = useQueryClient();
-  const [shown, setShown] = useState<{ ids: string[]; text: string; cardId: string | null } | null>(null);
+  const [shown, setShown] = useState<{ ids: string[]; text: string; cardId: string | null; nudge?: boolean } | null>(null);
   const seen = useRef(new Set<string>());
   useEffect(() => {
     const fresh = (me?.fresh ?? []).filter((n) => !seen.current.has(n.id));
     if (!fresh.length) return;
     for (const n of fresh) seen.current.add(n.id);
     const ids = fresh.map((n) => n.id);
+    // Item 90: cobrança de quem delegou também vira balão (com o sino em vez da caixa de entrada).
+    const nudges = fresh.filter((n) => n.type === 'nudged').length;
     setShown(fresh.length === 1
-      ? { ids, text: fresh[0].text, cardId: fresh[0].cardId }
-      : { ids, text: `${fresh.length} tarefas novas chegaram para você`, cardId: null });
+      ? { ids, text: fresh[0].text, cardId: fresh[0].cardId, nudge: nudges === 1 }
+      : { ids, cardId: null, nudge: nudges === fresh.length,
+          text: nudges === fresh.length ? `${fresh.length} tarefas suas foram cobradas` : nudges ? `${fresh.length} avisos novos: tarefas que chegaram e cobranças` : `${fresh.length} tarefas novas chegaram para você` });
     post('/notifications/popped', { ids }).catch(() => { /* sem rede: o balão pode aparecer de novo depois */ });
   }, [me?.fresh]);
   useEffect(() => {
@@ -320,13 +323,13 @@ function ArrivalBalloon() {
   if (!shown) return null;
   const open = () => {
     post('/notifications/popped', { ids: shown.ids, read: true }).then(() => qc.invalidateQueries({ queryKey: ['me'] })).catch(() => {});
-    go(shown.cardId ? `/tarefa/${shown.cardId}` : '/entrada');
+    go(shown.cardId ? `/tarefa/${shown.cardId}` : shown.nudge ? '/avisos' : '/entrada');
     setShown(null);
   };
   return (
-    <div className="arrival" role="status">
+    <div className={`arrival${shown.nudge ? ' nudge' : ''}`} role="status">
       <button className="arrival-open" onClick={open}>
-        <Icon name="inbox" />
+        <Icon name={shown.nudge ? 'bell' : 'inbox'} />
         <span><b>{shown.text}</b><small>Clique para ver</small></span>
       </button>
       <button className="arrival-x" aria-label="Fechar o aviso" onClick={() => setShown(null)}><Icon name="x" /></button>

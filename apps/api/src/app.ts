@@ -49,7 +49,7 @@ const SUBSTITUTE_ROUTES = new Set([
   'POST /api/cards/:id/delegate', 'GET /api/inbox', 'POST /api/cards/:id/accept', 'POST /api/cards/:id/accept-delegate', 'POST /api/inbox/discard',
   'POST /api/inbox/restore', 'POST /api/cards/:id/decline', 'GET /api/cards/:id/transfer-targets', 'POST /api/cards/:id/transfer',
   'POST /api/delegations/:id/ack', 'POST /api/delegations/:id/reopen', 'POST /api/delegations/:id/cancel', 'POST /api/delegations/:id/undo-cancel', 'POST /api/delegations/:id/resume',
-  'POST /api/delegations/:id/redelegate', 'POST /api/delegations/:id/no-pass', 'GET /api/delegations',
+  'POST /api/delegations/:id/redelegate', 'POST /api/delegations/:id/no-pass', 'POST /api/delegations/:id/nudge', 'GET /api/delegations',
   'GET /api/dashboard', 'GET /api/archived', 'GET /api/table', 'GET /api/table/options', 'GET /api/filters', 'POST /api/filters', 'PATCH /api/filters/:id',
   'DELETE /api/filters/:id', 'GET /api/search',
 ]);
@@ -441,8 +441,8 @@ export async function buildApp({ pool, logger = false, serveWeb = false }: AppOp
   });
   app.post('/api/delegations/:id/cancel', async (req) => {
     const { id } = z.object({ id: uuid }).parse(req.params);
-    await inTx(req, (db) => deleg.cancel(db, need(req), id));
-    return { ok: true };
+    const r = await inTx(req, (db) => deleg.cancel(db, need(req), id));
+    return { ok: true, ...r };
   });
   app.post('/api/delegations/:id/undo-cancel', async (req) => {
     const { id } = z.object({ id: uuid }).parse(req.params);
@@ -464,6 +464,11 @@ export async function buildApp({ pool, logger = false, serveWeb = false }: AppOp
     const { noPass } = z.object({ noPass: z.boolean() }).parse(req.body);
     await inTx(req, (db) => deleg.setNoPass(db, need(req), id, noPass));
     return { ok: true };
+  });
+  app.post('/api/delegations/:id/nudge', async (req) => {
+    const { id } = z.object({ id: uuid }).parse(req.params);
+    const { message } = z.object({ message: z.string().max(500).optional() }).parse(req.body ?? {});
+    return inTx(req, (db) => deleg.nudge(db, need(req), id, message));
   });
   app.get('/api/delegations', async (req) => {
     const { archived } = z.object({ archived: z.enum(['0', '1']).optional() }).parse(req.query);

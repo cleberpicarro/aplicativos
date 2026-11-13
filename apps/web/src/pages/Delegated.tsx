@@ -2,12 +2,12 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { get, post, type Card, type Overview } from '../lib/api';
 import { go, useRoute } from '../lib/router';
-import { TIPS, cardNo, daysBetween, firstName, plural } from '../lib/format';
+import { TIPS, cardNo, daysBetween, firstName, nudgeLine, plural } from '../lib/format';
 import { Avatar, CardStatusIcon, Due, TipIcon, ErrorText } from '../components/ui';
 import { Icon } from '../components/Icons';
-import { ConfirmDialog, RedelegateDialog, ReopenDialog, useAction, useCancelDelegation, useResume } from '../components/dialogs';
+import { ConfirmDialog, NudgeDialog, RedelegateDialog, ReopenDialog, useAction, useCancelDelegation, useResume } from '../components/dialogs';
 
-type Pending = null | { kind: 'reopen' | 'redelegate' | 'cancel'; card: Card };
+type Pending = null | { kind: 'reopen' | 'redelegate' | 'cancel' | 'nudge'; card: Card };
 
 /** Filtros que chegam do Painel (#/delegadas?filtro=...&pessoa=...). */
 export const FILTERS: Record<string, { label: string; test: (c: Card, today: string) => boolean }> = {
@@ -68,6 +68,16 @@ export function DelegatedPage() {
         </>
       );
     }
+    if (isOpen(c)) {
+      // Itens 90 e 93: cobrar, retomar (ficar com a tarefa) ou cancelar (desistir) a delegação em aberto.
+      return (
+        <>
+          <button className="b" title={TIPS.nudge} onClick={() => setPending({ kind: 'nudge', card: c })}><Icon name="bell" />Cobrar</button>
+          <button className="b" title={TIPS.resumeOpen} onClick={() => resume(d.id)}>Retomar</button>
+          <button className="b" title={TIPS.cancelOpen} onClick={() => setPending({ kind: 'cancel', card: c })}>Cancelar</button>
+        </>
+      );
+    }
     return null;
   };
 
@@ -93,6 +103,9 @@ export function DelegatedPage() {
         <button className={c.archivedAt ? 'done-t' : ''} onClick={() => go(`/tarefa/${c.id}`)} title={c.title}>{c.title}</button>
         {c.delegation?.status === 'DECLINED' && <span className="note" title={c.delegation.declineReason ?? ''}>“{c.delegation.declineReason}”</span>}
         {c.checklist.total > 0 && <span className="cl">{c.checklist.done}/{c.checklist.total}</span>}
+        {c.delegation?.nudgedAt && isOpen(c) && (
+          <span className="nudged" title={nudgeLine(c.delegation.nudgedAt, c.delegation.nudgeCount)}><Icon name="bell" />{c.delegation.nudgeCount > 1 ? `${c.delegation.nudgeCount}×` : ''}</span>
+        )}
       </div>
       <span className="person">{withPerson && <><Avatar name={c.ownerName} /><span>{c.ownerName}</span></>}</span>
       <span className="code" title="Número da tarefa no seu quadro">{cardNo(c.delegation?.parentNum ?? c.num)}</span>
@@ -177,12 +190,16 @@ export function DelegatedPage() {
         </>
       )}
       {pending?.kind === 'reopen' && <ReopenDialog card={pending.card} onClose={() => setPending(null)} />}
+      {pending?.kind === 'nudge' && (
+        <NudgeDialog delegationId={pending.card.delegation!.id} num={pending.card.delegation!.parentNum ?? pending.card.num} title={pending.card.title}
+          ownerName={pending.card.ownerName} nudgedAt={pending.card.delegation!.nudgedAt} nudgeCount={pending.card.delegation!.nudgeCount} onClose={() => setPending(null)} />
+      )}
       {pending?.kind === 'redelegate' && <RedelegateDialog card={pending.card} onClose={() => setPending(null)} />}
       {pending?.kind === 'cancel' && (
         <ConfirmDialog title="Cancelar delegação" danger confirm="Cancelar delegação"
           text={pending.card.delegation!.status === 'DECLINED'
             ? `Cancelar “${pending.card.title}”? A delegação é encerrada e a sua tarefa vai para Arquivadas.`
-            : `Cancelar “${pending.card.title}”? ${firstName(pending.card.ownerName)} é avisado(a).`}
+            : `Desistir de “${pending.card.title}”? ${firstName(pending.card.ownerName)} é avisado(a), a tarefa sai do quadro dessa pessoa e a sua vai para Arquivadas. Para ficar com ela, use Retomar.`}
           onConfirm={() => cancelDelegation(pending.card.delegation!.id, pending.card.ownerName, pending.card.delegation!.status === 'DECLINED')} onClose={() => setPending(null)} />
       )}
     </div>

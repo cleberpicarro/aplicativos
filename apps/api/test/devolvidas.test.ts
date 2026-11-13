@@ -48,12 +48,16 @@ describe('cancelar uma devolvida (item 75)', () => {
     expect((await call('gest', 'POST', `/api/cards/${p.id}/delegate`, { toUserId: ctx.users.func2.id })).status).toBe(200);
   });
 
-  it('em andamento, o Cancelar continua como antes: a origem fica no quadro', async () => {
+  it('em andamento, o Cancelar também arquiva a origem (item 93: cancelar é desistir; para ficar com ela, Retomar)', async () => {
     const p = await newTask(ctx, 'gest', 'Cancelar em andamento');
     const d = await delegateTask(ctx, 'gest', p.id, 'func');
     await acceptTask(ctx, 'func', d.cardId);
-    await call('gest', 'POST', `/api/delegations/${d.delegationId}/cancel`);
-    expect((await card('gest', p.id)).card).toMatchObject({ archivedAt: null, child: null });
+    const r = await call('gest', 'POST', `/api/delegations/${d.delegationId}/cancel`);
+    expect(r.body.parentArchived).toBe(true);
+    expect((await card('gest', p.id)).card.archivedAt).not.toBeNull();
+    expect((await call('gest', 'POST', `/api/delegations/${d.delegationId}/undo-cancel`)).status).toBe(200);
+    expect((await card('gest', p.id)).card).toMatchObject({ archivedAt: null });
+    expect((await card('func', d.cardId)).card.delegation.status).toBe('IN_PROGRESS');
   });
 });
 
@@ -85,9 +89,11 @@ describe('retomar uma devolvida (item 75)', () => {
     expect((await call('gest', 'POST', `/api/delegations/${d.delegationId}/resume`)).status).toBe(409);
   });
 
-  it('só a devolvida pode ser retomada, e só por quem delegou', async () => {
-    const p = await newTask(ctx, 'gest', 'Não devolvida');
+  it('concluída aguardando ciente não pode ser retomada; a devolvida só por quem delegou', async () => {
+    const p = await newTask(ctx, 'gest', 'Concluída');
     const d = await delegateTask(ctx, 'gest', p.id, 'func');
+    await acceptTask(ctx, 'func', d.cardId);
+    await call('func', 'POST', `/api/cards/${d.cardId}/complete`);
     expect((await call('gest', 'POST', `/api/delegations/${d.delegationId}/resume`)).status).toBe(409);
     const { d: d2 } = await declined('Retomada por outro');
     for (const who of ['func', 'dir', 'gest2', 'admin']) {

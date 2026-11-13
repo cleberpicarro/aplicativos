@@ -51,10 +51,11 @@ export async function me(db: Db, actor: Actor) {
     mine: sub ? null : await subs.current(db, actor.id),
   };
   // Item 80: tarefa delegada ou transferida que chegou e ainda não apareceu como balão (nunca para o substituto).
+  // Item 90: a cobrança de quem delegou também vira balão.
   const fresh = sub ? [] : await many(
     db,
-    `SELECT n.id, n.text, n.card_id FROM notifications n
-      WHERE n.user_id = $1 AND n.type IN ('delegated', 'transferred') AND n.read_at IS NULL AND n.popped_at IS NULL
+    `SELECT n.id, n.text, n.card_id, n.type FROM notifications n
+      WHERE n.user_id = $1 AND n.type IN ('delegated', 'transferred', 'nudged') AND n.read_at IS NULL AND n.popped_at IS NULL
         AND n.created_at > now() - interval '7 days'
       ORDER BY n.created_at DESC LIMIT 20`,
     [actor.id],
@@ -65,7 +66,7 @@ export async function me(db: Db, actor: Actor) {
     user: { ...user, inHierarchy: actor.level !== null },
     directReports: reports.map((r) => ({ id: r.id, name: r.name, roleTitle: r.role_title })),
     counts: { inbox: counts.inbox, needAction: counts.need_action, unread: counts.unread },
-    fresh: fresh.map((n) => ({ id: n.id as string, text: n.text as string, cardId: (n.card_id as string | null) ?? null })),
+    fresh: fresh.map((n) => ({ id: n.id as string, text: n.text as string, cardId: (n.card_id as string | null) ?? null, type: n.type as string })),
     prefs: { workspaceBg: counts.workspace_bg as string | null, emailDigest: counts.email_digest as boolean, emailDue: counts.email_due as boolean, hideInactive: counts.hide_inactive as boolean },
     today: counts.today,
   };

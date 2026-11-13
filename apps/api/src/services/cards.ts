@@ -11,9 +11,10 @@ export const CARD_SELECT = `
   SELECT c.*, l.board_id, bo.name AS board_name, o.name AS owner_name,
     d.id AS d_id, d.status AS d_status, d.reopened AS d_reopened, d.delegator_id AS d_delegator_id,
     du.name AS d_delegator_name, d.suggested_due AS d_suggested_due, d.decline_reason AS d_decline_reason, d.no_pass AS d_no_pass,
+    d.nudged_at AS d_nudged_at, d.nudge_count AS d_nudge_count, d.nudge_message AS d_nudge_message,
     tf.name AS transferred_from_name,
     pc.code AS parent_code, pc.num AS parent_num,
-    ch.id AS child_delegation_id, ch.card_id AS child_card_id, ch.status AS child_status, ch.reopened AS child_reopened, ch.no_pass AS child_no_pass,
+    ch.id AS child_delegation_id, ch.card_id AS child_card_id, ch.status AS child_status, ch.reopened AS child_reopened, ch.no_pass AS child_no_pass, ch.nudged_at AS child_nudged_at, ch.nudge_count AS child_nudge_count,
     chc.code AS child_code, chc.num AS child_num, cho.name AS child_owner_name,
     (SELECT count(*) FROM checklist_items i WHERE i.card_id = c.id)::int AS cl_total,
     (SELECT count(*) FROM checklist_items i WHERE i.card_id = c.id AND i.done)::int AS cl_done
@@ -69,8 +70,12 @@ export interface CardDto {
     parentNum: number | null;
     /** Item 41: o delegador pediu que a própria pessoa faça a tarefa (não pode delegar nem transferir para subordinado). */
     noPass: boolean;
+    /** Item 90: última cobrança de quem delegou (null = nunca cobrada) e quantas vezes. */
+    nudgedAt: string | null;
+    nudgeCount: number;
+    nudgeMessage: string | null;
   };
-  child: null | { delegationId: string; cardId: string; code: string; num: number; ownerName: string; status: string; reopened: boolean; noPass: boolean };
+  child: null | { delegationId: string; cardId: string; code: string; num: number; ownerName: string; status: string; reopened: boolean; noPass: boolean; nudgedAt: string | null; nudgeCount: number };
   checklist: { done: number; total: number };
   source: string | null;
   createdAt: string;
@@ -114,6 +119,9 @@ export function toCardDto(r: any): CardDto {
           parentCode: r.parent_code,
           parentNum: r.parent_num ?? null,
           noPass: !!r.d_no_pass,
+          nudgedAt: r.d_nudged_at ?? null,
+          nudgeCount: r.d_nudge_count ?? 0,
+          nudgeMessage: r.d_nudge_message ?? null,
         }
       : null,
     child: r.child_delegation_id
@@ -126,6 +134,8 @@ export function toCardDto(r: any): CardDto {
           status: r.child_status,
           reopened: r.child_reopened,
           noPass: !!r.child_no_pass,
+          nudgedAt: r.child_nudged_at ?? null,
+          nudgeCount: r.child_nudge_count ?? 0,
         }
       : null,
     checklist: { done: r.cl_done, total: r.cl_total },

@@ -178,7 +178,7 @@ test.describe('delegação de ponta a ponta', () => {
     const cd = dialogo(page, 'Cancelar delegação');
     await expect(cd).toContainText('vai para Arquivadas');
     await cd.getByRole('button', { name: 'Cancelar delegação' }).click();
-    await aviso(page, 'Delegação cancelada. A tarefa foi para Arquivadas.');
+    await aviso(page, 'Delegação cancelada. A sua tarefa foi para Arquivadas.');
     await expect(linhaC).toHaveCount(0);
 
     // A retomada está na caixa de entrada, com a justificativa como comentário.
@@ -282,12 +282,15 @@ test.describe('delegação de ponta a ponta', () => {
     const box = dlg.locator('.box', { hasText: 'Repassada para' });
     await box.getByRole('button', { name: 'Cancelar delegação' }).click();
     await dialogo(page, 'Cancelar delegação').getByRole('button', { name: 'Cancelar delegação' }).click();
-    await aviso(page, 'Delegação cancelada. Lucas foi avisado(a).');
-    await expect(box).toHaveCount(0);
+    // Item 93: cancelar é desistir; a tarefa de origem vai junto para Arquivadas (e a janela fecha).
+    await aviso(page, 'Delegação cancelada. Lucas foi avisado(a). A sua tarefa foi para Arquivadas.');
+    await expect(dlg).toHaveCount(0);
+    await expect(page.locator('article.kc', { hasText: titulo })).toHaveCount(0);
     await page.locator('.toast').getByRole('button', { name: 'Desfazer' }).click();
     await aviso(page, 'Cancelamento desfeito: a tarefa voltou para Lucas.');
-    await expect(box).toBeVisible();
-    await dlg.getByRole('button', { name: 'Fechar' }).click();
+    const de_novo = await abrirTarefa(page, origem);
+    await expect(de_novo.locator('.box', { hasText: 'Repassada para' })).toBeVisible();
+    await de_novo.getByRole('button', { name: 'Fechar' }).click();
 
     const lucas = await outraPessoa(browser, 'lucas');
     try {

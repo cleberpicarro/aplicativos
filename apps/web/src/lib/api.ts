@@ -86,8 +86,12 @@ export interface Card {
     parentNum: number | null;
     /** Item 41: o delegador pediu que a própria pessoa faça a tarefa. */
     noPass: boolean;
+    /** Item 90: última cobrança de quem delegou (null = nunca), quantas vezes e o recado. */
+    nudgedAt: string | null;
+    nudgeCount: number;
+    nudgeMessage: string | null;
   };
-  child: null | { delegationId: string; cardId: string; code: string; num: number; ownerName: string; status: DelegationStatus; reopened: boolean; noPass: boolean };
+  child: null | { delegationId: string; cardId: string; code: string; num: number; ownerName: string; status: DelegationStatus; reopened: boolean; noPass: boolean; nudgedAt: string | null; nudgeCount: number };
   checklist: { done: number; total: number };
   source: 'web' | 'email' | 'trello' | 'arquivo' | 'assistente' | null;
   createdAt: string;
@@ -98,7 +102,7 @@ export interface Me {
   directReports: { id: string; name: string; roleTitle: string }[];
   counts: { inbox: number; needAction: number; unread: number };
   /** Item 80: tarefas delegadas ou transferidas que chegaram e ainda não apareceram como balão. */
-  fresh?: { id: string; text: string; cardId: string | null }[];
+  fresh?: { id: string; text: string; cardId: string | null; type?: string }[];
   /** Item 46: resumo diário e avisos de prazo por e-mail (ligados por padrão). */
   prefs: { workspaceBg: string | null; emailDigest: boolean; emailDue: boolean; hideInactive: boolean };
   today: string;
