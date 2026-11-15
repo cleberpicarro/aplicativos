@@ -362,7 +362,7 @@ export function HelpPage({ isAdmin }: { isAdmin: boolean }) {
       </Sec>
 
       <Sec id="admin" title="Manual do administrador">
-        <p>A tela <b>Pessoas</b> aparece só para quem tem permissão de administração.</p>
+        <p>As telas <b>Pessoas</b> e <b>Configurações</b> aparecem só para quem tem permissão de administração.</p>
         <h3>Cadastrar uma pessoa</h3>
         <ol>
           <li>Em <b>Pessoas</b>, clique em <b>Nova pessoa</b>.</li>
@@ -382,7 +382,7 @@ export function HelpPage({ isAdmin }: { isAdmin: boolean }) {
         </ul>
         <p>O CEO não tem superior direto. O nível (CEO, diretor, gestor, funcionário) é escolhido no cadastro.</p>
         <h3>Destacar atrasadas e de hoje (vale para todos)</h3>
-        <p>Em <b>Pessoas</b>, clique em <b>Configurações</b>. Marque <b>Destacar tarefas atrasadas</b> e/ou <b>Destacar tarefas que vencem hoje</b> e escolha a cor de cada uma (padrão: vermelho e amarelo). Clique em <b>Salvar</b>.</p>
+        <p>No menu, clique em <b>Configurações</b> (engrenagem, logo abaixo de Pessoas). Marque <b>Destacar tarefas atrasadas</b> e/ou <b>Destacar tarefas que vencem hoje</b> e escolha a cor de cada uma (padrão: vermelho e amarelo). Clique em <b>Salvar</b>.</p>
         <p>Para todas as pessoas, o cartão inteiro no Quadro e a linha inteira na Tabela, em Tarefas delegadas e na Caixa de entrada ficam na cor escolhida, com letras em negrito (brancas ou pretas, conforme a cor). O destaque passa por cima da cor que a pessoa deu ao cartão. Tarefa concluída, arquivada ou aguardando o ciente não é pintada. Para voltar ao normal, desmarque e salve: a cor escolhida fica guardada.</p>
         <h3>Desativar ou reativar</h3>
         <p>Não existe excluir: quem sai é <b>desativado</b>. Nada é apagado, o log continua com o nome da pessoa e ela pode ser reativada depois.</p>

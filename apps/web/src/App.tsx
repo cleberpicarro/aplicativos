@@ -13,6 +13,7 @@ import { InboxPage } from './pages/Inbox';
 import { DelegatedPage } from './pages/Delegated';
 import { NotificationsPage } from './pages/Notifications';
 import { PeoplePage } from './pages/People';
+import { SettingsPage } from './pages/Settings';
 import { ConnectPage, ForgotPage, LoginPage, SetPasswordPage } from './pages/Auth';
 import { HelpPage } from './pages/Help';
 import { CapturePage } from './pages/Capture';
@@ -62,6 +63,7 @@ const PAGES: Record<string, { title: string }> = {
   '/delegadas': { title: 'Tarefas delegadas' },
   '/avisos': { title: 'Avisos' },
   '/pessoas': { title: 'Pessoas' },
+  '/configuracoes': { title: 'Configurações' },
   '/ajuda': { title: 'Ajuda' },
 };
 
@@ -157,7 +159,7 @@ function Shell() {
   let page = route.path;
   const cardCode = page.startsWith('/tarefa/') ? decodeURIComponent(page.slice(8)) : null;
   if (cardCode) page = lastPage.current;
-  else if (!PAGES[page] || (acting && (page === '/avisos' || page === '/pessoas'))) page = home;
+  else if (!PAGES[page] || (acting && (page === '/avisos' || page === '/pessoas' || page === '/configuracoes'))) page = home;
   // Guarda também os filtros (?filtro=...) para voltar ao mesmo lugar ao fechar uma tarefa.
   if (!cardCode) lastPage.current = PAGES[route.path] && route.params.toString() ? `${page}?${route.params}` : page;
 
@@ -195,9 +197,10 @@ function Shell() {
     { path: '/quadros', label: 'Tarefas', icon: 'board', show: me.user.inHierarchy },
     { path: '/entrada', label: 'Caixa de entrada', icon: 'inbox', n: me.counts.inbox, show: me.user.inHierarchy },
     { path: '/arquivadas', label: 'Arquivadas', icon: 'archive', show: me.user.inHierarchy },
-    { path: '/delegadas', label: 'Tarefas delegadas', icon: 'users', n: me.counts.needAction, attn: true, show: hasReports },
+    { path: '/delegadas', label: 'Tarefas delegadas', icon: 'delegate', n: me.counts.needAction, attn: true, show: hasReports },
     { path: '/avisos', label: 'Avisos', icon: 'bell', n: me.counts.unread, show: !acting },
-    { path: '/pessoas', label: 'Pessoas', icon: 'shield', show: me.user.isAdmin && !acting },
+    { path: '/pessoas', label: 'Pessoas', icon: 'users', show: me.user.isAdmin && !acting },
+    { path: '/configuracoes', label: 'Configurações', icon: 'gear', show: me.user.isAdmin && !acting },
   ];
 
   // O número no ☰ soma os contadores do menu (caixa de entrada, delegadas que pedem ação, avisos não lidos).
@@ -287,6 +290,7 @@ function Shell() {
         {page === '/delegadas' && <DelegatedPage />}
         {page === '/avisos' && <NotificationsPage />}
         {page === '/pessoas' && <PeoplePage />}
+        {page === '/configuracoes' && <SettingsPage />}
         {page === '/ajuda' && <HelpPage isAdmin={me.user.isAdmin} />}
       </main>
       {cardCode && <CardModal key={cardCode} code={cardCode} onClose={() => go(lastPage.current)} />}

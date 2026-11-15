@@ -991,6 +991,10 @@ table.t.phase tr:focus-visible { outline: 2px solid var(--accent); outline-offse
 :root[data-hl-late] :is(.row, tr).hl-late:hover, :root[data-hl-today] :is(.row, tr).hl-today:hover { filter: brightness(1.06); }
 /* Exemplo ao vivo na janela de Configurações do Admin. */
 .hl-sample { border-radius: 7px; padding: 8px 10px; font-weight: 700; }
+.settings-page { max-width: 760px; }
+.settings-block { border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; background: var(--bg); }
+.settings-block h2 { font-size: 16px; margin: 0 0 12px; }
+.settings-actions { display: flex; gap: 8px; justify-content: flex-end; }
 .hl-form { display: flex; flex-direction: column; gap: 14px; }
 .hl-part { border: 0; margin: 0; padding: 0 0 12px; display: flex; flex-direction: column; gap: 10px; border-bottom: 1px solid var(--line); min-width: 0; }
 .hl-part:last-of-type { border-bottom: 0; padding-bottom: 0; }
