@@ -1,11 +1,12 @@
 import { useState, type FormEvent } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { get, patch, post } from '../lib/api';
-import { Avatar, Dialog, ErrorText, Menu, useMe, useToast } from '../components/ui';
+import { Avatar, Dialog, ErrorText, Menu, useMe, useToast, useWide } from '../components/ui';
 import { SubstitutionBox } from '../components/Substitution';
 import { Icon } from '../components/Icons';
 import { LATE_TONES, TODAY_TONES, firstName, toneOf } from '../lib/format';
 import { ConfirmDialog, useAction } from '../components/dialogs';
+import { OrgChart } from '../components/OrgChart';
 
 interface Person {
   id: string; name: string; email: string; level: number | null; role_title: string; manager_id: string | null;
@@ -37,6 +38,10 @@ export function PeoplePage() {
     setHideChoice(v);
     patch('/me/prefs', { hideInactive: v }).then(() => qc.invalidateQueries({ queryKey: ['me'] }), () => { /* não gravou: vale só nesta visita */ });
   };
+  const [choice, setView] = useState<'list' | 'org'>('list');
+  /** Item 95: o organograma é só para o computador; no celular fica só a lista. */
+  const wide = useWide();
+  const view = wide ? choice : 'list';
   const { run, error } = useAction();
   const toast = useToast();
   if (!me.user.isAdmin) return <div className="page"><div className="empty">Somente a administração acessa esta tela.</div></div>;
@@ -55,9 +60,14 @@ export function PeoplePage() {
           <button className="b pri" onClick={() => setDlg({ kind: 'new' })}><Icon name="plus" />Nova pessoa</button>
         </span>
       </div>
+      {wide && <div className="tabs" role="tablist">
+        <button className="tab" role="tab" aria-selected={view === 'list'} onClick={() => setView('list')}>Lista</button>
+        <button className="tab" role="tab" aria-selected={view === 'org'} onClick={() => setView('org')}>Organograma</button>
+      </div>}
       <ErrorText error={error} />
       {q.isLoading && <p className="loading">Carregando…</p>}
-      <div className="table-wrap">
+      {view === 'org' && <OrgChart people={shown} onOpen={(p) => setDlg({ kind: 'edit', person: p as Person })} />}
+      {view === 'list' && <div className="table-wrap">
         <table className="t">
           <thead><tr><th>Pessoa</th><th>Cargo</th><th>Superior direto</th><th>Subordinados</th><th>Situação</th><th aria-label="Ações" /></tr></thead>
           <tbody>
@@ -86,7 +96,7 @@ export function PeoplePage() {
             ))}
           </tbody>
         </table>
-      </div>
+      </div>}
       <p className="hint" style={{ marginTop: 10 }}>Ao trocar o superior direto em Editar dados, as delegações em aberto passam ao novo superior e o histórico fica com o antigo.</p>
 
       {dlg?.kind === 'new' && <NewPersonDialog people={people} onClose={() => setDlg(null)} />}

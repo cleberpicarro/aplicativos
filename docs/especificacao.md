@@ -572,6 +572,7 @@ Visual de referência: a amostra aprovada.
 - Tabela: pessoa, e-mail, cargo, superior direto, número de subordinados, situação (ativa ou inativa).
 - Ações: **Novo usuário**, **Editar dados** (nome, e-mail, cargo exibido, administrador e superior direto; ninguém tira o próprio acesso de administrador), **Reenviar convite**, **Desativar** (janela de pendências com o sucessor, RN-43) ou **Reativar**.
 - Caixinha **Esconder inativas** acima da tabela (só aparece quando há pessoa inativa); a escolha fica gravada na conta de cada administrador (item 66).
+- Abas **Lista** (a tabela) e **Organograma** (item 95, só no computador; no celular fica só a lista): árvore montada pelo superior direto, CEO no topo, funcionários de cada gestor empilhados; clicar na pessoa abre **Editar dados**; **−** recolhe o ramo (**+ N**); inativas seguem **Esconder inativas**; administradores sem nível em **Fora da hierarquia**. Usa a mesma lista de `/api/admin/users`, sem rota nova.
 - O campo **Superior direto** mostra o cargo entre parênteses depois de cada nome (item 32), porque a lista mistura níveis.
 - Ao trocar o superior direto, a janela avisa antes de salvar que as delegações em aberto passam ao novo superior e, depois, informa quantas foram movidas. Nome, cargo e superior são salvos juntos: ou tudo, ou nada.
 

@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { del, get, patch, post, setActingAs, type Card } from './lib/api';
 import { go, useRoute } from './lib/router';
 import { LATE_TONES, STATUS, TODAY_TONES, applyHighlight, cardNo, toneOf, type StatusKey } from './lib/format';
-import { Avatar, CardStatusIcon, Dialog, ErrorText, StatusIcon, TipIcon, useMe } from './components/ui';
+import { Avatar, CardStatusIcon, Dialog, ErrorText, StatusIcon, TipIcon, useMe, useWide } from './components/ui';
 import { Icon, type IconName } from './components/Icons';
 import { CardModal } from './components/CardModal';
 import { SubstitutionBox } from './components/Substitution';
@@ -371,19 +371,6 @@ function ActingBar() {
       <button className="b sm" onClick={() => setActingAs(null)}>Voltar para as minhas tarefas</button>
     </div>
   );
-}
-
-/** Tela larga (computador e notebook); no celular, até 820 px, como no styles.css. */
-function useWide() {
-  const query = '(min-width: 821px)';
-  const [wide, setWide] = useState(() => window.matchMedia(query).matches);
-  useEffect(() => {
-    const m = window.matchMedia(query);
-    const change = () => setWide(m.matches);
-    m.addEventListener('change', change);
-    return () => m.removeEventListener('change', change);
-  }, []);
-  return wide;
 }
 
 function SearchBox() {

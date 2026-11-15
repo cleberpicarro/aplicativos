@@ -996,3 +996,37 @@ table.t.phase tr:focus-visible { outline: 2px solid var(--accent); outline-offse
 .hl-part:last-of-type { border-bottom: 0; padding-bottom: 0; }
 .hl-swatches { grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr)); }
 .hl-swatches .sw-opt:disabled { opacity: 0.45; cursor: default; }
+
+/* Item 95: organograma em Pessoas */
+.org-wide { overflow: auto; border: 1px solid var(--line); border-radius: 8px; background: var(--sunk); padding: 18px 10px 24px; }
+.org-tree { display: inline-block; min-width: 100%; }
+.org-tree ul { display: flex; justify-content: center; padding: 18px 0 0; margin: 0; position: relative; list-style: none; }
+.org-tree > ul { padding-top: 0; }
+.org-tree li { display: flex; flex-direction: column; align-items: center; position: relative; padding: 18px 4px 0; }
+.org-tree > ul > li { padding-top: 0; }
+.org-tree li::before, .org-tree li::after { content: ''; position: absolute; top: 0; height: 18px; border-top: 1px solid var(--edge); width: 50%; }
+.org-tree li::before { right: 50%; }
+.org-tree li::after { left: 50%; border-left: 1px solid var(--edge); }
+.org-tree li:first-child::before, .org-tree li:last-child::after { border-top: 0; }
+.org-tree li:only-child::before { display: none; }
+.org-tree li:only-child::after { border-top: 0; }
+.org-tree > ul > li::before, .org-tree > ul > li::after { display: none; }
+.org-tree ul ul::before { content: ''; position: absolute; top: 0; left: 50%; height: 18px; border-left: 1px solid var(--edge); }
+.org-tree li:first-child::after { border-radius: 6px 0 0 0; }
+.org-tree li:last-child::before { border-right: 1px solid var(--edge); border-radius: 0 6px 0 0; }
+.org-tree ul.org-stack { flex-direction: column; align-items: stretch; gap: 6px; padding: 18px 0 0; }
+.org-tree ul.org-stack::before { left: 50%; }
+.org-tree .org-stack li { padding: 0; align-items: stretch; }
+.org-tree .org-stack li::before, .org-tree .org-stack li::after { display: none; }
+.org-box { display: flex; flex-direction: column; align-items: center; }
+.org-card { display: flex; gap: 8px; align-items: center; text-align: left; width: 172px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 8px;
+  background: var(--bg); color: var(--fg); cursor: pointer; font: inherit; box-shadow: 0 1px 2px rgba(0,0,0,.05); }
+.org-card:hover { border-color: var(--accent); }
+.org-txt { display: flex; flex-direction: column; min-width: 0; }
+.org-txt b { font-weight: 500; font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.org-txt small { color: var(--muted); font-size: 0.78rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.org-box.off .org-card { border-style: dashed; opacity: 0.6; }
+.org-fold { margin-top: -1px; border: 1px solid var(--line); background: var(--bg); color: var(--muted); border-radius: 0 0 6px 6px; font-size: 0.75rem;
+  padding: 0 8px; height: 1.1rem; line-height: 1; cursor: pointer; position: relative; z-index: 1; }
+.org-fold:hover { color: var(--fg); }
+.org-outside { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 12px; }

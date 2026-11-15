@@ -399,6 +399,7 @@ export function HelpPage({ isAdmin }: { isAdmin: boolean }) {
           </li>
         </ol>
         <p>A pessoa inativa continua na lista com a situação <b>Inativa</b>; marque <b>Esconder inativas</b> para tirá-la da vista (a escolha fica gravada na sua conta e vale da próxima vez que abrir a tela). O e-mail continua com ela. Para reativar, use <b>Reativar</b> no mesmo menu: ela volta a entrar e encontra os quadros e as privadas como deixou, mas o que foi passado adiante não volta sozinho.</p>
+        <p><b>Organograma</b> (só no computador): na tela Pessoas, a aba <b>Organograma</b> desenha a equipe a partir do superior direto de cada pessoa, com o CEO no topo e os funcionários de cada gestor empilhados embaixo dele. Clique numa pessoa para abrir <b>Editar dados</b>. O botão <b>−</b> embaixo de quem tem equipe recolhe o grupo (vira <b>+ N</b>, quantas pessoas ficaram escondidas). As inativas aparecem apagadas ou somem, conforme <b>Esconder inativas</b>; administradores sem nível ficam em <b>Fora da hierarquia</b>.</p>
         <h3>Substituto em férias e ausências</h3>
         <p>Quando alguém sai de surpresa e não escolheu substituto, abra o menu <b>…</b> da pessoa e escolha <b>Substituto em férias e ausências</b>. Funciona como em Meus dados (veja <b>Férias e ausências</b>): escolha quem substitui, se as tarefas comuns ficam compartilhadas e o último dia fora. A pessoa e o substituto recebem aviso. No mesmo lugar dá para encerrar.</p>
         <h3>Senhas</h3>
