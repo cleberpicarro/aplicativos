@@ -98,6 +98,36 @@ test.describe('administração de pessoas', () => {
     await expect(lg).not.toContainText('Inativa');
   });
 
+  test('organograma em Pessoas: só no computador, recolhe ramos e abre o cadastro (item 95) @celular', async ({ page }, info) => {
+    await entrar(page, 'renata');
+    await expect(page.getByRole('button', { name: 'Nova pessoa' })).toBeVisible();
+    if (info.project.name === 'celular') {
+      // no celular não há espaço: fica só a lista
+      await expect(page.getByRole('tab', { name: 'Organograma' })).toHaveCount(0);
+      return;
+    }
+    await page.getByRole('tab', { name: 'Organograma' }).click();
+    const org = page.locator('.org-tree');
+    const ramo = (nome: string) => org.locator('li').filter({ has: page.locator(':scope > .org-box .org-card', { hasText: nome }) });
+    // Carlos (diretor) → Marina (gestora) → João (funcionário)
+    await expect(ramo('Carlos Menezes').locator('.org-card', { hasText: 'Marina Teixeira' })).toBeVisible();
+    await expect(ramo('Marina Teixeira').locator('.org-card', { hasText: 'João Alves' })).toBeVisible();
+    // recolher o ramo da Marina esconde a equipe e mostra quantas pessoas
+    const botao = ramo('Marina Teixeira').locator(':scope > .org-box .org-fold');
+    await botao.click();
+    await expect(org.locator('.org-card', { hasText: 'João Alves' })).toHaveCount(0);
+    await expect(botao).toHaveText(/^\+ \d+$/);
+    await botao.click();
+    await expect(org.locator('.org-card', { hasText: 'João Alves' })).toBeVisible();
+    // clicar abre o cadastro
+    await org.locator('.org-card', { hasText: 'João Alves' }).click();
+    const e = dialogo(page, 'Editar dados');
+    await expect(e.getByLabel('Nome')).toHaveValue('João Alves');
+    await e.getByRole('button', { name: 'Cancelar' }).click();
+    await page.getByRole('tab', { name: 'Lista' }).click();
+    await expect(page.locator('table')).toBeVisible();
+  });
+
   test('quem não é administrador não vê a tela Pessoas', async ({ page }) => {
     await entrar(page, 'helena');
     await expect(page.getByRole('link', { name: /Pessoas/ })).toHaveCount(0);

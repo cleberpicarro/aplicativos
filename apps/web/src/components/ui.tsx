@@ -179,3 +179,16 @@ export function ErrorText({ error }: { error: unknown }) {
   if (!error) return null;
   return <p className="err" role="alert">{(error as Error).message}</p>;
 }
+
+/** Tela larga (computador e notebook); no celular, até 820 px, como no styles.css. */
+export function useWide() {
+  const query = '(min-width: 821px)';
+  const [wide, setWide] = useState(() => window.matchMedia(query).matches);
+  useEffect(() => {
+    const m = window.matchMedia(query);
+    const change = () => setWide(m.matches);
+    m.addEventListener('change', change);
+    return () => m.removeEventListener('change', change);
+  }, []);
+  return wide;
+}
