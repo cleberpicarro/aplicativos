@@ -1,4 +1,4 @@
-import { test, expect, entrar, outraPessoa, criarTarefa, api, dialogo, unico } from './apoio';
+import { test, expect, entrar, outraPessoa, criarTarefa, api, unico } from './apoio';
 
 /** Item 94: o Admin liga o destaque em cor sólida das atrasadas e das que vencem hoje; vale para todos. */
 const hoje = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
@@ -17,14 +17,17 @@ test.describe('destaque das atrasadas e de hoje (item 94)', () => {
 
     const admin = await outraPessoa(browser, 'renata', { viewport: { width: 1366, height: 800 } });
     try {
-      await admin.page.getByRole('button', { name: 'Configurações' }).click();
-      const d = dialogo(admin.page, 'Configurações para todos');
+      // Item 96: Configurações tem item próprio no menu, com engrenagem.
+      await admin.page.getByRole('link', { name: 'Configurações' }).click();
+      await expect(admin.page.locator('.topbar h1')).toHaveText('Configurações');
+      const d = admin.page.locator('.settings-block', { hasText: 'Destaque de prazos' });
       await d.getByRole('checkbox', { name: 'Destacar tarefas atrasadas' }).check();
       await d.getByRole('checkbox', { name: 'Destacar tarefas que vencem hoje' }).check();
       await d.getByRole('radio', { name: 'Verde' }).click();
       await expect(d.locator('.hl-sample')).toHaveCount(2);
       await d.getByRole('button', { name: 'Salvar' }).click();
-      await expect(d).toBeHidden();
+      await expect(admin.page.getByText('Configurações salvas. Valem para todos.')).toBeVisible();
+      await expect(d.getByRole('button', { name: 'Salvar' })).toBeDisabled();
 
       await page.reload();
       const cA = page.locator('article.kc', { hasText: atrasada });
@@ -40,11 +43,10 @@ test.describe('destaque das atrasadas e de hoje (item 94)', () => {
       await expect(page.locator('tr', { hasText: atrasada })).toHaveClass(/hl-late/);
 
       // Desligado: volta ao normal (só a data em vermelho)
-      await admin.page.getByRole('button', { name: 'Configurações' }).click();
       await d.getByRole('checkbox', { name: 'Destacar tarefas atrasadas' }).uncheck();
       await d.getByRole('checkbox', { name: 'Destacar tarefas que vencem hoje' }).uncheck();
       await d.getByRole('button', { name: 'Salvar' }).click();
-      await expect(d).toBeHidden();
+      await expect(d.getByRole('button', { name: 'Salvar' })).toBeDisabled();
       await page.reload();
       await expect(page.locator('tr', { hasText: atrasada })).toBeVisible();
       expect(await fundo(page.locator('tr', { hasText: atrasada }).locator('td').first())).not.toBe('rgb(198, 40, 40)');
@@ -54,9 +56,17 @@ test.describe('destaque das atrasadas e de hoje (item 94)', () => {
     }
   });
 
-  test('quem não é Admin não vê o botão Configurações', async ({ page }) => {
+  test('quem não é Admin não vê Configurações no menu nem abre a tela pelo endereço', async ({ page }) => {
     await entrar(page, 'marina');
+    await expect(page.getByRole('link', { name: 'Configurações' })).toHaveCount(0);
+    await page.goto('/#/configuracoes');
+    await expect(page.getByText('Destaque de prazos')).toHaveCount(0);
+  });
+
+  test('Pessoas não tem mais o botão Configurações (item 96)', async ({ page }) => {
+    await entrar(page, 'renata');
     await page.goto('/#/pessoas');
+    await expect(page.getByRole('button', { name: 'Nova pessoa' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Configurações' })).toHaveCount(0);
   });
 });
