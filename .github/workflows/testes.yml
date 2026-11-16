@@ -47,7 +47,7 @@ jobs:
         run: npm run test:telas
       - name: Guardar fotos e relatório se algum roteiro falhar
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: roteiros-de-tela
           path: |
