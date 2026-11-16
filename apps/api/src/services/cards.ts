@@ -77,6 +77,8 @@ export interface CardDto {
   };
   child: null | { delegationId: string; cardId: string; code: string; num: number; ownerName: string; status: string; reopened: boolean; noPass: boolean; nudgedAt: string | null; nudgeCount: number };
   checklist: { done: number; total: number };
+  /** Item 103: repetição (null = não se repete). */
+  repeat: { kind: 'uteis' | 'semanal' | 'mensal' | 'dias'; n: number | null } | null;
   source: string | null;
   createdAt: string;
 }
@@ -139,6 +141,7 @@ export function toCardDto(r: any): CardDto {
         }
       : null,
     checklist: { done: r.cl_done, total: r.cl_total },
+    repeat: r.repeat_kind ? { kind: r.repeat_kind, n: r.repeat_n ?? null } : null,
     source: r.source ?? null,
     createdAt: r.created_at,
   };

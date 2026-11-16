@@ -38,7 +38,9 @@ App de tarefas da **Nerus** (~90–99 pessoas): quadros pessoais no estilo Trell
 - Site comercial: pasta `site/` (HTML e CSS estáticos), serviço estático **synctasks-site** no mesmo `render.yaml` → https://synctasks-site.onrender.com. Plano Equipe: R$ 20,00 por usuário/mês; limite do plano Grátis e contato ainda em `[colchetes]`; os botões “Começar” levam ao app por enquanto.
 - Banco no Render: `nerus-db` (nome mantido de propósito; trocar o nome no `render.yaml` cria um banco novo e vazio). Item 45 (16/10/2026): **em produção**. O banco, com os dados reais do Cleber e do Daniel, está no plano pago `basic-256mb` (não expira) e o serviço no Starter. As pessoas de exemplo foram desativadas.
 - `SEED_DEMO=true` cria a equipe de exemplo (senha `nerus2026`: marina, joao, carlos, helena, renata `@nerus.com.br`) só num banco vazio. Em produção fica `false`; a senha está no README, que é público.
-- E-mail: SMTP do Google Workspace ainda não configurado (sem `SMTP_HOST` os e-mails só vão para o log).
+- E-mail: ligado desde 17/10/2026 pela conta gratuita `synctasks.nerus@gmail.com` (SMTP do Gmail; limite de ~500 destinatários/dia, ver R2 da revisão geral). Sem `SMTP_HOST` os e-mails só vão para o log. Falhas aparecem em Configurações e no aviso diário aos admins (item 100).
+- Cópia de segurança: semanal pelo GitHub Actions (`copia-seguranca.yml`, item 97), trancada com senha; precisa dos segredos `BACKUP_DATABASE_URL` e `BACKUP_PASSWORD` (README).
+- Peças de terceiros: o Dependabot abre PRs semanais para a tender-volta (item 98). Se o `npm install` do npm 10 der `edgesOut`, use `npx npm@11 install` e confira com `npm ci`.
 
 ## Pendências conhecidas
 

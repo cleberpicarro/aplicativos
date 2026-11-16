@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { get, patch } from '../lib/api';
+import { get, patch, post } from '../lib/api';
 import { ErrorText, useMe } from '../components/ui';
 import { LATE_TONES, TODAY_TONES, toneOf } from '../lib/format';
 import { useAction } from '../components/dialogs';
@@ -18,6 +18,7 @@ export function SettingsPage() {
     <div className="page settings-page">
       <p className="hint" style={{ marginTop: 0 }}>Valem para todas as pessoas, em qualquer computador e no celular.</p>
       <HighlightSettings />
+      <HealthBlock />
     </div>
   );
 }
@@ -68,6 +69,57 @@ function HighlightSettings() {
           <button className="b pri" type="submit" disabled={busy || !s || !draft}>Salvar</button>
         </div>
       </form>
+    </section>
+  );
+}
+
+interface Health {
+  errors: number;
+  errorSamples: { detail: string; count: number; last: string }[];
+  failedMail: number;
+  failedSamples: { id: string; to: string; subject: string; error: string | null; at: string }[];
+  stuckMail: number;
+}
+
+const when = (iso: string) => new Date(iso).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+
+/** Item 100: problemas dos últimos 7 dias. O mesmo resumo vai por e-mail aos administradores, uma vez por dia, se houver. */
+function HealthBlock() {
+  const q = useQuery({ queryKey: ['admin-health'], queryFn: () => get<Health>('/admin/health') });
+  const { run, busy, error } = useAction();
+  const h = q.data;
+  const ok = h && !h.errors && !h.failedMail && !h.stuckMail;
+  const retry = () => run(() => post<{ queued: number }>('/admin/health/retry-mail'), 'E-mails de volta na fila. O app tenta enviar de novo agora.').then(() => q.refetch());
+  return (
+    <section className="settings-block" aria-labelledby="st-health">
+      <h2 id="st-health">Problemas nos últimos 7 dias</h2>
+      <p className="hint" style={{ margin: 0 }}>Se algo der errado (e-mail que não saiu ou erro no servidor), a administração recebe um e-mail por dia, a partir das 8h, com o resumo.</p>
+      {q.isLoading && <p className="loading">Carregando…</p>}
+      <ErrorText error={q.error ?? error} />
+      {ok && <p className="health-ok">Nenhum problema. Tudo funcionando.</p>}
+      {h && h.failedMail > 0 && (
+        <div className="health-part">
+          <b>{h.failedMail === 1 ? '1 e-mail não foi enviado' : `${h.failedMail} e-mails não foram enviados`}</b>
+          <ul className="health-list">
+            {h.failedSamples.map((m) => (
+              <li key={m.id}><span>{when(m.at)}</span> para {m.to}: “{m.subject}”{m.error && <em> ({m.error.slice(0, 160)})</em>}</li>
+            ))}
+          </ul>
+          <p className="hint" style={{ margin: 0 }}>Uma causa comum é o limite diário de envios da conta de e-mail. Quando passar, tente de novo.</p>
+          <div className="settings-actions"><button className="b" onClick={retry} disabled={busy}>Tentar de novo</button></div>
+        </div>
+      )}
+      {h && h.stuckMail > 0 && <div className="health-part"><b>{h.stuckMail} e-mail(s) na fila há mais de 1 hora</b></div>}
+      {h && h.errors > 0 && (
+        <div className="health-part">
+          <b>{h.errors === 1 ? '1 erro inesperado no servidor' : `${h.errors} erros inesperados no servidor`}</b>
+          <ul className="health-list">
+            {h.errorSamples.map((e) => (
+              <li key={e.detail}><span>{when(e.last)}</span> {e.detail}{e.count > 1 && <em> ({e.count} vezes)</em>}</li>
+            ))}
+          </ul>
+        </div>
+      )}
     </section>
   );
 }

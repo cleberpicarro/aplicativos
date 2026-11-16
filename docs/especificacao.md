@@ -793,15 +793,15 @@ REST com JSON, sob `/api`. A autenticação usa cookie httpOnly de sessão. Toda
 
 | Tema | Requisito |
 |---|---|
-| **Segurança** | Senhas com Argon2id. Cookies `httpOnly`, `Secure`, `SameSite=Lax`. Proteção CSRF. Limite de tentativas de login. Autorização sempre no servidor. HTTPS obrigatório. |
+| **Segurança** | Senhas com scrypt (custo N=16384; tão seguro quanto Argon2id para este uso). Cabeçalhos de segurança do navegador (CSP, X-Frame-Options, HSTS). Cookies `httpOnly`, `Secure`, `SameSite=Lax`. Proteção CSRF. Limite de tentativas de login. Autorização sempre no servidor. HTTPS obrigatório. |
 | **Privacidade (LGPD)** | Dados mínimos (nome, e-mail, cargo). Tarefas privadas invisíveis a superiores. Exportação e anonimização de dados de quem sai, sem quebrar o log (o autor vira "Usuário removido"). |
 | **Integridade** | Log imutável (RN-50). Transições validadas por máquina de estados. Operações compostas em transação. |
 | **Desempenho** | Telas principais em menos de 1 s com 100 usuários e 1 milhão de tarefas. Busca em menos de 500 ms. |
-| **Disponibilidade** | Horário comercial como prioridade. Backups diários do banco, com retenção de 30 dias e restauração testada. |
+| **Disponibilidade** | Horário comercial como prioridade. Recuperação do próprio Render (dias conforme o plano) e cópia semanal fora do Render, trancada com senha, guardada por 90 dias e com a restauração testada a cada cópia (item 97). |
 | **PWA** | Instalável no Android e iOS, com ícone e nome. O app abre offline em modo somente leitura da última carga. As ações exigem conexão. |
 | **Compatibilidade** | Chrome, Edge, Safari e Firefox atuais. Celular a partir de 360px. |
 | **Idioma e fuso** | Português do Brasil. Datas em `America/Sao_Paulo`. |
-| **Observabilidade** | Logs estruturados no servidor. Alerta de falhas de envio de e-mail. |
+| **Observabilidade** | Logs estruturados no servidor. Erros inesperados e e-mails que falharam vão para um aviso diário aos administradores e para a tela Configurações (item 100). Faxina diária do que não se usa mais (item 101). |
 | **Acessibilidade** | WCAG 2.1 AA (seção 13.4). |
 
 ---

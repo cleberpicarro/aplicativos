@@ -167,3 +167,13 @@ export function applyHighlight(late: { bg: string; ink: string } | null, today: 
     }
   }
 }
+
+/* Item 103: texto da repetição. */
+export const WEEKDAYS = ['segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado', 'domingo'];
+export function repeatLabel(r: { kind: string; n: number | null }): string {
+  if (r.kind === 'uteis') return 'Todo dia útil';
+  if (r.kind === 'semanal') return `Toda semana, na ${WEEKDAYS[(r.n ?? 1) - 1]}`.replace('na sábado', 'no sábado').replace('na domingo', 'no domingo');
+  if (r.kind === 'mensal') return `Todo mês, no dia ${r.n}`;
+  return r.n === 1 ? 'Todo dia' : `A cada ${r.n} dias`;
+}
+

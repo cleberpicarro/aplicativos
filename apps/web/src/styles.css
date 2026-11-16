@@ -991,7 +991,7 @@ table.t.phase tr:focus-visible { outline: 2px solid var(--accent); outline-offse
 :root[data-hl-late] :is(.row, tr).hl-late:hover, :root[data-hl-today] :is(.row, tr).hl-today:hover { filter: brightness(1.06); }
 /* Exemplo ao vivo na janela de Configurações do Admin. */
 .hl-sample { border-radius: 7px; padding: 8px 10px; font-weight: 700; }
-.settings-page { max-width: 760px; }
+.settings-page { max-width: 760px; display: flex; flex-direction: column; gap: 16px; }
 .settings-block { border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; background: var(--bg); }
 .settings-block h2 { font-size: 16px; margin: 0 0 12px; }
 .settings-actions { display: flex; gap: 8px; justify-content: flex-end; }
@@ -1034,3 +1034,13 @@ table.t.phase tr:focus-visible { outline: 2px solid var(--accent); outline-offse
   padding: 0 8px; height: 1.1rem; line-height: 1; cursor: pointer; position: relative; z-index: 1; }
 .org-fold:hover { color: var(--fg); }
 .org-outside { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 12px; }
+/* Item 100: problemas dos últimos 7 dias, em Configurações. */
+.health-ok { margin: 10px 0 0; color: var(--ok, #2f7d4f); font-weight: 500; }
+.health-part { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; }
+.health-list { margin: 0; padding-left: 18px; font-size: 0.86rem; display: flex; flex-direction: column; gap: 3px; overflow-wrap: anywhere; }
+.health-list span { color: var(--faint); margin-right: 4px; }
+.health-list em { color: var(--faint); font-style: normal; }
+/* Item 103: repetir a tarefa. */
+.card-side .field select + select { margin-top: 4px; }
+.rep-n { display: flex; align-items: center; gap: 6px; margin-top: 4px; font-size: 0.86rem; }
+.rep-n .input { width: 5rem; }

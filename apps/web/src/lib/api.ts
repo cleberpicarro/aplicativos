@@ -93,6 +93,8 @@ export interface Card {
   };
   child: null | { delegationId: string; cardId: string; code: string; num: number; ownerName: string; status: DelegationStatus; reopened: boolean; noPass: boolean; nudgedAt: string | null; nudgeCount: number };
   checklist: { done: number; total: number };
+  /** Item 103: repetição (null = não se repete). */
+  repeat: Repeat | null;
   source: 'web' | 'email' | 'trello' | 'arquivo' | 'assistente' | null;
   createdAt: string;
 }
@@ -160,3 +162,6 @@ export interface Overview {
     tasks: Card[];
   }[];
 }
+
+/** Item 103: tarefa que se repete. uteis = todo dia útil; semanal n = dia da semana (1 seg … 7 dom); mensal n = dia do mês; dias n = a cada n dias. */
+export interface Repeat { kind: 'uteis' | 'semanal' | 'mensal' | 'dias'; n: number | null }
