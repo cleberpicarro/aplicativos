@@ -41,7 +41,8 @@ test.describe('entrar e sair', () => {
     await entrar(page, 'marina');
     await expect(page.locator('.topbar h1')).toHaveText('Tarefas'); // item 58: quem tem equipe também abre nas tarefas
     await abrirMenu(page);
-    await expect(page.getByRole('link', { name: /Painel/ })).toBeVisible();
+    await expect(page.getByRole('link', { name: /Tarefas delegadas/ })).toBeVisible();
+    await expect(page.getByRole('link', { name: /Painel/ })).toHaveCount(0); // item 105: o Painel virou parte de Tarefas delegadas
     await sair(page);
 
     await entrar(page, 'renata');

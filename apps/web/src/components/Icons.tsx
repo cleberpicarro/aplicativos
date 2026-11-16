@@ -1,6 +1,7 @@
 import type { ReactElement } from 'react';
 
 const P: Record<string, ReactElement> = {
+  search: <><circle cx="11" cy="11" r="6.5" /><path d="M16 16l4.5 4.5" /></>,
   expand: <path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7" />,
   chevR: <path d="M9.5 5.5L16 12l-6.5 6.5" />,
   board: <><rect x="3.5" y="4" width="7" height="16" rx="1.5" /><rect x="13.5" y="4" width="7" height="10" rx="1.5" /></>,

@@ -30,13 +30,15 @@ test.describe('transferir e buscar', () => {
     }
   });
 
-  test('buscar pelo número (com ou sem #), pelo código antigo ST- e por texto @celular', async ({ page }) => {
+  test('buscar pelo número (com ou sem #), pelo código antigo ST- e por texto @celular', async ({ page, isMobile }) => {
     await entrar(page, 'lucas');
     await irPara(page, 'Tarefas').catch(() => undefined);
     const titulo = unico('Pedido de compra');
     const codigo = await criarTarefa(page, titulo);
     const numero = await numeroDe(page, codigo);
     const antigo = (await api(page, 'GET', `/cards/${codigo}`)).card.code as string;
+    // U2 da revisão geral: no celular, a busca abre pela lupa
+    if (isMobile) await page.getByRole('button', { name: 'Buscar', exact: true }).click();
     const busca = page.getByLabel('Buscar tarefa ou número');
     for (const termo of [numero, numero.slice(1), antigo]) {
       await busca.fill(termo);

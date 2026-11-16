@@ -4,7 +4,7 @@ import { get, post, type Card } from '../lib/api';
 import { go } from '../lib/router';
 import { Avatar, CardStatusIcon, Due, useMe, useToast } from '../components/ui';
 import { Icon } from '../components/Icons';
-import { TIPS, cardNo, dueTone, plural } from '../lib/format';
+import { TIPS, cardNo, dueTone, firstName, plural, shortDate } from '../lib/format';
 import { BookmarkletButton } from './Capture';
 import { AcceptDialog, DeclineDialog, DelegateDialog, acceptPlace, saveAcceptPlace, useAction, useDiscard } from '../components/dialogs';
 
@@ -115,6 +115,8 @@ export function InboxPage() {
                 <div className="title">
                   <button onClick={() => go(`/tarefa/${c.id}`)} title={c.title}>{c.title}</button>
                   {note && <span className="note" title={note}>{note}</span>}
+                  {/* U3 da revisão geral: no celular, de quem veio e o prazo embaixo do título (a descrição sai). */}
+                  <span className="from-m">{from ? `de ${firstName(from)}` : how}{c.dueDate ? ` · ${shortDate(c.dueDate)}` : ''}</span>
                 </div>
                 <span className="person" title={`${how} ${from}`.trim()}>{web ? <span className="ico"><Icon name="inbox" /></span> : <Avatar name={from} />}<span>{from}</span></span>
                 <span className="code">{cardNo(c.num)}</span>

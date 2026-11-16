@@ -50,6 +50,19 @@ test.describe('administração de pessoas', () => {
     await expect(dd.getByLabel('Quem recebe as pendências')).toHaveCount(0);
     await dd.getByRole('button', { name: 'Desativar' }).click();
     await expect(linha).toContainText('Inativa');
+
+    // Item 118 (F7, LGPD): baixar os dados e anonimizar quem saiu.
+    await linha.getByRole('button', { name: `Ações para ${nome}` }).click();
+    const baixar = page.waitForEvent('download');
+    await page.getByRole('menuitem', { name: 'Baixar dados (JSON)' }).click();
+    expect((await baixar).suggestedFilename()).toMatch(/^dados-pessoa-nova.*\.json$/);
+    await linha.getByRole('button', { name: `Ações para ${nome}` }).click();
+    await page.getByRole('menuitem', { name: 'Anonimizar…' }).click();
+    const an = dialogo(page, 'Anonimizar pessoa');
+    await expect(an).toContainText('Não tem volta');
+    await an.getByRole('button', { name: 'Anonimizar para sempre' }).click();
+    await expect(page.locator('.toast', { hasText: 'Dados anonimizados.' })).toBeVisible();
+    await expect(page.locator('tr', { hasText: nome })).toHaveCount(0);
   });
 
   test('desativar quem tem equipe passa as pendências ao sucessor; reativar devolve o acesso (item 44)', async ({ page }) => {

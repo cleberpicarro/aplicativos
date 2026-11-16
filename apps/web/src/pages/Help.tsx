@@ -14,7 +14,6 @@ const SECTIONS: [string, string][] = [
   ['assistente', 'Claude e outros assistentes'],
   ['entrada', 'Caixa de entrada'],
   ['delegar', 'Delegar'],
-  ['painel', 'Painel'],
   ['acompanhar', 'Tarefas delegadas'],
   ['concluir', 'Concluir, ciente e reabrir'],
   ['devolver', 'Devolver e transferir'],
@@ -41,9 +40,14 @@ function Sec({ id, title, children }: { id: string; title: string; children: Rea
   );
 }
 
-export function HelpPage({ isAdmin }: { isAdmin: boolean }) {
+export function HelpPage({ isAdmin, onLegend, onKeys }: { isAdmin: boolean; onLegend?: () => void; onKeys?: () => void }) {
   return (
     <div className="page help">
+      {/* U9 da revisão geral: Legenda e Atalhos saíram do menu e ficam aqui, dentro da Ajuda. */}
+      <div className="help-quick">
+        {onLegend && <button className="b" onClick={onLegend}><Icon name="help" />Legenda dos ícones</button>}
+        {onKeys && <button className="b" onClick={onKeys}><Icon name="keyboard" />Atalhos de teclado</button>}
+      </div>
       <p style={{ marginTop: 0 }}>
         O SyncTasks junta duas coisas: <b>quadros pessoais</b>, onde cada um organiza o próprio trabalho como quiser, e{' '}
         <b>delegação</b>, para quem tem equipe saber o que entregou a cada pessoa e em que pé está.
@@ -62,10 +66,10 @@ export function HelpPage({ isAdmin }: { isAdmin: boolean }) {
       <Sec id="inicio" title="Primeiros passos">
         <ol>
           <li>Você recebe um e-mail com o link para <b>definir sua senha</b>. Depois, entre com seu e-mail e senha. O <b>olho</b> no fim do campo de senha mostra o que você digitou; clique de novo para ocultar.</li>
-          <li>No menu à esquerda ficam o <b>Painel</b> e as <b>Tarefas delegadas</b> (só para quem tem equipe), <b>Tarefas</b>, a <b>Caixa de entrada</b>, as <b>Arquivadas</b> e <b>Avisos</b>. Todo mundo começa pelas próprias <b>Tarefas</b>; o Painel fica a um clique, no menu.</li>
+          <li>No menu à esquerda ficam as <b>Tarefas delegadas</b> (só para quem tem equipe), <b>Tarefas</b>, a <b>Caixa de entrada</b>, as <b>Arquivadas</b> e <b>Avisos</b>. Todo mundo começa pelas próprias <b>Tarefas</b>.</li>
           <li>O menu pode ser recolhido pelo botão <b>Recolher menu</b>, no rodapé dele. Recolhido, ele mostra só os ícones.</li>
           <li>No celular, o menu fica no botão <b>☰</b> (3 barrinhas), no alto à esquerda. Um número laranja nele mostra quanta coisa espera por você. Toque para abrir; ele fecha no <b>X</b>, tocando fora dele, com o botão <b>Voltar</b> do celular ou ao escolher uma tela.</li>
-          <li>No topo, à direita, ficam a <b>busca</b>, o tamanho do texto (<b>A−</b> / <b>A+</b>) e o botão de <b>tema</b>: automático (segue o Windows), claro ou escuro. Cada clique troca o tema.</li>
+          <li>No topo, à direita, ficam a <b>busca</b> (no celular, uma <b>lupa</b>: toque para abrir) e, no computador, o botão de <b>tema</b>: automático (segue o Windows), claro ou escuro (cada clique troca). O <b>tamanho do texto</b> (<b>A−</b> / <b>A+</b>) e o tema também ficam em <b>Meus dados</b>, no bloco “Aparência neste navegador”.</li>
         </ol>
       </Sec>
 
@@ -89,14 +93,14 @@ export function HelpPage({ isAdmin }: { isAdmin: boolean }) {
           <li><b>Mover para outro quadro:</b> abra a tarefa e use <b>Mover para</b>: escolha o quadro e a fase. Ali também há <b>Para o topo</b> e <b>Para o fim</b>, úteis no celular.</li>
           <li><b>Abrir:</b> clique no título. Ali você edita título, descrição e prazo, monta o <b>checklist</b> (clique no texto de um item para corrigi-lo: Enter salva, Esc cancela) e comenta. Em <b>Repetir</b> você escolhe se ela se repete (todo dia útil, toda semana num dia, todo mês num dia ou a cada N dias): ao <b>concluir</b>, nasce na mesma fase a próxima, com o próximo prazo e o checklist desmarcado; o cartão mostra o ícone de repetir. Desfazer a conclusão tira a próxima, se você ainda não mexeu nela. Tarefa recebida por delegação não se repete. No alto aparecem com quem a tarefa está, <b>quem a criou</b> e quando (numa tarefa que veio por delegação, quem criou a de origem) e, se ela foi delegada, <b>quem delegou por último</b> e quando.</li>
           <li><b>Seguidores:</b> dentro da tarefa, no campo <b>Seguidores</b>, inclua e-mails <b>@nerus.com.br</b> de quem precisa acompanhar (a pessoa não precisa usar o SyncTasks). Cada novidade da tarefa vai por e-mail para eles, com o que mudou e o histórico completo; novidades com menos de 5 minutos entre si vão num e-mail só. Quem está com a tarefa e quem a delegou incluem e tiram seguidores; o e-mail traz o link <b>Parar de seguir</b>. Ao delegar, os seguidores vão junto para a tarefa de quem recebe. Tarefa privada não tem seguidores.</li>
-          <li><b>Concluir:</b> clique no círculo à esquerda do título, ou em <b>Concluir</b> dentro da tarefa. A fase não define se a tarefa está concluída: concluir é sempre um clique explícito.</li>
+          <li><b>Concluir:</b> clique no círculo à esquerda do título, ou em <b>Concluir</b> dentro da tarefa (no celular, logo abaixo do título, junto com o prazo). A fase não define se a tarefa está concluída: concluir é sempre um clique explícito.</li>
           <li><b>Arquivar:</b> na tarefa concluída aparece um pequeno ícone de arquivo, no canto do cartão. Um clique tira a tarefa do quadro, e o aviso embaixo traz <b>Desfazer</b> por alguns segundos. Também há <b>Arquivar</b> dentro da tarefa e <b>Arquivar as concluídas</b> no menu <b>…</b> da fase. A tarefa arquivada vai para <b>Arquivadas</b>, no menu à esquerda, e continua na <b>busca</b>; use <b>Desarquivar</b> para trazê-la de volta. Tarefa recebida por delegação é arquivada por quem delegou, ao dar o ciente.</li>
           <li><b>Descartar (tarefa criada por engano):</b> não existe apagar tarefa, porque o número nunca é reaproveitado e o histórico fica guardado. Para tirar do quadro uma tarefa sua que não vai ser feita, abra a tarefa e clique em <b>Descartar</b>. Ela vai para <b>Arquivadas</b> com a etiqueta “Descartada” (não como concluída), e o aviso traz <b>Desfazer</b>. Para trazer de volta depois, use <b>Desarquivar</b>: ela volta à mesma fase, com o mesmo número. Tarefa concluída se arquiva; tarefa recebida por delegação se devolve; com delegação em aberto, cancele a delegação antes.</li>
         </ul>
       </Sec>
 
             <Sec id="filtro-quadro" title="Filtro no quadro">
-        <p>No quadro aberto, no alto da tela, à esquerda de <b>Quadro / Tabela</b>, ficam o mesmo <b>Filtro</b> da tabela (com os filtros prontos e os seus filtros salvos), os atalhos <b>Delegadas para mim</b> e <b>Delegadas por mim</b> (no notebook e no celular, <b>Para mim</b> e <b>Por mim</b>) e <b>Condição</b>. As etiquetas do filtro ligado aparecem acima das fases. No celular, esses botões ficam acima das fases.</p>
+        <p>No quadro aberto, no alto da tela, à esquerda de <b>Quadro / Tabela</b>, ficam o mesmo <b>Filtro</b> da tabela (com os filtros prontos e os seus filtros salvos), os atalhos <b>Delegadas para mim</b> e <b>Delegadas por mim</b> (no notebook e no celular, <b>Para mim</b> e <b>Por mim</b>) e <b>Condição</b>. As etiquetas do filtro ligado aparecem acima das fases. No celular, esses botões ficam acima das fases, numa linha só (o que não couber rola de lado), e o zoom não aparece.</p>
         <ul>
           <li>Com o filtro ligado, o quadro <b>esconde as tarefas que não atendem a ele</b>; as fases continuam no lugar, cada uma com a contagem, por exemplo “3 de 10”. A faixa azul mostra “Filtro ligado: mostrando 12 de 40 tarefas” e tem o botão <b>Limpar filtro</b>.</li>
           <li>Arrastar, criar e abrir tarefas continua igual. Se uma tarefa deixar de atender ao filtro (por exemplo, concluída num filtro de abertas) ou for criada sem atender a ele, ela some da vista e um aviso explica.</li>
@@ -214,29 +218,24 @@ export function HelpPage({ isAdmin }: { isAdmin: boolean }) {
           <li>Crie a tarefa no seu quadro (ou use uma que você recebeu).</li>
           <li>Abra a tarefa e clique em <b>Delegar</b>.</li>
           <li>Escolha a pessoa, o prazo sugerido e, se quiser, uma observação.</li>
-          <li>Se a própria pessoa precisa fazer, marque <b>Não pode ser repassada</b>: ela não consegue delegar a tarefa nem transferi-la para um subordinado (para um colega ou para o superior dela, pode).</li>
+          <li>Se a própria pessoa precisa fazer, marque <b>Não pode ser redelegada</b>: ela não consegue delegar a tarefa nem transferi-la para um subordinado (para um colega ou para o superior dela, pode).</li>
         </ol>
-        <p>Você liga ou desliga <b>Não pode ser repassada</b> depois, dentro da sua tarefa, no bloco “Repassada para”. A pessoa é avisada e a mudança fica no log. Na tabela, o filtro <b>Pode repassar</b> acha essas tarefas.</p>
+        <p>Você liga ou desliga <b>Não pode ser redelegada</b> depois, dentro da sua tarefa, no bloco “Delegada para”. A pessoa é avisada e a mudança fica no log. Na tabela, o filtro <b>Pode redelegar</b> acha essas tarefas.</p>
         <p>Se a tarefa for <b>privada</b>, ela deixa de ser privada ao delegar: tarefa delegada não pode ser privada.</p>
         <p>A pessoa recebe um <b>cartão ligado ao seu</b>, com o número do quadro dela, e é avisada no app e por e-mail. O seu cartão continua no seu quadro com a etiqueta verde-azulada <b>Para [nome]</b>; no quadro da pessoa, o cartão dela mostra a etiqueta roxa <b>De [seu nome]</b>.</p>
         <p>Quando a pessoa <b>aceita</b> a tarefa, você recebe um aviso no app e por e-mail.</p>
         <h3>Cancelar a delegação</h3>
-        <p>Mudou de ideia? Abra a sua tarefa e, no bloco <b>Repassada para</b>, clique em <b>Cancelar delegação</b> (enquanto ela aguarda o aceite, está em andamento ou foi devolvida). A pessoa é avisada e a tarefa sai do quadro dela; a sua continua com você. O aviso na tela traz <b>Desfazer</b> por alguns segundos: a delegação volta como estava, no mesmo quadro, fase e número da pessoa, com o que ela tinha escrito, e ela recebe o aviso de que a tarefa voltou. Depois de 10 minutos, ou se você já tiver delegado a tarefa de novo, não dá mais para desfazer.</p>
+        <p>Mudou de ideia? Abra a sua tarefa e, no bloco <b>Delegada para</b>, clique em <b>Cancelar delegação</b> (enquanto ela aguarda o aceite, está em andamento ou foi devolvida). A pessoa é avisada e a tarefa sai do quadro dela; a sua continua com você. O aviso na tela traz <b>Desfazer</b> por alguns segundos: a delegação volta como estava, no mesmo quadro, fase e número da pessoa, com o que ela tinha escrito, e ela recebe o aviso de que a tarefa voltou. Depois de 10 minutos, ou se você já tiver delegado a tarefa de novo, não dá mais para desfazer.</p>
         <p className="ex">Exemplo: o diretor delega “Orçamento 2027” ao gestor. O gestor abre essa tarefa e delega parte dela ao funcionário. Cada nível dá o ciente no nível de baixo antes de concluir o seu.</p>
       </Sec>
 
-      <Sec id="painel" title="Painel (para quem tem equipe)">
-        <p>Visão geral de tudo o que você delegou. Cada número ou barra abre <b>Tarefas delegadas</b> já filtrada.</p>
-        <ul>
-          <li><b>Resumo:</b> em aberto, atrasadas, aguardando seu ciente e devolvidas.</li>
-          <li><b>Delegadas por pessoa:</b> uma barra por subordinado direto, com as tarefas que você delegou <b>no prazo ou sem data</b> (azul) e as <b>atrasadas</b> (vermelho). Os botões acima das barras ordenam pelo <b>total</b> ou pelas <b>atrasadas</b>, do maior para o menor ou ao contrário. Ao lado, quantas tarefas próprias a pessoa tem, só para conhecimento. Use para responder “posso mandar mais tarefas para ela?”.</li>
-          <li><b>Próximos 14 dias:</b> o que vence em cada dia, com as atrasadas no topo.</li>
-          <li><b>Paradas:</b> tarefas sem aceite há mais de 2 dias, sem movimento há mais de 7 dias e aguardando o seu ciente há mais de 2 dias.</li>
-        </ul>
-      </Sec>
-
       <Sec id="acompanhar" title="Tarefas delegadas (para quem tem equipe)">
-        <p>Esta é a tela para responder “o que eu deleguei e ainda não foi concluído?”.</p>
+        <p>Esta é a tela para responder “o que eu deleguei e ainda não foi concluído?”. Ela juntou o antigo Painel.</p>
+        <ul>
+          <li><b>Números no alto:</b> em aberto, atrasadas, aguardando seu ciente e devolvidas. Clicar num número filtra a lista; clicar de novo tira o filtro.</li>
+          <li><b>Precisam da sua ação:</b> concluídas esperando o seu ciente e devolvidas, com os botões. Na lista da pessoa, essas mesmas tarefas aparecem só com a marca “Precisa da sua ação”, sem repetir os botões.</li>
+          <li><b>Abas:</b> <b>Por pessoa</b> (a equipe, com os números de cada um), <b>Próximos 14 dias</b> (o que vence em cada dia, com as atrasadas no topo) e <b>Paradas</b> (sem aceite há mais de 2 dias, sem movimento há mais de 7 dias, aguardando o seu ciente há mais de 2 dias). A aba escolhida fica lembrada.</li>
+        </ul>
         <ul>
           <li><b>Precisam da sua ação:</b> tarefas concluídas aguardando o seu ciente e tarefas devolvidas.</li>
           <li><b>Equipe:</b> um grupo por pessoa, com os contadores <b>abertas · atrasadas · aguardando ciente · devolvidas · próprias</b>. “Próprias” é só a quantidade de tarefas que a pessoa criou para si (o conteúdo é dela).</li>
@@ -287,7 +286,7 @@ export function HelpPage({ isAdmin }: { isAdmin: boolean }) {
           <li>Toda tarefa tem um <b>número no quadro</b>, como <code>#12</code>. Cada quadro conta as próprias tarefas a partir de 1, e a <b>caixa de entrada</b> tem a numeração dela. Um número nunca é reaproveitado no mesmo quadro, nem depois de arquivar.</li>
           <li>Ao <b>mover para outro quadro</b>, aceitar uma tarefa da caixa de entrada ou receber por transferência, a tarefa ganha o próximo número de onde chegou; o log guarda o número antigo. Numa tarefa delegada, cada um vê o número do próprio quadro.</li>
           <li>Na <b>busca</b>, digite o número (<kbd>12</kbd> ou <kbd>#12</kbd>): abre a tarefa 12 do quadro aberto; se houver tarefa 12 em outros quadros seus, aparece a lista para escolher. Também vale uma palavra do título ou da descrição. Aparecem só tarefas que você pode ver. Links e códigos antigos (<code>ST-</code>, <code>NT-</code>) continuam abrindo a tarefa.</li>
-          <li><b>Cartões do mesmo tamanho:</b> no quadro, todo cartão tem a mesma altura: duas linhas de título (um título maior termina em “…”) e uma linha com número, prazo, etiquetas <b>De…</b>/<b>Para…</b> e situação. Se faltar espaço, checklist, cadeado de privada e “não pode ser repassada” viram um <b>+1</b>, <b>+2</b>… (passe o mouse para ver quais).</li>
+          <li><b>Cartões do mesmo tamanho:</b> no quadro, todo cartão tem a mesma altura: duas linhas de título (um título maior termina em “…”) e uma linha com número, prazo, etiquetas <b>De…</b>/<b>Para…</b> e situação. Se faltar espaço, checklist, cadeado de privada e “não pode ser redelegada” viram um <b>+1</b>, <b>+2</b>… (passe o mouse para ver quais).</li>
           <li><b>Ver a tarefa sem abrir:</b> no computador, pare o mouse sobre um cartão por meio segundo: aparece um balão com o título completo, a descrição, com quem está, o prazo e o checklist. Dá para levar o mouse até o balão: ele continua aberto, os links dele abrem numa aba nova e o ícone de copiar, no canto, copia a descrição (ou o título, se não houver descrição). Ele some ao tirar o mouse do cartão e do balão, rolar ou arrastar. No celular, toque para abrir a tarefa.</li>
           <li><b>Links:</b> endereços (https://…, www.…) e e-mails escritos na descrição, nos comentários ou no título viram links e abrem numa aba nova. Na tarefa aberta, a descrição aparece como texto: clique num link para abri-lo, ou no resto do texto (ou em Editar) para editar.</li>
           <li><b>Cor do cartão:</b> na tarefa aberta, clique em <b>Cor</b> (ao lado do número) e escolha uma das cores, ou <b>Sem cor</b>. O cartão fica todo dessa cor no quadro, em tom sólido médio (se a administração ligou o destaque das atrasadas e de hoje, essa cor vale por cima enquanto a tarefa estiver atrasada ou vencendo hoje); o texto fica escuro no tema claro e branco no tema escuro para ler bem, e o prazo atrasado aparece numa etiqueta branca. A cor é só sua: numa tarefa delegada, o cartão de quem recebe começa sem cor, e quem recebe por transferência também vê sem cor.</li>
@@ -296,11 +295,12 @@ export function HelpPage({ isAdmin }: { isAdmin: boolean }) {
           <li><b>Avisos de prazo por e-mail:</b> na <b>véspera</b> do prazo (“Prazo amanhã”) e no <b>dia seguinte</b>, se a tarefa continuar aberta (“Prazo vencido”), uma vez cada. Vão para quem está com a tarefa; numa tarefa delegada, quem delegou recebe também o de vencido. Se o prazo mudar, o aviso vale para a nova data.</li>
           <li><b>Resumo diário por e-mail:</b> às <b>7h</b>, de segunda a sexta, com o que vence hoje, o que está atrasado (e quem delegou), as delegações aguardando o seu aceite, as tarefas aguardando o seu ciente e as <b>tarefas que você delegou e estão atrasadas</b> (com quem está cada uma e se já foi cobrada), cada uma com o número e o link. Dia sem nada, sem e-mail.</li>
           <li><b>Meus dados:</b> clique no seu nome, no alto do menu à esquerda (ou em <b>Meus dados</b>, embaixo; no celular, dentro do <b>☰</b>), para desligar o resumo diário ou os avisos de prazo. Os avisos de delegação continuam chegando sempre.</li>
+          <li><b>Avisos neste aparelho:</b> em <b>Meus dados</b>, <b>Ligar avisos neste aparelho</b> faz os avisos chegarem como notificação do celular ou do computador, na hora, mesmo com o SyncTasks fechado; tocar no aviso abre a tarefa. Vale para cada aparelho (ligue no celular e no computador, se quiser) e desliga no mesmo lugar. No iPhone, só funciona com o SyncTasks instalado na tela inicial. A opção aparece quando a administração liga os avisos no servidor.</li>
         </ul>
       </Sec>
 
       <Sec id="atalhos" title="Atalhos de teclado">
-        <p>Funcionam quando você não está escrevendo num campo. A lista também abre com a tecla <kbd>?</kbd> ou em <b>Atalhos</b>, embaixo no menu.</p>
+        <p>Funcionam quando você não está escrevendo num campo. A lista também abre com a tecla <kbd>?</kbd> ou pelo botão <b>Atalhos de teclado</b>, no alto desta Ajuda.</p>
         <ul>
           <li><kbd>N</kbd>: nova tarefa na primeira fase do quadro aberto.</li>
           <li><kbd>/</kbd>: vai para a busca.</li>
@@ -317,9 +317,10 @@ export function HelpPage({ isAdmin }: { isAdmin: boolean }) {
           <li>Abra <b>Meus dados</b> e, em <b>Férias e ausências</b>, clique em <b>Escolher substituto</b>.</li>
           <li>Escolha a pessoa: pode ser qualquer pessoa ativa, inclusive alguém da sua equipe. Quem também está ausente aparece marcado “também ausente”.</li>
           <li>Decida se vai <b>compartilhar as tarefas comuns</b>. Sem compartilhar, o substituto vê só as tarefas ligadas a delegações (as que você recebeu e as que você delegou), o que chegou de outras pessoas e o que ele mesmo criar. Compartilhando, vê também as tarefas comuns. As <b>privadas nunca aparecem</b>: antes de sair, marque como privado o que for particular.</li>
+          <li>Se quiser, informe o <b>primeiro dia fora</b>: com uma data futura, a substituição fica <b>Agendada</b> e começa sozinha nesse dia (você e o substituto recebem aviso ao agendar e quando começa). Sem data, começa na hora. Antes de começar, dá para <b>Cancelar substituição</b>.</li>
           <li>Se quiser, informe o <b>último dia fora</b>: no dia seguinte a substituição acaba sozinha. Sem data, vale até você clicar em <b>Encerrar substituição</b>.</li>
         </ol>
-        <p><b>Para quem substitui:</b> aparece um seletor no alto da tela. Escolha <b>Substituindo [nome]</b> para ver os quadros, a caixa de entrada, o Painel e as Tarefas delegadas da pessoa e agir por ela: aceitar, delegar para a equipe dela, dar ciente, reabrir, cancelar, criar tarefas. Uma faixa laranja lembra que você está substituindo; <b>Voltar para as minhas tarefas</b> volta para as suas. Avisos, Meus dados, exportar e importar e o log da pessoa não ficam disponíveis, e só ela marca ou desmarca uma tarefa como privada.</p>
+        <p><b>Para quem substitui:</b> aparece um seletor no alto da tela. Escolha <b>Substituindo [nome]</b> para ver os quadros, a caixa de entrada e as Tarefas delegadas da pessoa e agir por ela: aceitar, delegar para a equipe dela, dar ciente, reabrir, cancelar, criar tarefas. Uma faixa laranja lembra que você está substituindo; <b>Voltar para as minhas tarefas</b> volta para as suas. Avisos, Meus dados, exportar e importar e o log da pessoa não ficam disponíveis, e só ela marca ou desmarca uma tarefa como privada.</p>
         <p>Tudo o que o substituto faz fica registrado no log como feito por ele, substituindo a pessoa, e os comentários mostram “escrito por …, substituto”. Quem sai de surpresa (doença, por exemplo) pode ter o substituto escolhido pela administração.</p>
       </Sec>
 
@@ -344,7 +345,7 @@ export function HelpPage({ isAdmin }: { isAdmin: boolean }) {
           <dt><span className="dtag from"><Icon name="into" />De Ana</span></dt><dd>Etiqueta roxa: delegada a você por alguém acima (aqui, a Ana)</dd>
           <dt><span className="dtag to"><Icon name="out" />Para João</span></dt><dd>Etiqueta verde-azulada: você delegou para alguém da sua equipe (aqui, o João)</dd>
           <dt><TipIcon name="lock" tip="Privada" /> Cadeado</dt><dd>Tarefa privada</dd>
-          <dt><TipIcon name="self" tip="Não pode ser repassada" /> Pessoa</dt><dd>Não pode ser repassada: quem recebeu precisa fazer</dd>
+          <dt><TipIcon name="self" tip="Não pode ser redelegada" /> Pessoa</dt><dd>Não pode ser redelegada: quem recebeu precisa fazer</dd>
           <dt><span className="due late">3 out</span></dt><dd>Prazo em vermelho: atrasada</dd>
         </dl>
         <p>Passe o mouse (ou toque) em qualquer ícone ou botão para ver uma explicação.</p>
@@ -402,8 +403,11 @@ export function HelpPage({ isAdmin }: { isAdmin: boolean }) {
         </ol>
         <p>A pessoa inativa continua na lista com a situação <b>Inativa</b>; marque <b>Esconder inativas</b> para tirá-la da vista (a escolha fica gravada na sua conta e vale da próxima vez que abrir a tela). O e-mail continua com ela. Para reativar, use <b>Reativar</b> no mesmo menu: ela volta a entrar e encontra os quadros e as privadas como deixou, mas o que foi passado adiante não volta sozinho.</p>
         <p><b>Organograma</b> (só no computador): na tela Pessoas, a aba <b>Organograma</b> desenha a equipe a partir do superior direto de cada pessoa, com o CEO no topo e os funcionários de cada gestor empilhados embaixo dele. Clique numa pessoa para abrir <b>Editar dados</b>. O botão <b>−</b> embaixo de quem tem equipe recolhe o grupo (vira <b>+ N</b>, quantas pessoas ficaram escondidas). As inativas aparecem apagadas ou somem, conforme <b>Esconder inativas</b>; administradores sem nível ficam em <b>Fora da hierarquia</b>.</p>
+        <h3>Pessoa que saiu da empresa (LGPD)</h3>
+        <p>Depois de desativar, o menu <b>…</b> da pessoa ganha <b>Baixar dados (JSON)</b> (cadastro, tarefas, checklist e comentários, num arquivo) e <b>Anonimizar…</b>. Anonimizar <b>não tem volta</b>: nome e e-mail somem e, no log, nas tarefas e nos comentários, aparece “Usuário removido”; as tarefas privadas dela perdem título, descrição e checklist; acessos, filtros salvos e avisos são apagados. As tarefas comuns, as delegações e o log continuam. A pessoa anonimizada não pode ser reativada (se voltar, cadastre de novo).</p>
         <h3>Substituto em férias e ausências</h3>
-        <p>Quando alguém sai de surpresa e não escolheu substituto, abra o menu <b>…</b> da pessoa e escolha <b>Substituto em férias e ausências</b>. Funciona como em Meus dados (veja <b>Férias e ausências</b>): escolha quem substitui, se as tarefas comuns ficam compartilhadas e o último dia fora. A pessoa e o substituto recebem aviso. No mesmo lugar dá para encerrar.</p>
+        <p>No alto de <b>Pessoas</b>, o quadro <b>Férias e ausências</b> mostra quem está fora agora (<b>Em vigor</b>) ou vai sair (<b>Agendada</b>), quem substitui, as datas, se as tarefas comuns estão compartilhadas e quem escolheu (a própria pessoa ou a administração). Em cada linha: <b>Alterar</b> e <b>Encerrar</b> (ou <b>Cancelar</b>, se ainda não começou). <b>Nova substituição</b> escolhe quem vai sair e, na mesma janela, quem substitui, se compartilha as tarefas comuns, o primeiro e o último dia fora (veja <b>Férias e ausências</b>). <b>Histórico</b> lista as substituições encerradas. A pessoa e o substituto recebem aviso.</p>
+        <p>Na lista, a coluna <b>Ausência</b> resume: “Fora até 07/11 · Paulo substitui”, “Sai em 10/11” ou “Substitui Marina”. O menu <b>…</b> da pessoa também tem <b>Substituto em férias e ausências</b>.</p>
         <h3>Senhas</h3>
         <p>Quem esquecer a senha usa <b>Esqueci minha senha</b> na tela de login e recebe um link por e-mail, válido por 2 horas. A administração não vê nem define senhas.</p>
       </Sec>

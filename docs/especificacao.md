@@ -193,10 +193,10 @@ Só o administrador:
 ### 6.3 Delegação em cadeia (diretor, gestor e funcionário)
 
 1. O diretor delega uma tarefa ao gestor. O cartão do gestor chega na caixa de entrada dele.
-2. O gestor abre esse cartão e usa **Delegar** para repassar ao funcionário. O funcionário recebe um **novo** cartão, com código próprio, ligado ao cartão do gestor.
-3. O cartão do gestor ganha o ícone **repassada para [funcionário]**. O diretor também vê esse ícone, só para conhecimento.
+2. O gestor abre esse cartão e usa **Delegar** para delegar ao funcionário. O funcionário recebe um **novo** cartão, com código próprio, ligado ao cartão do gestor.
+3. O cartão do gestor ganha o ícone **delegada para [funcionário]**. O diretor também vê esse ícone, só para conhecimento.
 4. O funcionário conclui, o gestor dá o ciente e depois conclui o próprio cartão. Então o diretor dá o ciente.
-5. Se o diretor marcar **“Não pode ser repassada”** ao delegar (item 41, RN-20a), o gestor não consegue repassar: precisa fazer a tarefa ele mesmo.
+5. Se o diretor marcar **“Não pode ser redelegada”** ao delegar (item 41, RN-20a), o gestor não consegue redelegar: precisa fazer a tarefa ele mesmo.
 
 ### 6.4 Administrador
 
@@ -239,7 +239,7 @@ Só o administrador:
 - **RN-17** Cada cartão pode ter **uma delegação ativa** por vez. Para delegar de novo, a anterior precisa estar cancelada ou ter recebido o ciente.
 - **RN-18** A delegação vai para **uma pessoa**. Para três pessoas, são três tarefas.
 - **RN-19** O cartão delegado chega na **caixa de entrada** do subordinado.
-- **RN-20a** (item 41) Ao delegar ou redelegar, o delegador pode marcar **“Não pode ser repassada”**. Quem recebe vê o aviso na tarefa e não pode **delegá-la** nem **transferi-la para um subordinado** (o servidor recusa); transferir para colega ou para o superior direto continua liberado, e a marca acompanha a tarefa. Só o delegador liga ou desliga a marca, enquanto a delegação está em aberto; cada mudança vai para o log e avisa quem recebeu. A marca não desfaz uma delegação para baixo que já existia: só impede novas.
+- **RN-20a** (item 41) Ao delegar ou redelegar, o delegador pode marcar **“Não pode ser redelegada”**. Quem recebe vê o aviso na tarefa e não pode **delegá-la** nem **transferi-la para um subordinado** (o servidor recusa); transferir para colega ou para o superior direto continua liberado, e a marca acompanha a tarefa. Só o delegador liga ou desliga a marca, enquanto a delegação está em aberto; cada mudança vai para o log e avisa quem recebeu. A marca não desfaz uma delegação para baixo que já existia: só impede novas.
 - **RN-20** O **prazo** sugerido pode ser alterado livremente pelo subordinado. Cada alteração avisa o delegador por e-mail e fica registrada no log, com o valor anterior e o novo.
 
 ### 7.4 Caixa de entrada
@@ -248,7 +248,7 @@ Só o administrador:
 - **RN-22** **Aceitar** significa escolher o quadro e a fase de destino.
 - **RN-23** **Devolver** exige justificativa. A tarefa sai do subordinado e aparece para o delegador como **Devolvida**.
 - **RN-24** Uma tarefa transferida não pode ser devolvida pela caixa de entrada, só aceita. Se o detentor não quiser, pode transferi-la de novo.
-- **RN-24a** (item 50) **Delegar direto da caixa de entrada:** quem tem equipe escolhe, numa janela só, o quadro e a fase de destino (a tarefa que fica com ele, para acompanhar) e o subordinado direto. O sistema aceita e delega na mesma transação; se a delegação for recusada (destino fora da equipe, “não pode ser repassada”), o aceite também é desfeito.
+- **RN-24a** (item 50) **Delegar direto da caixa de entrada:** quem tem equipe escolhe, numa janela só, o quadro e a fase de destino (a tarefa que fica com ele, para acompanhar) e o subordinado direto. O sistema aceita e delega na mesma transação; se a delegação for recusada (destino fora da equipe, “não pode ser redelegada”), o aceite também é desfeito.
 - **RN-24b** (item 50) **Descartar** tira da caixa de entrada, sem concluir, uma tarefa **própria** (capturada, transferida ou vinda de quem foi desativado). Ela fica arquivada como **descartada**, aparece em Arquivadas e, ao ser desarquivada, volta para a caixa de entrada com o mesmo número. Ninguém é avisado; o log registra `discarded`. Tarefa recebida por delegação não se descarta (devolve-se, RN-23). Dá para descartar até 1.000 de uma vez, e é tudo ou nada: se uma não puder, nenhuma é descartada.
 
 ### 7.5 Ciente, reabertura, cancelamento e redelegação
@@ -256,7 +256,7 @@ Só o administrador:
 - **RN-25** **Dar ciente** em tarefa concluída arquiva a tarefa e avisa o detentor.
 - **RN-26** **Reabrir** exige comentário com o motivo. A tarefa volta para "em andamento", marcada como reaberta, e o detentor é avisado.
 - **RN-27** Sem ciente, a tarefa fica pendente na tela do delegador **indefinidamente**. Não há prazo automático.
-- **RN-28** **Cancelar** uma delegação, aguardando aceite, em andamento ou devolvida, arquiva o cartão do subordinado como cancelado e o avisa. O cartão de origem fica livre para nova delegação. Quem delegou cancela pela tela Tarefas delegadas, ao abrir a tarefa repassada ou **de dentro da própria tarefa**, no bloco “Repassada para” (item 48). Na **devolvida** (item 75) e, desde o item 93, também na **aguardando aceite ou em andamento** (cancelar é **desistir** da tarefa; para ficar com ela existe Retomar), cancelar também **arquiva a tarefa de origem**, que vai para Arquivadas com a etiqueta “Cancelada” e volta ao quadro ao ser desarquivada; o Desfazer (RN-28a) a traz de volta junto. Exceção: se a tarefa de origem chegou a quem delegou por delegação de cima, ainda em aberto, ela continua no quadro.
+- **RN-28** **Cancelar** uma delegação, aguardando aceite, em andamento ou devolvida, arquiva o cartão do subordinado como cancelado e o avisa. O cartão de origem fica livre para nova delegação. Quem delegou cancela pela tela Tarefas delegadas, ao abrir a tarefa delegada ou **de dentro da própria tarefa**, no bloco “Delegada para” (item 48). Na **devolvida** (item 75) e, desde o item 93, também na **aguardando aceite ou em andamento** (cancelar é **desistir** da tarefa; para ficar com ela existe Retomar), cancelar também **arquiva a tarefa de origem**, que vai para Arquivadas com a etiqueta “Cancelada” e volta ao quadro ao ser desarquivada; o Desfazer (RN-28a) a traz de volta junto. Exceção: se a tarefa de origem chegou a quem delegou por delegação de cima, ainda em aberto, ela continua no quadro.
 - **RN-28a** (item 48) Logo depois de cancelar, o aviso traz **Desfazer**: só quem delegou, em até **10 minutos**, enquanto a tarefa de origem não foi delegada de novo nem arquivada, a pessoa continua ativa e a fase onde o cartão estava ainda existe. A delegação volta à situação anterior e o cartão volta ao mesmo quadro, fase, posição e **número** da pessoa, com o que ela tinha escrito; o log registra “desfez o cancelamento” e a pessoa recebe aviso e e-mail (menos na devolvida, que já tinha saído dela).
 - **RN-29** **Redelegar** uma tarefa devolvida a envia para o mesmo ou outro subordinado direto, opcionalmente com novo prazo. É o **mesmo cartão**: chega à caixa de entrada de quem recebe, com o número de lá (item 37).
 - **RN-29a** (item 75) **Retomar** uma tarefa devolvida: só quem delegou. A delegação é encerrada (fica como cancelada, sem aviso a quem devolveu) e a tarefa de origem vai para a **caixa de entrada** de quem delegou, com o número de lá, desmarcada se estava concluída; a justificativa da devolução vira um comentário (“Devolvida por Fulano: …”). O log registra “retomou a tarefa devolvida”. Se a tarefa de origem chegou por delegação de cima, ainda em aberto, ela continua no quadro (não pode voltar à caixa de entrada sem desfazer a delegação recebida). Tarefa de origem arquivada não se retoma.
@@ -298,7 +298,9 @@ Só o administrador:
 - **RN-54** Quem vai sair de férias ou se ausentar escolhe um **substituto** em **Meus dados › Férias e ausências**; numa saída de surpresa, a administração escolhe por ela em **Pessoas** (menu **…** › Substituto em férias e ausências). O substituto pode ser **qualquer pessoa ativa**, menos a própria (item 73: inclusive alguém da equipe dela; o CEO, por exemplo, só tem gente da equipe). Quem também está ausente aparece marcado “também ausente”. Há uma substituição em vigor por pessoa; escolher outro substituto encerra a anterior.
 - **RN-55** A pessoa escolhe se **compartilha as tarefas comuns**. O substituto **sempre** vê os quadros e as fases dela e, nas tarefas: as ligadas a delegação (recebidas ou repassadas a alguém, menos a cancelada), as que vieram de outra pessoa por transferência e as que ele mesmo criou ali. As **comuns** aparecem só se ela compartilhou. As **privadas nunca** aparecem, em nenhuma tela, busca, tabela, arquivadas ou contador.
 - **RN-56** A substituição vale até o **último dia fora** informado (no dia seguinte acaba sozinha) ou até alguém encerrar (a própria pessoa ou a administração). O substituto é avisado ao começar e ao terminar; a pessoa é avisada quando a administração liga ou encerra por ela.
-- **RN-57** Para quem substitui, aparece um **seletor no topo** (“Minhas tarefas” / “Substituindo [nome]”), com uma faixa de aviso enquanto estiver agindo pela pessoa. Nesse modo ele usa Tarefas (quadro e tabela), Caixa de entrada, Arquivadas, Painel e Tarefas delegadas **como a pessoa**: aceitar, devolver, descartar, delegar à equipe dela, dar ciente, reabrir, cancelar, transferir, criar e mover tarefas. Não ficam disponíveis: Avisos, Meus dados (e-mails, assistente, substituição), exportar e importar, fundo da área de trabalho, captura, o **log** e qualquer função de administração; só a própria pessoa marca ou desmarca uma tarefa como **privada**. A escolha do seletor vale para a aba do navegador.
+- **RN-56a** (item 76) Com um **primeiro dia fora** no futuro, a substituição fica **agendada**: o seletor do topo só aparece a partir desse dia (dia de Brasília). O substituto (e a pessoa, se foi a administração) é avisado ao agendar e, de novo, no dia em que começa. A agendada pode ser alterada ou **cancelada** antes de começar. O último dia fora não pode ser antes do primeiro.
+- **RN-56b** (item 76) A administração vê em **Pessoas › Férias e ausências** todas as substituições em vigor e agendadas (quem saiu, quem substitui, datas, compartilhamento e quem escolheu), cria, altera, encerra ou cancela qualquer uma e consulta o histórico das encerradas; a lista de Pessoas tem a coluna **Ausência**.
+- **RN-57** Para quem substitui, aparece um **seletor no topo** (“Minhas tarefas” / “Substituindo [nome]”), com uma faixa de aviso enquanto estiver agindo pela pessoa. Nesse modo ele usa Tarefas (quadro e tabela), Caixa de entrada, Arquivadas e Tarefas delegadas (com os números do antigo Painel) **como a pessoa**: aceitar, devolver, descartar, delegar à equipe dela, dar ciente, reabrir, cancelar, transferir, criar e mover tarefas. Não ficam disponíveis: Avisos, Meus dados (e-mails, assistente, substituição), exportar e importar, fundo da área de trabalho, captura, o **log** e qualquer função de administração; só a própria pessoa marca ou desmarca uma tarefa como **privada**. A escolha do seletor vale para a aba do navegador.
 - **RN-58** Tudo o que o substituto faz fica no **log** da tarefa em nome da pessoa, com “por [substituto], substituto”; os **comentários** mostram “escrito por [substituto], substituto”. Os avisos e e-mails a terceiros saem em nome da pessoa substituída.
 
 
@@ -312,7 +314,7 @@ Desde o item 37 (09/10/2026), o código que aparece é **só um número, com num
 - **RN-45** O número vem de um contador do quadro (ou da caixa de entrada) e **nunca é reaproveitado** nesse lugar, nem depois de arquivar, cancelar ou de a tarefa sair dele.
 - **RN-46** Por dentro, cada tarefa continua com um **código único no sistema** (`ST-000123`, antes `NT-`), que nunca muda. Ele não aparece na tela, mas os links e códigos antigos (dos e-mails já enviados, por exemplo) continuam abrindo a tarefa certa. Os links novos usam o identificador da tarefa.
 - **RN-47** A tarefa recebe o **próximo número de onde chega** ao: ser criada, capturada ou importada; mudar de quadro (item 16); sair da caixa de entrada para um quadro (aceitar); voltar à caixa de entrada (devolução); redelegar; transferir; desarquivar em outro quadro. Mudar de fase no mesmo quadro, concluir, arquivar, dar ciente e reabrir mantêm o número. O log guarda o número antigo quando a tarefa muda de quadro.
-- **RN-48** O número aparece no cartão, nas listas, na caixa de entrada, na tabela, nas arquivadas, nos avisos, no log e no **assunto dos e-mails** (`[#12]`). Numa tarefa delegada, cada um vê o número do próprio quadro: na tela Tarefas delegadas, o delegador vê o número do cartão dele; dentro da tarefa aberta aparecem os dois ("Desdobramento da tarefa #7 de Carlos", "Repassada para João #3").
+- **RN-48** O número aparece no cartão, nas listas, na caixa de entrada, na tabela, nas arquivadas, nos avisos, no log e no **assunto dos e-mails** (`[#12]`). Numa tarefa delegada, cada um vê o número do próprio quadro: na tela Tarefas delegadas, o delegador vê o número do cartão dele; dentro da tarefa aberta aparecem os dois ("Desdobramento da tarefa #7 de Carlos", "Delegada para João #3").
 
 **Capacidade.** O contador de cada quadro vai até 2 bilhões; o código interno não tem teto.
 
@@ -491,7 +493,7 @@ No topo de cada tela: título, campo de **busca** (texto ou código) e controle 
 - No cartão aberto, **Mover para** escolhe quadro e fase, ou leva a tarefa **para o topo / para o fim** da fase. Mudar de quadro fica no log com o quadro e a fase de origem.
 - **+ Fase** ao final.
 - **Clicar fora** (item 77): no campo **Adicionar tarefa**, clicar fora com o título digitado cria a tarefa (como o Enter) e fecha o campo; vazio, só fecha; várias linhas abrem a pergunta do item 30. **Esc** e **Cancelar** descartam. Na janela de **Nova fase** e **Novo quadro**, clicar fora com o nome digitado cria.
-- **Cartão no quadro:** botão de concluir (círculo), título (até 2 linhas), número (#12), prazo, progresso do checklist, **etiquetas de delegação** (opção A, decidida em 17/10: roxa **De [nome]** na tarefa recebida, verde-azulada **Para [nome]** na tarefa que a pessoa delegou, com o primeiro nome) e ícones (privada, **não pode ser repassada** (item 41), aguardando ciente, reaberta). **Itens 60 e 61:** todo cartão tem a **mesma altura** (2 linhas de título, mesmo se curto, e 1 linha de marcas). Na linha de marcas vêm primeiro número, prazo, etiquetas De/Para e situação; checklist, privada e “não pode ser repassada” saem, da direita para a esquerda, se não couberem, e viram um “+N” com dica. No computador, parar o mouse 0,5 s sobre o cartão abre um **balão** ao lado (à direita; à esquerda se não couber) com título completo, descrição (até 15 linhas), com quem está e a situação, prazo, checklist e privada; some ao tirar o mouse, clicar no cartão, rolar, apertar uma tecla ou arrastar, e não existe no celular. **Itens 70 e 71:** o balão continua aberto enquanto o mouse vai do cartão até ele (0,3 s de tolerância) e fica sobre ele; tem os links clicáveis e um ícone de **copiar** que copia a descrição (ou o título, se não houver descrição) e mostra “Copiado” por 2 s. Endereços `http://`, `https://`, `www.` e e-mails na descrição, nos comentários e no título viram links que abrem numa aba nova (só esses tipos; o texto gravado não muda). Na tarefa aberta, a descrição aparece como texto com os links; clicar fora de um link ou em **Editar** abre a caixa de edição.
+- **Cartão no quadro:** botão de concluir (círculo), título (até 2 linhas), número (#12), prazo, progresso do checklist, **etiquetas de delegação** (opção A, decidida em 17/10: roxa **De [nome]** na tarefa recebida, verde-azulada **Para [nome]** na tarefa que a pessoa delegou, com o primeiro nome) e ícones (privada, **não pode ser redelegada** (item 41), aguardando ciente, reaberta). **Itens 60 e 61:** todo cartão tem a **mesma altura** (2 linhas de título, mesmo se curto, e 1 linha de marcas). Na linha de marcas vêm primeiro número, prazo, etiquetas De/Para e situação; checklist, privada e “não pode ser redelegada” saem, da direita para a esquerda, se não couberem, e viram um “+N” com dica. No computador, parar o mouse 0,5 s sobre o cartão abre um **balão** ao lado (à direita; à esquerda se não couber) com título completo, descrição (até 15 linhas), com quem está e a situação, prazo, checklist e privada; some ao tirar o mouse, clicar no cartão, rolar, apertar uma tecla ou arrastar, e não existe no celular. **Itens 70 e 71:** o balão continua aberto enquanto o mouse vai do cartão até ele (0,3 s de tolerância) e fica sobre ele; tem os links clicáveis e um ícone de **copiar** que copia a descrição (ou o título, se não houver descrição) e mostra “Copiado” por 2 s. Endereços `http://`, `https://`, `www.` e e-mails na descrição, nos comentários e no título viram links que abrem numa aba nova (só esses tipos; o texto gravado não muda). Na tarefa aberta, a descrição aparece como texto com os links; clicar fora de um link ou em **Editar** abre a caixa de edição.
 - **Altura do quadro e rolagem lateral** (item 86): no computador, o quadro ocupa exatamente a altura que sobra na janela e a barra de rolagem lateral fica sempre no pé da janela; a página não rola, e cada fase rola por dentro. A dica de como arrastar fica no ícone **?** ao lado do zoom. No celular, cada fase tem no máximo a altura da tela (item 69) e a dica fica embaixo do quadro.
 - **Filtro no quadro** (item 47): a mesma barra de filtro da tabela (12.2a), com os atalhos **Delegadas para mim** e **Delegadas por mim**. No computador e no notebook (item 59), o botão **Filtro**, os atalhos e **Condição** ficam na barra do topo, à esquerda de Quadro / Tabela; até 1.440 pixels de largura, e no celular, os atalhos aparecem como **Para mim** e **Por mim**. A linha acima das fases só aparece com filtro ligado, com as etiquetas com ×. No celular (até 820 pixels), os botões ficam acima das fases. Com filtro ligado, os cartões que não atendem somem e as fases ficam no lugar, cada uma com a contagem “3 de 10”; a faixa “Filtro ligado: mostrando 12 de 40 tarefas deste quadro” tem o botão **Limpar filtro**. O filtro vale para o quadro aberto; as condições Quadro e Arquivada ficam fora da lista de campos ali e, num filtro que as tenha, aparecem riscadas e são ignoradas, com um aviso. O servidor diz quais tarefas do quadro atendem ao filtro (`GET /api/boards/:id/match`), com as mesmas regras da tabela. Quando um cartão deixa de atender (por exemplo, concluído num filtro de abertas) ou é criado sem atender, ele some e um aviso explica.
 - Arrastar e soltar entre fases. No celular, usar "Mover para" dentro do cartão.
@@ -519,7 +521,7 @@ No topo de cada tela: título, campo de **busca** (texto ou código) e controle 
 ### 12.3 Caixa de entrada
 
 - Lista com ícone, título, código, origem ("Delegada por…" ou "Transferida por…"), prazo sugerido e observação.
-- Ações em cada linha (item 50): **Aceitar** (escolher quadro e fase; desde o item 57, depois da primeira vez, um clique repete o último quadro e fase usados, guardados no navegador, e a setinha **Aceitar em…** abre a escolha), **Delegar** (para quem tem equipe e se a tarefa não está marcada como “não pode ser repassada”; RN-24a), **Descartar** (só tarefa própria; RN-24b) e **Devolver** (só delegações, com justificativa obrigatória).
+- Ações em cada linha (item 50): **Aceitar** (escolher quadro e fase; desde o item 57, depois da primeira vez, um clique repete o último quadro e fase usados, guardados no navegador, e a setinha **Aceitar em…** abre a escolha), **Delegar** (para quem tem equipe e se a tarefa não está marcada como “não pode ser redelegada”; RN-24a), **Descartar** (só tarefa própria; RN-24b) e **Devolver** (só delegações, com justificativa obrigatória).
 - **Várias de uma vez** (item 50): caixinha em cada tarefa que pode ser descartada, **Selecionar todas**, **Selecionar de…** (agrupa pela origem: a pessoa que transferiu, “Capturada da web”, “Capturada do e-mail”) e **Descartar selecionadas**, sem confirmação desde o item 58. O aviso de descarte traz **Desfazer**.
 - **Estado vazio:** "Nada novo por aqui…".
 
@@ -543,8 +545,8 @@ No topo de cada tela: título, campo de **busca** (texto ou código) e controle 
 - Checklist, com progresso.
 - Mover para outra fase.
 - Privacidade, só em tarefa própria que não tem nem teve delegação (item 43).
-- **Não pode ser repassada** (item 41): quem recebeu vê o aviso “[delegador] pediu que você mesmo faça esta tarefa” e não vê **Delegar**; quem delegou tem a caixinha para ligar ou desligar a marca no bloco “Repassada para” (ou ao abrir a tarefa delegada).
-- Bloco **Desdobramento**: "Repassada para X #3 (status)" ou "Desdobramento da tarefa #7 de Carlos". No bloco “Repassada para”, quem delegou tem **Cancelar delegação** enquanto ela aguarda aceite, está em andamento ou foi devolvida (item 48), com a mesma confirmação e **Desfazer** no aviso.
+- **Não pode ser redelegada** (item 41): quem recebeu vê o aviso “[delegador] pediu que você mesmo faça esta tarefa” e não vê **Delegar**; quem delegou tem a caixinha para ligar ou desligar a marca no bloco “Delegada para” (ou ao abrir a tarefa delegada).
+- Bloco **Desdobramento**: "Delegada para X #3 (status)" ou "Desdobramento da tarefa #7 de Carlos". No bloco “Delegada para”, quem delegou tem **Cancelar delegação** enquanto ela aguarda aceite, está em andamento ou foi devolvida (item 48), com a mesma confirmação e **Desfazer** no aviso.
 - Comentários.
 - **Log:** só para administrador, CEO e diretores.
 - **Ações do detentor:** Concluir ou Desfazer, Delegar (se tiver subordinados e não houver delegação ativa), Transferir e Devolver ao delegador (se for delegação em andamento).
@@ -559,7 +561,7 @@ Visual de referência: a amostra aprovada.
   - Contador zerado aparece apagado.
   - "Atrasadas" em vermelho.
   - "Aguardando ciente" e "devolvidas" em âmbar.
-- **Linhas das tarefas:** ícone de status, título, código, prazo, ícone "repassada para" e ações quando cabem. As colunas têm largura fixa para alinhar entre as linhas.
+- **Linhas das tarefas:** ícone de status, título, código, prazo, ícone "delegada para" e ações quando cabem. As colunas têm largura fixa para alinhar entre as linhas.
 - **Rodapé de cada grupo:** "Para delegar a X, abra um cartão seu e use Delegar."
 - Opção de mostrar arquivadas e canceladas.
 
@@ -634,7 +636,7 @@ O tema escuro tem equivalentes definidos na amostra.
 | arquivo | Arquivada (ciente dado) |
 | x em círculo | Cancelada |
 | etiqueta roxa “De Ana” (seta entrando) | Delegada por alguém acima (no cartão do quadro) |
-| etiqueta verde-azulada “Para João” (seta saindo) | Repassada para um subordinado (no cartão do quadro) |
+| etiqueta verde-azulada “Para João” (seta saindo) | Delegada para um subordinado (no cartão do quadro) |
 | cadeado | Privada |
 | triângulo (vermelho) | Atrasada (junto do prazo) |
 
@@ -708,7 +710,7 @@ Restrição: `manager.level = level - 1`, validada na aplicação e em trigger.
 | status | enum | `PENDING_ACCEPT`, `IN_PROGRESS`, `AWAITING_ACK`, `DECLINED`, `ACKED`, `CANCELED` |
 | reopened | boolean | |
 | decline_reason | text null | |
-| no_pass | boolean | item 41: não pode ser repassada |
+| no_pass | boolean | item 41: não pode ser redelegada |
 | suggested_due | date null | prazo original |
 | created_at, updated_at, acked_at, canceled_at | timestamptz | |
 
@@ -783,7 +785,7 @@ REST com JSON, sob `/api`. A autenticação usa cookie httpOnly de sessão. Toda
 | `POST /cards/:id/followers` `{email}` · `POST /cards/:id/followers/remove` `{email}` · `GET`/`POST /seguir/sair` | seguidores (item 81); `GET /cards/:id` traz `followers` e `origin` (item 79) |
 | `GET/POST/PATCH /admin/users` · `POST /admin/users/:id/transfer-management` · `POST /admin/users/:id/active` `{active}` | administração |
 | `GET /admin/users/:id/deactivation` · `POST /admin/users/:id/deactivate` `{successorId?}` | pendências e desativação com sucessor (item 44) |
-| `GET /substitution?userId=` · `POST /substitution` `{userId?, substituteId, shareCommon, endsOn?}` · `POST /substitution/end` `{userId?}` | substituição em férias (item 72): da própria pessoa ou, com `userId`, pela administração. Com o cabeçalho `X-SyncTasks-Como: <id da pessoa>`, o substituto age por ela, só nas rotas de tarefas (RN-57; as demais respondem 403) |
+| `GET /substitution?userId=` · `POST /substitution` `{userId?, substituteId, shareCommon, startsOn?, endsOn?}` · `POST /substitution/end` `{userId?}` · `GET /admin/substitutions` | substituição em férias (item 72; agendada e quadro da administração, item 76): da própria pessoa ou, com `userId`, pela administração. Com o cabeçalho `X-SyncTasks-Como: <id da pessoa>`, o substituto age por ela, só nas rotas de tarefas (RN-57; as demais respondem 403) |
 
 **Erros:** 401 (não autenticado), 403 (sem permissão), 404 (não existe ou não visível; não revela que a tarefa existe), 409 (transição inválida ou fase não vazia), 422 (validação).
 
@@ -794,7 +796,7 @@ REST com JSON, sob `/api`. A autenticação usa cookie httpOnly de sessão. Toda
 | Tema | Requisito |
 |---|---|
 | **Segurança** | Senhas com scrypt (custo N=16384; tão seguro quanto Argon2id para este uso). Cabeçalhos de segurança do navegador (CSP, X-Frame-Options, HSTS). Cookies `httpOnly`, `Secure`, `SameSite=Lax`. Proteção CSRF. Limite de tentativas de login. Autorização sempre no servidor. HTTPS obrigatório. |
-| **Privacidade (LGPD)** | Dados mínimos (nome, e-mail, cargo). Tarefas privadas invisíveis a superiores. Exportação e anonimização de dados de quem sai, sem quebrar o log (o autor vira "Usuário removido"). |
+| **Privacidade (LGPD)** | Dados mínimos (nome, e-mail, cargo). Tarefas privadas invisíveis a superiores. Exportação e anonimização de dados de quem sai, sem quebrar o log (o autor vira "Usuário removido"). Item 118: em Pessoas, para quem já está inativo, **Baixar dados (JSON)** (`GET /admin/users/:id/export`) e **Anonimizar** (`POST /admin/users/:id/anonymize`, sem volta): nome, e-mail, senha, acessos, filtros, avisos e e-mails pendentes saem; as privadas perdem título, descrição e checklist (comentários e log são imutáveis, RN-50, e continuam); a pessoa não pode ser reativada. |
 | **Integridade** | Log imutável (RN-50). Transições validadas por máquina de estados. Operações compostas em transação. |
 | **Desempenho** | Telas principais em menos de 1 s com 100 usuários e 1 milhão de tarefas. Busca em menos de 500 ms. |
 | **Disponibilidade** | Horário comercial como prioridade. Recuperação do próprio Render (dias conforme o plano) e cópia semanal fora do Render, trancada com senha, guardada por 90 dias e com a restauração testada a cada cópia (item 97). |
@@ -936,7 +938,7 @@ Usa só as tarefas que a pessoa delegou, com a mesma visibilidade de Tarefas del
 - Etiquetas, @menções, data de início, lembretes, copiar e modelos de tarefa, filtros avançados
 - Visões de calendário, tabela e linha do tempo
 - Automações e integrações (Slack, Calendar etc.)
-- Notificações push no celular
+- ~~Notificações push no celular~~ (feito no item 119: avisos no aparelho)
 - Login com conta Google
 
 **Candidatos para a v2**, conforme o uso real: indicador de carga por pessoa, drill-down na hierarquia, lembretes de prazo, anexos no Drive, login Google e relatórios de entrega no prazo.

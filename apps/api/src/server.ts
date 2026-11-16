@@ -7,6 +7,8 @@ import { tx } from './lib/db.js';
 import { runReminders } from './services/reminders.js';
 import { runFollowerMail } from './services/followers.js';
 import { jobLock, runCleanup, runHealthReport } from './services/health.js';
+import { runScheduledStarts } from './services/substitution.js';
+import { pushEnabled, runPush } from './services/push.js';
 import { seedDemo } from '../scripts/seed-demo.js';
 
 const pool = createPool(config.databaseUrl);
@@ -21,6 +23,11 @@ if (config.seedDemo) {
 const mailer = createMailer((m) => app.log.info(m));
 const timer = setInterval(() => {
   processOutbox(pool, mailer).catch((err) => app.log.error(err, 'falha ao processar a fila de e-mails'));
+  // Item 119: avisos no aparelho, junto com a fila de e-mails.
+  if (pushEnabled()) {
+    tx(pool, async (db) => ((await jobLock(db, 'push')) ? runPush(db) : { sent: 0 }))
+      .catch((err) => app.log.error(err, 'falha ao enviar os avisos no aparelho'));
+  }
 }, 10_000);
 
 // Item 46: avisos de prazo e resumo diário por e-mail. Roda a cada 15 minutos (e logo depois de ligar);
@@ -49,6 +56,10 @@ const daily = () => {
   tx(pool, async (db) => ((await jobLock(db, 'cleanup')) ? runCleanup(db) : null))
     .then((r) => { if (r) app.log.info(r, 'faxina diária do banco'); })
     .catch((err) => app.log.error(err, 'falha na faxina diária do banco'));
+  // Item 76: substituições agendadas que começam hoje.
+  tx(pool, async (db) => ((await jobLock(db, 'substitutions')) ? runScheduledStarts(db) : 0))
+    .then((n) => { if (n) app.log.info({ n }, 'substituições agendadas começaram'); })
+    .catch((err) => app.log.error(err, 'falha ao começar as substituições agendadas'));
 };
 const dailyTimer = setInterval(daily, 15 * 60_000);
 const firstDaily = setTimeout(daily, 60_000);

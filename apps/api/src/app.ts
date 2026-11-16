@@ -14,6 +14,7 @@ import * as deleg from './services/delegation.js';
 import * as admin from './services/admin.js';
 import * as misc from './services/misc.js';
 import * as subs from './services/substitution.js';
+import * as push from './services/push.js';
 import * as followers from './services/followers.js';
 import * as phase from './services/phase.js';
 import * as health from './services/health.js';
@@ -608,6 +609,22 @@ export async function buildApp({ pool, logger = false, serveWeb = false }: AppOp
     return { ok: true };
   });
 
+  /* ---------------- avisos no aparelho (item 119) ---------------- */
+  app.get('/api/push', async (req) => {
+    const a = need(req);
+    return push.status(pool, a.id);
+  });
+  app.post('/api/push/subscribe', async (req) => {
+    const a = need(req);
+    const body = z.object({ endpoint: z.string().url().max(2000), keys: z.object({ p256dh: z.string().min(10).max(300), auth: z.string().min(8).max(100) }) }).parse(req.body);
+    return inTx(req, (db) => push.subscribe(db, a.id, body, req.headers['user-agent']));
+  });
+  app.post('/api/push/unsubscribe', async (req) => {
+    const a = need(req);
+    const { endpoint } = z.object({ endpoint: z.string().max(2000) }).parse(req.body);
+    return inTx(req, (db) => push.unsubscribe(db, a.id, endpoint));
+  });
+
   /* ---------------- substituição em férias e ausências (item 72) ---------------- */
   // A própria pessoa (sem userId) ou a administração (com o userId de quem saiu de surpresa).
   const subTarget = (req: FastifyRequest, userId?: string) => {
@@ -620,9 +637,9 @@ export async function buildApp({ pool, logger = false, serveWeb = false }: AppOp
     return subs.overview(pool, a, id);
   });
   app.post('/api/substitution', async (req) => {
-    const body = z.object({ userId: uuid.optional(), substituteId: uuid, shareCommon: z.boolean(), endsOn: date.optional() }).parse(req.body);
+    const body = z.object({ userId: uuid.optional(), substituteId: uuid, shareCommon: z.boolean(), endsOn: date.nullable().optional(), startsOn: date.nullable().optional() }).parse(req.body);
     const { a, id } = subTarget(req, body.userId);
-    return inTx(req, (db) => subs.start(db, a, id, { substituteId: body.substituteId, shareCommon: body.shareCommon, endsOn: body.endsOn ?? null }));
+    return inTx(req, (db) => subs.start(db, a, id, { substituteId: body.substituteId, shareCommon: body.shareCommon, endsOn: body.endsOn ?? null, startsOn: body.startsOn ?? null }));
   });
   app.post('/api/substitution/end', async (req) => {
     const { userId } = z.object({ userId: uuid.optional() }).parse(req.body ?? {});
@@ -644,6 +661,11 @@ export async function buildApp({ pool, logger = false, serveWeb = false }: AppOp
     return inTx(req, (db) => admin.updateSettings(db, a, body));
   });
   // Item 100: problemas dos últimos 7 dias (erros e e-mails que falharam) e tentar de novo os e-mails.
+  // Item 76: quadro “Férias e ausências” em Pessoas.
+  app.get('/api/admin/substitutions', async (req) => {
+    const a = needAdmin(req);
+    return subs.adminList(pool, a);
+  });
   app.get('/api/admin/health', async (req) => {
     const a = needAdmin(req);
     return health.getHealth(pool, a);
@@ -708,6 +730,19 @@ export async function buildApp({ pool, logger = false, serveWeb = false }: AppOp
     const { id } = z.object({ id: uuid }).parse(req.params);
     const { successorId } = z.object({ successorId: uuid.nullable().optional() }).parse(req.body);
     return inTx(req, (db) => admin.deactivate(db, a, id, successorId ?? null));
+  });
+  // Item 118 (F7): LGPD. Baixar os dados da pessoa e anonimizar quem já foi desativado.
+  app.get('/api/admin/users/:id/export', async (req, reply) => {
+    needAdmin(req);
+    const { id } = z.object({ id: uuid }).parse(req.params);
+    const data = await admin.exportUser(pool, id);
+    reply.header('Content-Disposition', `attachment; filename="dados-${id.slice(0, 8)}.json"`);
+    return data;
+  });
+  app.post('/api/admin/users/:id/anonymize', async (req) => {
+    const a = needAdmin(req);
+    const { id } = z.object({ id: uuid }).parse(req.params);
+    return inTx(req, (db) => admin.anonymize(db, a, id));
   });
   app.post('/api/admin/users/:id/invite', async (req) => {
     needAdmin(req);

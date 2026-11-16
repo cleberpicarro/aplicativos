@@ -101,7 +101,7 @@ export function CardPeek({ card, rect, today }: { card: Card; rect: DOMRect; tod
   const done = !!card.completedAt;
   const lines: { text: string; late?: boolean }[] = [];
   if (d) lines.push({ text: `Delegada por ${d.delegatorName} · ${STATUS[statusOf(card)].label}` });
-  if (child) lines.push({ text: `Repassada para ${child.ownerName} · ${STATUS[delegationKey(child.status, child.reopened)].label}` });
+  if (child) lines.push({ text: `Delegada para ${child.ownerName} · ${STATUS[delegationKey(child.status, child.reopened)].label}` });
   if (card.transferredFrom) lines.push({ text: `Transferida por ${card.transferredFrom.name}` });
   if (done && !d) lines.push({ text: 'Concluída' });
   if (card.dueDate) lines.push({ text: dueText(card.dueDate, today, done), late: !done && daysBetween(today, card.dueDate) < 0 });
@@ -149,7 +149,7 @@ async function copyText(text: string) {
 }
 
 /* Item 60: a linha de marcas do cartão tem altura de uma linha só. As marcas opcionais (data-opt: checklist,
-   privada, “não pode ser repassada”) saem da direita para a esquerda até caber, e viram um “+N” discreto. */
+   privada, “não pode ser redelegada”) saem da direita para a esquerda até caber, e viram um “+N” discreto. */
 export function useFitMeta(ref: RefObject<HTMLElement>, deps: unknown[]) {
   useLayoutEffect(() => {
     const el = ref.current;

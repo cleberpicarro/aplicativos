@@ -175,7 +175,7 @@ export function conditionSql(sql: Sql, c: Condition): string {
     case 'archived':
     case 'canPass': {
       if (typeof c.value !== 'boolean') throw badRequest('Escolha sim ou não.');
-      // Item 41: "Pode repassar: não" acha a recebida com a marca e a que a pessoa delegou com a marca (delegação em aberto).
+      // Item 41: "Pode redelegar: não" acha a recebida com a marca e a que a pessoa delegou com a marca (delegação em aberto).
       const col = c.field === 'private' ? 'c.is_private'
         : c.field === 'archived' ? '(c.archived_at IS NOT NULL)'
         : `NOT (coalesce(d.no_pass AND d.status <> 'CANCELED', false) OR coalesce(ch.no_pass AND ch.status NOT IN ('ACKED','CANCELED'), false))`;

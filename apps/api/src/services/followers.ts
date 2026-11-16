@@ -105,7 +105,7 @@ export function describeEvent(e: { type: string; before: any; after: any }): str
     case 'description_changed': return t('alterou a descrição', `“${cut(b.description || '')}” → “${cut(a.description || '')}”`);
     case 'due_changed': return t('alterou o prazo', `${df(b.dueDate)} → ${df(a.dueDate)}`);
     case 'privacy_changed': return t(a.isPrivate ? 'tornou a tarefa privada' : 'tornou a tarefa visível');
-    case 'no_pass_changed': return t(a.noPass ? 'marcou que a tarefa não pode ser repassada' : 'liberou repassar a tarefa');
+    case 'no_pass_changed': return t(a.noPass ? 'marcou que a tarefa não pode ser redelegada' : 'liberou redelegar a tarefa');
     case 'moved': return a.board ? t('moveu para outro quadro', `“${b.board} · ${b.list}” → “${a.board} · ${a.list}”`) : t(`moveu de “${b.list}” para “${a.list}”`);
     case 'captured': return t(a.email ? 'capturou do e-mail' : 'capturou da web', a.url ?? undefined);
     case 'accepted': return t(`aceitou e colocou em “${a.board} · ${a.list}”`);

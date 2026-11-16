@@ -7,10 +7,11 @@ import { Icon } from '../components/Icons';
 import { firstName } from '../lib/format';
 import { ConfirmDialog, useAction } from '../components/dialogs';
 import { OrgChart } from '../components/OrgChart';
+import { AbsencesBlock, absenceText, useAbsences } from '../components/AbsencesAdmin';
 
 interface Person {
   id: string; name: string; email: string; level: number | null; role_title: string; manager_id: string | null;
-  manager_name: string | null; is_admin: boolean; active: boolean; has_password: boolean; reports: number;
+  manager_name: string | null; is_admin: boolean; active: boolean; has_password: boolean; reports: number; anonymized?: boolean;
 }
 
 const LEVELS = ['CEO', 'Diretor', 'Gestor', 'Funcionário'];
@@ -29,7 +30,7 @@ const managerName = (p: Person) => `${p.name} (${LEVELS[p.level!]})`;
 export function PeoplePage() {
   const me = useMe().data!;
   const q = useQuery({ queryKey: ['people'], queryFn: () => get<Person[]>('/admin/users') });
-  const [dlg, setDlg] = useState<null | { kind: 'new' } | { kind: 'edit' | 'toggle' | 'deactivate' | 'substitution'; person: Person }>(null);
+  const [dlg, setDlg] = useState<null | { kind: 'new' } | { kind: 'edit' | 'toggle' | 'deactivate' | 'substitution' | 'anonymize'; person: Person }>(null);
   const qc = useQueryClient();
   /** Item 66: a escolha fica gravada na conta; a tela muda na hora e o servidor guarda em seguida. */
   const [hideChoice, setHideChoice] = useState<boolean | null>(null);
@@ -44,6 +45,7 @@ export function PeoplePage() {
   const view = wide ? choice : 'list';
   const { run, error } = useAction();
   const toast = useToast();
+  const abs = useAbsences(me.user.isAdmin);
   if (!me.user.isAdmin) return <div className="page"><div className="empty">Somente a administração acessa esta tela.</div></div>;
   const people = q.data ?? [];
   const shown = hideInactive ? people.filter((p) => p.active) : people;
@@ -59,6 +61,7 @@ export function PeoplePage() {
           <button className="b pri" onClick={() => setDlg({ kind: 'new' })}><Icon name="plus" />Nova pessoa</button>
         </span>
       </div>
+      <AbsencesBlock people={people} data={abs.data} error={abs.error} />
       {wide && <div className="tabs" role="tablist">
         <button className="tab" role="tab" aria-selected={view === 'list'} onClick={() => setView('list')}>Lista</button>
         <button className="tab" role="tab" aria-selected={view === 'org'} onClick={() => setView('org')}>Organograma</button>
@@ -68,7 +71,7 @@ export function PeoplePage() {
       {view === 'org' && <OrgChart people={shown} onOpen={(p) => setDlg({ kind: 'edit', person: p as Person })} />}
       {view === 'list' && <div className="table-wrap">
         <table className="t">
-          <thead><tr><th>Pessoa</th><th>Cargo</th><th>Superior direto</th><th>Subordinados</th><th>Situação</th><th aria-label="Ações" /></tr></thead>
+          <thead><tr><th>Pessoa</th><th>Cargo</th><th>Superior direto</th><th>Subordinados</th><th>Situação</th><th>Ausência</th><th aria-label="Ações" /></tr></thead>
           <tbody>
             {shown.map((p) => (
               <tr key={p.id} className={p.active ? '' : 'off'}>
@@ -81,14 +84,20 @@ export function PeoplePage() {
                 <td>{p.role_title}</td>
                 <td>{p.manager_name ?? '—'}</td>
                 <td className="code" style={{ color: 'inherit' }}>{p.level === null ? '—' : p.reports}</td>
-                <td>{!p.active ? 'Inativa' : p.has_password ? 'Ativa' : <span className="muted">Convite enviado</span>}</td>
+                <td>{p.anonymized ? 'Dados removidos' : !p.active ? 'Inativa' : p.has_password ? 'Ativa' : <span className="muted">Convite enviado</span>}</td>
+                <td className="absence-c">{absenceText(p.id, abs.data) ?? <span className="muted">—</span>}</td>
                 <td style={{ textAlign: 'right' }}>
                   <Menu label={`Ações para ${p.name}`} items={[
                     { label: 'Editar dados', onClick: () => setDlg({ kind: 'edit', person: p }) },
                     // Item 72: para quem saiu de surpresa e não escolheu substituto.
                     { label: 'Substituto em férias e ausências', onClick: () => setDlg({ kind: 'substitution', person: p }), disabled: !p.active || p.level === null },
                     { label: 'Reenviar convite', onClick: () => run(() => post(`/admin/users/${p.id}/invite`), `Convite reenviado para ${p.email}.`), disabled: !p.active },
-                    { label: p.active ? 'Desativar' : 'Reativar', onClick: () => setDlg({ kind: p.active ? 'deactivate' : 'toggle', person: p }), danger: p.active, disabled: p.id === me.user.id },
+                    { label: p.active ? 'Desativar' : 'Reativar', onClick: () => setDlg({ kind: p.active ? 'deactivate' : 'toggle', person: p }), danger: p.active, disabled: p.id === me.user.id || !!p.anonymized },
+                    // Item 118 (F7, LGPD): baixar os dados e anonimizar quem saiu da empresa.
+                    ...(!p.active && !p.anonymized ? [
+                      { label: 'Baixar dados (JSON)', onClick: () => run(() => downloadData(p), 'Arquivo baixado.') },
+                      { label: 'Anonimizar…', onClick: () => setDlg({ kind: 'anonymize', person: p }), danger: true },
+                    ] : []),
                   ]} />
                 </td>
               </tr>
@@ -105,6 +114,12 @@ export function PeoplePage() {
           <SubstitutionBox userId={dlg.person.id} name={dlg.person.name} />
         </Dialog>
       )}
+      {dlg?.kind === 'anonymize' && (
+        <ConfirmDialog title="Anonimizar pessoa" confirm="Anonimizar para sempre" danger
+          text={`Não tem volta. O nome e o e-mail de ${dlg.person.name} somem do SyncTasks: no log, nas tarefas e nos comentários aparece “Usuário removido”. As tarefas privadas dela perdem título, descrição e checklist; acessos, filtros salvos e avisos são apagados. As tarefas comuns, as delegações e o log continuam. Se precisar guardar uma cópia, use antes “Baixar dados (JSON)”. A pessoa não poderá ser reativada.`}
+          onConfirm={async () => { const r = await post(`/admin/users/${dlg.person.id}/anonymize`); toast('Dados anonimizados.'); return r; }}
+          onClose={() => setDlg(null)} />
+      )}
       {dlg?.kind === 'deactivate' && <DeactivateDialog person={dlg.person} onClose={() => setDlg(null)} />}
       {dlg?.kind === 'toggle' && (
         <ConfirmDialog title="Reativar pessoa" confirm="Reativar"
@@ -114,6 +129,18 @@ export function PeoplePage() {
       )}
     </div>
   );
+}
+
+/** Item 118: baixa os dados da pessoa (cadastro, tarefas, checklist e comentários) num arquivo JSON. */
+async function downloadData(p: Person) {
+  const data = await get<unknown>(`/admin/users/${p.id}/export`);
+  const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `dados-${p.name.toLowerCase().normalize('NFD').replace(/[^a-z0-9]+/g, '-')}.json`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  return true;
 }
 
 function NewPersonDialog({ people, onClose }: { people: Person[]; onClose: () => void }) {

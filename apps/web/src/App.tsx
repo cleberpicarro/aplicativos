@@ -7,6 +7,7 @@ import { Avatar, CardStatusIcon, Dialog, ErrorText, StatusIcon, TipIcon, useMe, 
 import { Icon, type IconName } from './components/Icons';
 import { CardModal } from './components/CardModal';
 import { SubstitutionBox } from './components/Substitution';
+import { PushBox } from './components/PushBox';
 import { useAction } from './components/dialogs';
 import { BoardsPage, rememberedBoard } from './pages/Boards';
 import { InboxPage } from './pages/Inbox';
@@ -17,7 +18,6 @@ import { SettingsPage } from './pages/Settings';
 import { ConnectPage, ForgotPage, LoginPage, SetPasswordPage } from './pages/Auth';
 import { HelpPage } from './pages/Help';
 import { CapturePage } from './pages/Capture';
-import { DashboardPage } from './pages/Dashboard';
 import { ArchivedPage } from './pages/Archived';
 import { TablePage } from './pages/Table';
 import { SHORTCUTS, isTyping, requestNewTask } from './lib/shortcuts';
@@ -39,7 +39,7 @@ function useFontSize() {
     try { localStorage.setItem(FS_KEY, String(fs)); } catch { /* sem armazenamento */ }
   }, [fs]);
   const i = FS.indexOf(fs);
-  return { down: i > 0 ? () => setFs(FS[i - 1]) : undefined, up: i < FS.length - 1 ? () => setFs(FS[i + 1]) : undefined };
+  return { fs, down: i > 0 ? () => setFs(FS[i - 1]) : undefined, up: i < FS.length - 1 ? () => setFs(FS[i + 1]) : undefined };
 }
 
 export function App() {
@@ -56,7 +56,6 @@ export function App() {
 }
 
 const PAGES: Record<string, { title: string }> = {
-  '/painel': { title: 'Painel' },
   '/quadros': { title: 'Tarefas' },
   '/entrada': { title: 'Caixa de entrada' },
   '/arquivadas': { title: 'Arquivadas' },
@@ -95,7 +94,7 @@ function useTheme() {
     store('synctasks.theme', theme);
   }, [theme]);
   const i = THEMES.findIndex((t) => t.id === theme);
-  return { current: THEMES[i], next: () => setTheme(THEMES[(i + 1) % THEMES.length].id) };
+  return { current: THEMES[i], next: () => setTheme(THEMES[(i + 1) % THEMES.length].id), set: setTheme };
 }
 
 function Shell() {
@@ -154,9 +153,10 @@ function Shell() {
   const hasReports = me.directReports.length > 0;
   // Item 72: agindo como a pessoa substituída (seletor do topo). Dados pessoais, avisos e administração ficam de fora.
   const acting = me.substitution.acting;
-  // Item 58: todo mundo da hierarquia abre nas próprias tarefas (o Painel fica a um clique, no menu).
+  // Item 58: todo mundo da hierarquia abre nas próprias tarefas.
   const home = !me.user.inHierarchy ? '/pessoas' : '/quadros';
-  let page = route.path;
+  // Item 105: o Painel virou parte de Tarefas delegadas; links antigos (#/painel) levam para lá.
+  let page = route.path === '/painel' && hasReports ? '/delegadas' : route.path;
   const cardCode = page.startsWith('/tarefa/') ? decodeURIComponent(page.slice(8)) : null;
   if (cardCode) page = lastPage.current;
   else if (!PAGES[page] || (acting && (page === '/avisos' || page === '/pessoas' || page === '/configuracoes'))) page = home;
@@ -164,7 +164,8 @@ function Shell() {
   if (!cardCode) lastPage.current = PAGES[route.path] && route.params.toString() ? `${page}?${route.params}` : page;
 
   useEffect(() => {
-    if (!cardCode && !PAGES[route.path]) go(home);
+    if (route.path === '/painel' && hasReports) go('/delegadas');
+    else if (!cardCode && !PAGES[route.path]) go(home);
   }, [route.path]); // eslint-disable-line react-hooks/exhaustive-deps
   // Item 56: atalhos de teclado gerais (N, / e ?). Não valem com uma janela aberta nem enquanto a pessoa escreve.
   const keyState = useRef({ page, view });
@@ -193,7 +194,6 @@ function Shell() {
   }, [page, cardCode]);
 
   const nav: { path: string; label: string; icon: IconName; n?: number; attn?: boolean; show: boolean }[] = [
-    { path: '/painel', label: 'Painel', icon: 'chart', show: hasReports },
     { path: '/quadros', label: 'Tarefas', icon: 'board', show: me.user.inHierarchy },
     { path: '/entrada', label: 'Caixa de entrada', icon: 'inbox', n: me.counts.inbox, show: me.user.inHierarchy },
     { path: '/arquivadas', label: 'Arquivadas', icon: 'archive', show: me.user.inHierarchy },
@@ -247,11 +247,9 @@ function Shell() {
             ))}
           </nav>
           <div className="foot">
-            <button onClick={() => closeMenu(() => go('/ajuda'))} title="Ajuda e manual" aria-current={page === '/ajuda' ? 'page' : undefined}>
+            <button onClick={() => closeMenu(() => go('/ajuda'))} title="Ajuda, legenda dos ícones e atalhos" aria-current={page === '/ajuda' ? 'page' : undefined}>
               <span className="ico"><Icon name="book" /></span><span className="lbl">Ajuda</span>
             </button>
-            <button onClick={() => closeMenu(() => setLegend(true))} title="Legenda dos ícones"><span className="ico"><Icon name="help" /></span><span className="lbl">Legenda</span></button>
-            <button className="keys-btn" onClick={() => setKeysHelp(true)} title="Atalhos de teclado (tecla ?)"><span className="ico"><Icon name="keyboard" /></span><span className="lbl">Atalhos</span></button>
             {!acting && <button className="my-data" onClick={() => closeMenu(() => setMyData(true))} title="Meus dados"><span className="ico"><Icon name="self" /></span><span className="lbl">Meus dados</span></button>}
             <button className="collapse" onClick={toggleSide} title={collapsed ? 'Expandir menu' : 'Recolher menu'} aria-expanded={!collapsed}>
               <span className="ico"><Icon name={collapsed ? 'sideOpen' : 'sideClose'} /></span><span className="lbl">Recolher menu</span>
@@ -272,18 +270,14 @@ function Shell() {
                 <button aria-pressed={view === 'tabela'} onClick={() => setView('tabela')} title="Todas as tarefas numa tabela, com filtros" aria-label="Ver em tabela"><Icon name="table" />Tabela</button>
               </span>
             )}
-            {me.user.inHierarchy && <SearchBox />}
-            <span className="seg" role="group" aria-label="Tamanho do texto">
-              <button onClick={font.down} disabled={!font.down} aria-label="Diminuir texto" title="Diminuir texto">A−</button>
-              <button onClick={font.up} disabled={!font.up} aria-label="Aumentar texto" title="Aumentar texto">A+</button>
-            </span>
-            <button className="b icon" onClick={theme.next} title={`${theme.current.label}. Clique para trocar.`} aria-label={`${theme.current.label}. Clique para trocar.`}>
+            {me.user.inHierarchy && <SearchBox compact={!wide} />}
+            {/* U5 e U2 da revisão geral: o tamanho do texto foi para Meus dados; no celular, o tema também. */}
+            {wide && <button className="b icon" onClick={theme.next} title={`${theme.current.label}. Clique para trocar.`} aria-label={`${theme.current.label}. Clique para trocar.`}>
               <Icon name={theme.current.icon} />
-            </button>
+            </button>}
           </div>
         </div>
         {acting && <ActingBar />}
-        {page === '/painel' && <DashboardPage />}
         {page === '/quadros' && (view === 'tabela' ? <TablePage top={wide ? filterSlot : null} /> : <BoardsPage top={wide ? filterSlot : null} wide={wide} />)}
         {page === '/arquivadas' && <ArchivedPage />}
         {page === '/entrada' && <InboxPage />}
@@ -291,11 +285,11 @@ function Shell() {
         {page === '/avisos' && <NotificationsPage />}
         {page === '/pessoas' && <PeoplePage />}
         {page === '/configuracoes' && <SettingsPage />}
-        {page === '/ajuda' && <HelpPage isAdmin={me.user.isAdmin} />}
+        {page === '/ajuda' && <HelpPage isAdmin={me.user.isAdmin} onLegend={() => setLegend(true)} onKeys={wide ? () => setKeysHelp(true) : undefined} />}
       </main>
       {cardCode && <CardModal key={cardCode} code={cardCode} onClose={() => go(lastPage.current)} />}
       {legend && <LegendDialog onClose={() => setLegend(false)} />}
-      {myData && <MyDataDialog onClose={() => setMyData(false)} />}
+      {myData && <MyDataDialog onClose={() => setMyData(false)} font={font} theme={theme} />}
       {keysHelp && <ShortcutsDialog onClose={() => setKeysHelp(false)} />}
       <ArrivalBalloon />
     </div>
@@ -377,9 +371,11 @@ function ActingBar() {
   );
 }
 
-function SearchBox() {
+function SearchBox({ compact = false }: { compact?: boolean }) {
   const me = useMe().data;
   const [q, setQ] = useState('');
+  // U2 da revisão geral: no celular a busca vira uma lupa e abre ao tocar.
+  const [expanded, setExpanded] = useState(false);
   const [open, setOpen] = useState(false);
   const [term, setTerm] = useState('');
   const ref = useRef<HTMLDivElement>(null);
@@ -409,10 +405,14 @@ function SearchBox() {
     if (first) pick(first.id);
   };
   const items = res.data ? (res.data.byCode ? [res.data.byCode] : res.data.results) : [];
+  if (compact && !expanded && !q) {
+    return <button className="b icon search-btn" aria-label="Buscar" title="Buscar tarefa ou número" onClick={() => setExpanded(true)}><Icon name="search" /></button>;
+  }
   return (
-    <div className="search" ref={ref}>
+    <div className={`search${compact ? ' open' : ''}`} ref={ref}>
       <form onSubmit={submit} role="search">
-        <input className="input" type="search" placeholder="Buscar tarefa ou número" aria-label="Buscar tarefa ou número" value={q}
+        <input className="input" type="search" placeholder="Buscar tarefa ou número" aria-label="Buscar tarefa ou número" value={q} autoFocus={compact}
+          onBlur={() => { if (compact && !q) window.setTimeout(() => setExpanded(false), 150); }}
           onChange={(e) => { setQ(e.target.value); setOpen(true); }} onFocus={() => setOpen(true)}
           onKeyDown={(e) => { if (e.key === 'Escape') setOpen(false); }} />
       </form>
@@ -434,7 +434,7 @@ function SearchBox() {
 }
 
 /** Item 46: Meus dados, com as escolhas de e-mail da própria pessoa. */
-function MyDataDialog({ onClose }: { onClose: () => void }) {
+function MyDataDialog({ onClose, font, theme }: { onClose: () => void; font: ReturnType<typeof useFontSize>; theme: ReturnType<typeof useTheme> }) {
   const me = useMe().data!;
   const { run, error } = useAction();
   const set = (prefs: { emailDigest?: boolean; emailDue?: boolean }, msg: string) => run(() => patch('/me/prefs', prefs), msg);
@@ -446,6 +446,29 @@ function MyDataDialog({ onClose }: { onClose: () => void }) {
         <dt>Cargo</dt><dd>{me.user.roleTitle}</dd>
       </dl>
       <p className="hint" style={{ margin: 0 }}>Para mudar nome, e-mail ou cargo, fale com a administração.</p>
+      {/* U5 da revisão geral: tamanho do texto e tema ficam aqui (valem neste navegador). */}
+      <fieldset className="my-mail my-look">
+        <legend>Aparência neste navegador</legend>
+        <div className="look-row">
+          <span>Tamanho do texto</span>
+          <span className="seg" role="group" aria-label="Tamanho do texto">
+            <button onClick={font.down} disabled={!font.down} aria-label="Diminuir texto" title="Diminuir texto">A−</button>
+            <span className="fs-now">{Math.round((font.fs / 14) * 100)}%</span>
+            <button onClick={font.up} disabled={!font.up} aria-label="Aumentar texto" title="Aumentar texto">A+</button>
+          </span>
+        </div>
+        <div className="look-row">
+          <span>Tema</span>
+          <span className="seg" role="radiogroup" aria-label="Tema">
+            {THEMES.map((t) => (
+              <button key={t.id} role="radio" aria-checked={theme.current.id === t.id} aria-pressed={theme.current.id === t.id} onClick={() => theme.set(t.id)} title={t.label}>
+                <Icon name={t.icon} />{t.id === 'auto' ? 'Automático' : t.id === 'light' ? 'Claro' : 'Escuro'}
+              </button>
+            ))}
+          </span>
+        </div>
+      </fieldset>
+      <PushBox />
       {me.user.inHierarchy && (
         <fieldset className="my-mail">
           <legend>E-mails do SyncTasks</legend>
