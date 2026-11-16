@@ -35,6 +35,12 @@ export const config = {
     pass: process.env.SMTP_PASS,
     from: process.env.MAIL_FROM ?? 'SyncTasks <tarefas@localhost>',
   },
+  // Item 119: avisos no aparelho (Web Push). Sem as duas chaves, fica desligado. Gere com: npx web-push generate-vapid-keys
+  push: {
+    publicKey: process.env.VAPID_PUBLIC_KEY || null,
+    privateKey: process.env.VAPID_PRIVATE_KEY || null,
+    subject: process.env.VAPID_SUBJECT || null,
+  },
   // Front-end compilado (servido pela API em produção)
   webDist: process.env.WEB_DIST ?? path.resolve(API_ROOT, '../web/dist'),
 };

@@ -48,7 +48,7 @@ test.describe('caixa de entrada: aceitar, delegar e descartar', () => {
 
   test('delegar direto da caixa de entrada: escolhe o quadro e a pessoa numa janela só', async ({ page, browser }) => {
     await entrar(page, 'marina');
-    const titulo = unico('Repassar da caixa');
+    const titulo = unico('Delegar da caixa');
     await capturar(page, titulo);
     await irPara(page, 'Caixa de entrada');
     await page.locator('.row.inbox', { hasText: titulo }).getByRole('button', { name: 'Delegar', exact: true }).click();

@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { WEEKDAYS, repeatLabel } from '../lib/format';
 import { del, get, patch, post, type CardDetail, type Follower, type Repeat } from '../lib/api';
 import { TIPS, cardNo, dateTime, dayOf, delegationKey, firstName, fullDate, nudgeLine, relative, statusOf } from '../lib/format';
-import { Avatar, Dialog, ErrorText, StatusPill, useMe, useToast } from './ui';
+import { Avatar, Dialog, ErrorText, StatusPill, useMe, useToast, useWide } from './ui';
 import { Icon } from './Icons';
 import { AcceptDialog, ConfirmDialog, DeclineDialog, DelegateDialog, NudgeDialog, RedelegateDialog, ReopenDialog, TransferDialog, useAction, useCancelDelegation, useDiscard, useDiscardCard, useResume } from './dialogs';
 import { go } from '../lib/router';
@@ -50,6 +50,7 @@ export function CardModal({ code, onClose }: { code: string; onClose: () => void
     return () => document.removeEventListener('keydown', onKey);
   }, [sub]);
 
+  const wide = useWide();
   if (q.isLoading) return <Dialog title="Carregando…" onClose={onClose} wide><p className="loading">Carregando a tarefa…</p></Dialog>;
   if (q.error || !q.data) {
     return (
@@ -63,6 +64,7 @@ export function CardModal({ code, onClose }: { code: string; onClose: () => void
   const owner = role === 'owner';
   const archived = !!card.archivedAt;
   const status = statusOf(card);
+  // U1 da revisão geral: no celular, Concluir e o prazo ficam logo abaixo do título (antes, no fim da janela).
   const reports = me.directReports.length > 0;
   const childOpen = card.child && !['ACKED', 'CANCELED'].includes(card.child.status);
   const loadingRest = q.isPlaceholderData;
@@ -92,9 +94,11 @@ export function CardModal({ code, onClose }: { code: string; onClose: () => void
         </>
       ) : (
         <>
-          <button className={`b ${card.completedAt ? '' : 'pri'}`} title={card.completedAt ? TIPS.uncomplete : TIPS.complete} onClick={toggleDone} disabled={busy}>
-            <Icon name="check" />{card.completedAt ? 'Desfazer conclusão' : 'Concluir'}
-          </button>
+          {wide && (
+            <button className={`b ${card.completedAt ? '' : 'pri'}`} title={card.completedAt ? TIPS.uncomplete : TIPS.complete} onClick={toggleDone} disabled={busy}>
+              <Icon name="check" />{card.completedAt ? 'Desfazer conclusão' : 'Concluir'}
+            </button>
+          )}
           {reports && !childOpen && !card.completedAt && !d?.noPass && (
             <button className="b" title={TIPS.delegate} onClick={() => setSub('delegate')}><Icon name="out" />Delegar</button>
           )}
@@ -192,9 +196,17 @@ export function CardModal({ code, onClose }: { code: string; onClose: () => void
                 {card.source === 'assistente' && <span>· Criada pelo assistente (Claude)</span>}
                 {d?.parentNum != null && <span>· Desdobramento da tarefa <span className="code">{cardNo(d.parentNum)}</span> de {d.delegatorId === me.user.id ? you : firstName(d.delegatorName)}</span>}
               </div>
+              {!wide && owner && !archived && !card.inInbox && (
+                <div className="mobile-quick">
+                  <button className={`b ${card.completedAt ? '' : 'pri'}`} title={card.completedAt ? TIPS.uncomplete : TIPS.complete} onClick={toggleDone} disabled={busy || !canToggle}>
+                    <Icon name="check" />{card.completedAt ? 'Desfazer conclusão' : 'Concluir'}
+                  </button>
+                  <DueEditor id={card.id} value={card.dueDate} />
+                </div>
+              )}
 
               {owner && d?.noPass && !archived && (
-                <div className="box attn"><Icon name="self" /> {d.delegatorId === me.user.id ? 'Você' : firstName(d.delegatorName)} pediu que você mesmo faça esta tarefa: ela não pode ser repassada (nem delegada, nem transferida para um subordinado).</div>
+                <div className="box attn"><Icon name="self" /> {d.delegatorId === me.user.id ? 'Você' : firstName(d.delegatorName)} pediu que você mesmo faça esta tarefa: ela não pode ser redelegada (nem delegada, nem transferida para um subordinado).</div>
               )}
               {d?.status === 'DECLINED' && (
                 <div className="box attn"><b style={{ fontWeight: 500 }}>Justificativa da devolução:</b> “{d.declineReason}”</div>
@@ -213,29 +225,26 @@ export function CardModal({ code, onClose }: { code: string; onClose: () => void
                 <div className="box">
                   <div className="meta-line" style={{ color: 'inherit' }}>
                     <Icon name="out" />
-                    <span>Repassada para <b style={{ fontWeight: 500 }}>{card.child.ownerName}</b></span>
+                    <span>Delegada para <b style={{ fontWeight: 500 }}>{card.child.ownerName}</b></span>
                     <span className="code" title={`Número no quadro de ${firstName(card.child.ownerName)}`}>{cardNo(card.child.num)}</span>
                     <StatusPill status={delegationKey(card.child.status, card.child.reopened)} />
                   </div>
-                  {owner && <button className="link" style={{ marginTop: 6 }} onClick={() => go(`/tarefa/${card.child!.cardId}`)}>Abrir a tarefa repassada</button>}
+                  {owner && <button className="link" style={{ marginTop: 6 }} onClick={() => go(`/tarefa/${card.child!.cardId}`)}>Abrir a tarefa delegada</button>}
                   {owner && !archived && !['ACKED', 'CANCELED'].includes(card.child.status) && (
                     <NoPassToggle delegationId={card.child.delegationId} value={card.child.noPass} who={card.child.ownerName} />
                   )}
-                  {/* Item 48: cancelar a delegação daqui mesmo, da tarefa original (com Desfazer no aviso). */}
-                  {/* Item 75: devolvida também se retoma daqui (a tarefa vem para a caixa de entrada). */}
-                  {owner && !archived && card.child.status === 'DECLINED' && (
-                    <button className="b sm child-cancel" title={TIPS.resume} onClick={() => resume(card.child!.delegationId)}><Icon name="undo" />Retomar</button>
-                  )}
-                  {/* Itens 90 e 93: cobrar ou retomar a delegação em aberto daqui mesmo. */}
-                  {owner && !archived && ['PENDING_ACCEPT', 'IN_PROGRESS'].includes(card.child.status) && (
-                    <>
-                      {card.child.nudgedAt && <p className="hint" style={{ margin: '6px 0 0' }}>{nudgeLine(card.child.nudgedAt, card.child.nudgeCount)}.</p>}
-                      <button className="b sm child-cancel" title={TIPS.nudge} onClick={() => setSub('nudgeChild')}><Icon name="bell" />Cobrar</button>
-                      <button className="b sm child-cancel" title={TIPS.resumeOpen} onClick={() => resume(card.child!.delegationId)}><Icon name="undo" />Retomar</button>
-                    </>
+                  {/* U7 da revisão geral: os botões da delegação ficam lado a lado, numa linha só. */}
+                  {owner && !archived && card.child.nudgedAt && ['PENDING_ACCEPT', 'IN_PROGRESS'].includes(card.child.status) && (
+                    <p className="hint" style={{ margin: '6px 0 0' }}>{nudgeLine(card.child.nudgedAt, card.child.nudgeCount)}.</p>
                   )}
                   {owner && !archived && ['PENDING_ACCEPT', 'IN_PROGRESS', 'DECLINED'].includes(card.child.status) && (
-                    <button className="b sm danger child-cancel" title={card.child.status === 'DECLINED' ? TIPS.cancelDeclined : TIPS.cancelOpen} onClick={() => setSub('cancelChild')}>Cancelar delegação</button>
+                    <div className="child-acts">
+                      {/* Itens 90 e 93: cobrar ou retomar a delegação em aberto daqui mesmo. Item 75: devolvida também se retoma. */}
+                      {card.child.status !== 'DECLINED' && <button className="b sm" title={TIPS.nudge} onClick={() => setSub('nudgeChild')}><Icon name="bell" />Cobrar</button>}
+                      <button className="b sm" title={card.child.status === 'DECLINED' ? TIPS.resume : TIPS.resumeOpen} onClick={() => resume(card.child!.delegationId)}><Icon name="undo" />Retomar</button>
+                      {/* Item 48: cancelar a delegação daqui mesmo, da tarefa original (com Desfazer no aviso). */}
+                      <button className="b sm danger" title={card.child.status === 'DECLINED' ? TIPS.cancelDeclined : TIPS.cancelOpen} onClick={() => setSub('cancelChild')}>Cancelar delegação</button>
+                    </div>
                   )}
                 </div>
               )}
@@ -250,12 +259,12 @@ export function CardModal({ code, onClose }: { code: string; onClose: () => void
             </div>
 
             <aside className="card-side">
-              <div className="field">
+              {(wide || !owner || archived || card.inInbox) && <div className="field">
                 <span className="label">Prazo</span>
                 {owner && !archived ? <DueEditor id={card.id} value={card.dueDate} /> : <span>{card.dueDate ? fullDate(card.dueDate) : 'Sem prazo'}</span>}
                 {d?.suggestedDue && d.suggestedDue !== card.dueDate && <span className="hint">Sugerido: {fullDate(d.suggestedDue)}</span>}
                 {owner && d && <span className="hint">Ao mudar, {firstName(d.delegatorName)} é avisado(a).</span>}
-              </div>
+              </div>}
               {/* Item 103: repetir. Só tarefa própria (a recebida por delegação, quem delegou decide). */}
               {owner && !archived && !d && <RepeatField id={card.id} value={card.repeat} />}
               {(!owner || archived) && card.repeat && <div className="field"><span className="label">Repetir</span><span>{repeatLabel(card.repeat)}</span></div>}
@@ -556,8 +565,8 @@ function NoPassToggle({ delegationId, value, who }: { delegationId: string; valu
       <label className="check" data-tip={`Se marcada, ${firstName(who)} precisa fazer a tarefa: não pode delegá-la nem transferi-la para um subordinado.`}>
         <input type="checkbox" checked={value} disabled={busy}
           onChange={(e) => run(() => post(`/delegations/${delegationId}/no-pass`, { noPass: e.target.checked }),
-            e.target.checked ? `${firstName(who)} foi avisado(a): a tarefa não pode ser repassada.` : `${firstName(who)} foi avisado(a): a tarefa pode ser repassada.`)} />
-        Não pode ser repassada
+            e.target.checked ? `${firstName(who)} foi avisado(a): a tarefa não pode ser redelegada.` : `${firstName(who)} foi avisado(a): a tarefa pode ser redelegada.`)} />
+        Não pode ser redelegada
       </label>
       <ErrorText error={error} />
     </div>
@@ -663,7 +672,7 @@ function describe(e: Ev): { text: string; change?: string } {
     case 'description_changed': return { text: 'alterou a descrição', change: `“${cut(b.description || '')}” → “${cut(a.description || '')}”` };
     case 'due_changed': return { text: 'alterou o prazo', change: `${df(b.dueDate)} → ${df(a.dueDate)}` };
     case 'privacy_changed': return { text: a.isPrivate ? 'tornou a tarefa privada' : a.reason === 'delegated' ? 'tornou a tarefa visível (tarefa delegada não pode ser privada)' : 'tornou a tarefa visível' };
-    case 'no_pass_changed': return { text: a.noPass ? 'marcou que a tarefa não pode ser repassada' : 'liberou repassar a tarefa' };
+    case 'no_pass_changed': return { text: a.noPass ? 'marcou que a tarefa não pode ser redelegada' : 'liberou redelegar a tarefa' };
     case 'moved': return a.board ? { text: `moveu para outro quadro`, change: `“${b.board} · ${b.list}”${b.num ? ` (#${b.num})` : ''} → “${a.board} · ${a.list}”${a.num ? ` (#${a.num})` : ''}` } : { text: `moveu de “${b.list}” para “${a.list}”` };
     case 'captured': return { text: a.email ? 'capturou do e-mail' : 'capturou da web', change: a.url ?? undefined };
     case 'accepted': return { text: `aceitou e colocou em “${a.board} · ${a.list}”${a.num ? ` (#${a.num})` : ''}` };
@@ -673,7 +682,7 @@ function describe(e: Ev): { text: string; change?: string } {
     case 'checklist_unchecked': return { text: 'desmarcou item do checklist', change: `“${a.text}”` };
     case 'checklist_removed': return { text: 'removeu item do checklist', change: `“${b.text}”` };
     case 'comment_added': return { text: 'comentou', change: `“${cut(a.body)}”` };
-    case 'delegated': return { text: `delegou para ${a.to}`, change: `Prazo sugerido: ${df(a.suggestedDue)}${a.parentNum ? ` · origem #${a.parentNum}` : a.parentCode ? ` · origem ${a.parentCode}` : ''}${a.noPass ? ' · não pode ser repassada' : ''}` };
+    case 'delegated': return { text: `delegou para ${a.to}`, change: `Prazo sugerido: ${df(a.suggestedDue)}${a.parentNum ? ` · origem #${a.parentNum}` : a.parentCode ? ` · origem ${a.parentCode}` : ''}${a.noPass ? ' · não pode ser redelegada' : ''}` };
     case 'delegated_down': return { text: `delegou para baixo: ${a.to}`, change: a.childNum ? `#${a.childNum}` : a.childCode };
     case 'declined': return { text: 'devolveu a tarefa', change: `“${a.reason}”` };
     case 'completed': return { text: 'concluiu a tarefa' };
@@ -691,7 +700,7 @@ function describe(e: Ev): { text: string; change?: string } {
     case 'nudged': return { text: `cobrou ${a.to}${a.count > 1 ? ` (${a.count}ª vez)` : ''}`, change: a.message ? `“${cut(a.message)}”` : undefined };
     case 'cancel_undone': return { text: 'desfez o cancelamento da delegação' };
     case 'child_cancel_undone': return { text: 'desfez o cancelamento da delegação para baixo', change: a.childNum ? `#${a.childNum}` : undefined };
-    case 'redelegated': return { text: `redelegou para ${a.to}`, change: `Prazo sugerido: ${df(a.suggestedDue)}${a.noPass ? ' · não pode ser repassada' : ''}` };
+    case 'redelegated': return { text: `redelegou para ${a.to}`, change: `Prazo sugerido: ${df(a.suggestedDue)}${a.noPass ? ' · não pode ser redelegada' : ''}` };
     case 'transferred': return { text: `transferiu de ${b.owner} para ${a.owner}`, change: a.reason === 'deactivated' ? `${b.owner} foi desativado(a); a tarefa foi para a caixa de entrada de ${a.owner}` : undefined };
     case 'follower_added': return { text: 'incluiu um seguidor', change: a.email };
     case 'follower_removed': return a.self ? { text: 'deixou de seguir a tarefa (pelo link do e-mail)', change: b.email } : { text: 'tirou um seguidor', change: b.email };

@@ -26,7 +26,7 @@ export const FIELDS: { id: Field; label: string; kind: Kind }[] = [
   { id: 'receivedFrom', label: 'Recebida de', kind: 'person' },
   { id: 'private', label: 'Privada', kind: 'bool' },
   { id: 'archived', label: 'Arquivada', kind: 'bool' },
-  { id: 'canPass', label: 'Pode repassar', kind: 'bool' },
+  { id: 'canPass', label: 'Pode redelegar', kind: 'bool' },
   { id: 'source', label: 'Origem', kind: 'source' },
   { id: 'color', label: 'Cor', kind: 'color' },
 ];

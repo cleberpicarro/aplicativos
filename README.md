@@ -102,6 +102,16 @@ Sem os dois segredos, a tarefa só mostra um aviso amarelo e não faz nada. Se a
 
 **Para restaurar:** baixe a cópia na aba **Actions** (execução mais recente → **Artifacts**), destranque com `gpg -d synctasks-AAAA-MM-DD.dump.gpg > copia.dump` (pede a senha) e restaure num banco vazio com `pg_restore --no-owner --dbname=ENDERECO copia.dump`.
 
+### Avisos no celular e no computador (notificações)
+
+Cada pessoa pode ligar em **Meus dados › Avisos neste aparelho** para receber os avisos do SyncTasks como notificação do navegador, na hora, mesmo com o app fechado (Android e computador; no iPhone, só com o SyncTasks instalado na tela inicial). Fica desligado até o servidor ter duas chaves. Para ligar, uma vez só:
+
+1. No Render, abra o serviço **synctasks** → **Shell** e rode `npx web-push generate-vapid-keys`. Aparecem duas chaves: *Public Key* e *Private Key*.
+2. No mesmo serviço, **Environment** → **Add Environment Variable**: `VAPID_PUBLIC_KEY` com a Public Key e `VAPID_PRIVATE_KEY` com a Private Key. Salve (o Render reinicia o app).
+3. Opcional: `VAPID_SUBJECT` com `mailto:` e um e-mail de contato da empresa (sem ela, vale o endereço do app).
+
+A chave privada **nunca** vai para o repositório (ele é público). Se trocar as chaves, cada pessoa precisa ligar os avisos de novo.
+
 ### Avisos de problemas e faxina
 
 Se um e-mail não sair (depois de 5 tentativas), ficar parado na fila ou houver um erro inesperado no servidor, cada administrador recebe **um e-mail por dia**, a partir das 8h, com o resumo; a tela **Configurações** mostra os últimos 7 dias e tem **Tentar de novo** para os e-mails. Uma vez por dia o app apaga logins vencidos, e-mails enviados há mais de 90 dias, avisos lidos há mais de 180 dias e erros com mais de 90 dias. Tarefas, comentários e o log nunca são apagados. As tarefas automáticas usam uma trava no banco (`pg_try_advisory_xact_lock`), então dois servidores ligados ao mesmo tempo não mandam e-mail em dobro.

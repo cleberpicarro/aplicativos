@@ -70,4 +70,42 @@ test.describe('substituição em férias', () => {
     await aviso(page, 'Substituição encerrada.');
     await expect(dlg.getByRole('button', { name: 'Escolher substituto' })).toBeVisible();
   });
+
+  test('administração: agendar pelo quadro Férias e ausências, ver na coluna Ausência e cancelar (item 76) @celular', async ({ page }) => {
+    await entrar(page, 'renata');
+    await expect(page.locator('.topbar h1')).toHaveText('Pessoas');
+    const quadro = page.getByRole('region', { name: 'Férias e ausências' });
+    await expect(quadro).toBeVisible();
+    // Começa limpo: se o João ficou com substituição de uma rodada anterior, encerra pela API.
+    const lista = await api(page, 'GET', '/admin/substitutions');
+    for (const s of lista.open) await api(page, 'POST', '/substitution/end', { userId: s.absent.id });
+    await page.reload();
+
+    await quadro.getByRole('button', { name: 'Nova substituição' }).click();
+    const d = dialogo(page, 'Nova substituição');
+    const quem = d.getByLabel('Quem vai sair');
+    await quem.selectOption({ label: (await quem.locator('option').allInnerTexts()).find((o) => o.startsWith('João'))! });
+    const sub = d.getByLabel(/Quem substitui/);
+    await expect(sub.locator('option', { hasText: 'Paulo' })).toHaveCount(1);
+    await sub.selectOption({ label: (await sub.locator('option').allInnerTexts()).find((o) => o.startsWith('Paulo'))! });
+    await expect(sub).not.toHaveValue('');
+    const daqui = new Date(Date.now() + 10 * 86_400_000).toISOString().slice(0, 10);
+    await d.getByLabel('Primeiro dia fora (opcional)').fill(daqui);
+    await d.getByRole('button', { name: 'Ligar substituição' }).click();
+    await aviso(page, /Substituição agendada/);
+    await expect(d.locator('.sub-now')).toContainText('Agendada');
+    await d.getByRole('button', { name: 'Fechar' }).last().click();
+
+    const linha = quadro.locator('li', { hasText: 'João' });
+    await expect(linha).toContainText('Agendada');
+    await expect(linha).toContainText('Paulo');
+    await expect(linha).toContainText('escolhido por Renata');
+    await expect(page.locator('tr', { hasText: 'João' }).locator('td.absence-c')).toContainText('Sai em');
+
+    await linha.getByRole('button', { name: 'Cancelar' }).click();
+    await aviso(page, 'Substituição agendada cancelada.');
+    await expect(quadro.getByText('Ninguém fora agora')).toBeVisible();
+    await quadro.getByRole('button', { name: 'Histórico' }).click();
+    await expect(dialogo(page, 'Histórico de substituições').locator('tr', { hasText: 'João' }).first()).toBeVisible();
+  });
 });

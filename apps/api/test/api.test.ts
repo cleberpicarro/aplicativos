@@ -885,7 +885,7 @@ describe('sétima rodada', () => {
     const ev = (await ctx.pool.query(`SELECT after FROM card_events WHERE card_id = $1 AND type = 'no_pass_changed' ORDER BY id`, [d.cardId])).rows;
     expect(ev.map((e) => e.after.noPass)).toEqual([false, true]);
     const notes = (await call('gest', 'GET', '/api/notifications')).body;
-    expect(JSON.stringify(notes)).toContain('liberou repassar');
+    expect(JSON.stringify(notes)).toContain('liberou redelegar');
     // a marca acompanha a tarefa na transferência para um colega
     expect((await call('gest', 'POST', `/api/cards/${d.cardId}/transfer`, { toUserId: ctx.users.gest2.id })).status).toBe(200);
     await acceptTask(ctx, 'gest2', d.cardId);

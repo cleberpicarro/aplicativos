@@ -45,9 +45,9 @@ test.describe('cobrar a tarefa delegada', () => {
     await expect(dialogo(page, 'Cobrar tarefa').getByText('Espere pelo menos 1 hora')).toBeVisible();
     await dialogo(page, 'Cobrar tarefa').getByRole('button', { name: 'Cancelar' }).click();
 
-    // Na tarefa de origem, a caixa "Repassada para" mostra a cobrança e os botões.
+    // Na tarefa de origem, a caixa "Delegada para" mostra a cobrança e os botões.
     const dlg = await abrirTarefa(page, origem);
-    const box = dlg.locator('.box', { hasText: 'Repassada para' });
+    const box = dlg.locator('.box', { hasText: 'Delegada para' });
     await expect(box.getByText(/^Cobrada em \d\d\/\d\d às \d\d:\d\d\.$/)).toBeVisible();
     await expect(box.getByRole('button', { name: 'Cobrar' })).toBeVisible();
     await expect(box.getByRole('button', { name: 'Retomar' })).toBeVisible();

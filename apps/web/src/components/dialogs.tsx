@@ -242,7 +242,7 @@ function NoPassField({ value, onChange }: { value: boolean; onChange: (v: boolea
   return (
     <label className="check">
       <input type="checkbox" checked={value} onChange={(e) => onChange(e.target.checked)} />
-      <span>Não pode ser repassada <span className="hint">(a pessoa precisa fazer: não pode delegar nem transferir para um subordinado)</span></span>
+      <span>Não pode ser redelegada <span className="hint">(a pessoa precisa fazer: não pode delegar nem transferir para um subordinado)</span></span>
     </label>
   );
 }
@@ -378,7 +378,7 @@ export function TransferDialog({ card, onClose }: { card: Card; onClose: Close }
           {card.delegation
             ? `Esta tarefa foi delegada por ${card.delegation.delegatorName}, que continua acompanhando e verá “delegada para …”.`
             : 'Ao transferir, você deixa de acompanhar a tarefa.'}
-          {card.delegation?.noPass && ' Esta tarefa não pode ser repassada: os subordinados não aparecem na lista.'}
+          {card.delegation?.noPass && ' Esta tarefa não pode ser redelegada: os subordinados não aparecem na lista.'}
         </p>
         {targets.data && targets.data.length === 0 && <p className="err">Não há para quem transferir.</p>}
         {targets.data && targets.data.length > 0 && (

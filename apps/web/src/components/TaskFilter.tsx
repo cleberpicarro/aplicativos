@@ -110,8 +110,9 @@ export function FilterBar({ f, onBoard = false, top, children }: { f: TaskFilter
     </span>
   );
   const condition = (
-    <button className="b sm" onClick={() => setEditing(f.hasConds ? cur : { ...cur, filter: { all: [newCondition()], any: [] } })}>
-      <Icon name="plus" /> {f.hasConds ? 'Editar filtro' : 'Condição'}
+    <button className="b sm cond-b" aria-label={f.hasConds ? 'Editar filtro' : 'Condição'} title={f.hasConds ? 'Editar filtro' : 'Nova condição'}
+      onClick={() => setEditing(f.hasConds ? cur : { ...cur, filter: { all: [newCondition()], any: [] } })}>
+      <Icon name="plus" /> <span className="cond-l">{f.hasConds ? 'Editar filtro' : 'Condição'}</span>
     </button>
   );
   const chips = (

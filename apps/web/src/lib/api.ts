@@ -122,9 +122,29 @@ export interface Substitution {
   id: string;
   substitute: { id: string; name: string; roleTitle: string };
   shareCommon: boolean;
+  /** Item 76: primeiro dia fora (null = começou ao ser criada). */
+  startsOn: string | null;
   endsOn: string | null;
+  /** Item 76: agendada = ainda não chegou o primeiro dia fora. */
+  status: 'active' | 'scheduled';
   createdAt: string;
   createdByName: string;
+}
+
+/** Item 76: linha do quadro “Férias e ausências” (Pessoas, só administração). */
+export interface AdminSubstitution {
+  id: string;
+  absent: { id: string; name: string; roleTitle: string };
+  substitute: { id: string; name: string; roleTitle: string };
+  shareCommon: boolean;
+  startsOn: string | null;
+  endsOn: string | null;
+  status: 'active' | 'scheduled' | 'ended';
+  createdAt: string;
+  createdByName: string;
+  bySelf: boolean;
+  endedAt: string | null;
+  endedByName: string | null;
 }
 
 export interface CardDetail {

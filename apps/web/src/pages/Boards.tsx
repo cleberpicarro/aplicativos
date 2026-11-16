@@ -677,14 +677,15 @@ function Tile({ card, today, dragging, onDragStart, onDragEnd, onDragOver, onDro
         <span className="code">{pending ? 'criando…' : cardNo(card.num)}</span>
         <Due date={card.dueDate} done={done} today={today} />
         {/* Opção A do ícone de delegada: etiqueta com o nome (roxa = recebida de alguém; verde-azulada = você delegou). */}
-        {d && <span className="dtag from" title={`Delegada por ${d.delegatorName}`}><Icon name="into" /><span className="nm">De {firstName(d.delegatorName)}</span></span>}
-        {child && <span className="dtag to" title={`Repassada para ${child.ownerName}`}><Icon name="out" /><span className="nm">Para {firstName(child.ownerName)}</span></span>}
+        {/* U10 da revisão geral: recebida e delegada de novo mostra só o “Para”, que é o que você acompanha; o “De” fica no balão. */}
+        {d && !child && <span className="dtag from" title={`Delegada por ${d.delegatorName}`}><Icon name="into" /><span className="nm">De {firstName(d.delegatorName)}</span></span>}
+        {child && <span className="dtag to" title={`Delegada para ${child.ownerName}`}><Icon name="out" /><span className="nm">Para {firstName(child.ownerName)}</span></span>}
         {showStatus && <CardStatusIcon card={card} />}
         {card.checklist.total > 0 && <span className="cl" data-opt={`Checklist ${card.checklist.done}/${card.checklist.total}`} title="Checklist"><Icon name="checks" />{card.checklist.done}/{card.checklist.total}</span>}
         {card.repeat && <span className="opt" data-opt="Repete"><TipIcon name="repeat" tip={`Repete: ${repeatLabel(card.repeat).toLowerCase()}`} /></span>}
         {card.isPrivate && <span className="opt" data-opt="Privada"><TipIcon name="lock" tip="Privada: nenhum superior vê" /></span>}
-        {d?.noPass && <span className="opt" data-opt="Não pode ser repassada"><TipIcon name="self" tip={`Não pode ser repassada: ${firstName(d.delegatorName)} pediu que você mesmo faça`} /></span>}
-        {child?.noPass && child.status !== 'ACKED' && <span className="opt" data-opt="Não pode ser repassada"><TipIcon name="self" tip={`Não pode ser repassada por ${firstName(child.ownerName)}`} /></span>}
+        {d?.noPass && <span className="opt" data-opt="Não pode ser redelegada"><TipIcon name="self" tip={`Não pode ser redelegada: ${firstName(d.delegatorName)} pediu que você mesmo faça`} /></span>}
+        {child?.noPass && child.status !== 'ACKED' && <span className="opt" data-opt="Não pode ser redelegada"><TipIcon name="self" tip={`Não pode ser redelegada por ${firstName(child.ownerName)}`} /></span>}
         <span className="more" style={{ display: 'none' }} tabIndex={0} />
         {archivable(card) && (
           <button className="arch" onClick={archive} aria-label={`Arquivar ${card.title}`} data-tip="Arquivar">

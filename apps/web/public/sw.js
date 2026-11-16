@@ -1,6 +1,6 @@
 // Service worker do SyncTasks: guarda a casca do app para abrir rápido e instalar como PWA.
 // Dados (/api) nunca são guardados em cache: as ações sempre exigem conexão.
-const CACHE = 'synctasks-shell-v1';
+const CACHE = 'synctasks-shell-v2';
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE).then((c) => c.addAll(['/', '/manifest.webmanifest', '/icon.svg', '/icon-192.png', '/icon-512.png'])));
@@ -31,5 +31,32 @@ self.addEventListener('fetch', (event) => {
         return res;
       }),
     ),
+  );
+});
+
+// Item 119: avisos no aparelho (notificações do navegador). Tocar no aviso abre a tarefa no SyncTasks.
+self.addEventListener('push', (event) => {
+  let data = {};
+  try { data = event.data ? event.data.json() : {}; } catch { data = { body: event.data && event.data.text() }; }
+  event.waitUntil(
+    self.registration.showNotification(data.title || 'SyncTasks', {
+      body: data.body || 'Você tem um aviso novo.',
+      icon: '/icon-192.png',
+      badge: '/icon-192.png',
+      tag: data.tag,
+      data: { url: data.url || '/#/avisos' },
+    }),
+  );
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const url = new URL(event.notification.data && event.notification.data.url ? event.notification.data.url : '/', self.location.origin).href;
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
+      const open = list.find((c) => new URL(c.url).origin === self.location.origin);
+      if (open) return open.navigate(url).then((c) => (c || open).focus());
+      return self.clients.openWindow(url);
+    }),
   );
 });

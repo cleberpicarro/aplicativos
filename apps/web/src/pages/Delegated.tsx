@@ -5,6 +5,7 @@ import { go, useRoute } from '../lib/router';
 import { TIPS, cardNo, daysBetween, dueTone, firstName, nudgeLine, plural } from '../lib/format';
 import { Avatar, CardStatusIcon, Due, TipIcon, ErrorText } from '../components/ui';
 import { Icon } from '../components/Icons';
+import { AgendaBlock, DashTiles, StalledBlock, agendaCount, stalledCount, useDashboard } from './Dashboard';
 import { ConfirmDialog, NudgeDialog, RedelegateDialog, ReopenDialog, useAction, useCancelDelegation, useResume } from '../components/dialogs';
 
 type Pending = null | { kind: 'reopen' | 'redelegate' | 'cancel' | 'nudge'; card: Card };
@@ -25,6 +26,14 @@ function isOpen(c: Card) {
 }
 
 const COLLAPSE_KEY = 'synctasks.delegadas.recolhidos';
+/** Item 105: aba escolhida (Por pessoa, Próximos 14 dias, Paradas), lembrada neste navegador. */
+type Tab = 'pessoas' | 'agenda' | 'paradas';
+const TAB_KEY = 'synctasks.delegadas.aba';
+function loadTab(): Tab {
+  try { const v = localStorage.getItem(TAB_KEY); return v === 'agenda' || v === 'paradas' ? v : 'pessoas'; } catch { return 'pessoas'; }
+}
+/** Item 106: o que já está em "Precisam da sua ação" não repete os botões na lista da pessoa. */
+const needsMe = (c: Card) => !c.archivedAt && (c.delegation?.status === 'AWAITING_ACK' || c.delegation?.status === 'DECLINED');
 function loadCollapsed(): Record<string, boolean> {
   try { return JSON.parse(localStorage.getItem(COLLAPSE_KEY) ?? '{}'); } catch { return {}; }
 }
@@ -38,6 +47,9 @@ export function DelegatedPage() {
   const q = useQuery({ queryKey: ['delegations', archived], queryFn: () => get<Overview>(`/delegations${archived ? '?archived=1' : ''}`), refetchInterval: 30_000 });
   const [collapsed, setCollapsedState] = useState<Record<string, boolean>>(loadCollapsed);
   const [pending, setPending] = useState<Pending>(null);
+  const dash = useDashboard();
+  const [tab, setTabState] = useState<Tab>(loadTab);
+  const setTab = (t: Tab) => { setTabState(t); try { localStorage.setItem(TAB_KEY, t); } catch { /* só não lembra */ } };
   const { run, busy, error } = useAction();
   const cancelDelegation = useCancelDelegation();
   const resume = useResume();
@@ -82,7 +94,7 @@ export function DelegatedPage() {
   };
 
   const childIcon = (c: Card) =>
-    c.child && c.child.status !== 'CANCELED' ? <TipIcon name="out" tip={`Repassada para ${c.child.ownerName}`} /> : null;
+    c.child && c.child.status !== 'CANCELED' ? <TipIcon name="out" tip={`Delegada para ${c.child.ownerName}`} /> : null;
 
   const data = q.data;
   const pass = (c: Card) => (!filter || filter.test(c, data!.today)) && (!personFilter || c.ownerId === personFilter);
@@ -111,7 +123,11 @@ export function DelegatedPage() {
       <span className="code" title="Número da tarefa no seu quadro">{cardNo(c.delegation?.parentNum ?? c.num)}</span>
       <Due date={c.dueDate} done={!!c.completedAt} today={data!.today} />
       <span className="lnk">{childIcon(c)}</span>
-      <div className="acts fixed">{actions(c)}</div>
+      <div className="acts fixed">
+        {!withPerson && needsMe(c) && !filter
+          ? <span className="need-tag" title="Os botões estão em “Precisam da sua ação”, no alto">Precisa da sua ação</span>
+          : actions(c)}
+      </div>
     </div>
   );
 
@@ -124,6 +140,7 @@ export function DelegatedPage() {
           <button className="b sm" onClick={() => go('/delegadas')}><Icon name="x" />Limpar filtro</button>
         </div>
       )}
+      {dash.data && <DashTiles d={dash.data} active={filterKey} />}
       {q.isLoading && <p className="loading">Carregando…</p>}
       {data && (
         <>
@@ -136,7 +153,14 @@ export function DelegatedPage() {
             )}
           </section>
 
-          <section className="blk" aria-labelledby="h-team">
+          <div className="dl-tabs" role="tablist" aria-label="Ver as delegadas">
+            <button role="tab" aria-selected={tab === 'pessoas'} onClick={() => setTab('pessoas')}>Por pessoa</button>
+            <button role="tab" aria-selected={tab === 'agenda'} onClick={() => setTab('agenda')}>Próximos 14 dias{dash.data && <span className="c">{agendaCount(dash.data)}</span>}</button>
+            <button role="tab" aria-selected={tab === 'paradas'} onClick={() => setTab('paradas')}>Paradas{dash.data && <span className={`c${stalledCount(dash.data) ? ' attn' : ''}`}>{stalledCount(dash.data)}</span>}</button>
+          </div>
+          {tab === 'agenda' && <section className="blk" aria-label="Próximos 14 dias">{dash.data ? <AgendaBlock d={dash.data} /> : <p className="loading">Carregando…</p>}</section>}
+          {tab === 'paradas' && <section className="blk" aria-label="Paradas">{dash.data ? <StalledBlock d={dash.data} /> : <p className="loading">Carregando…</p>}</section>}
+          {tab === 'pessoas' && <section className="blk" aria-labelledby="h-team">
             <div className="sec-head">
               <h2 id="h-team">Equipe</h2>
               {groups.length > 0 && (
@@ -186,7 +210,7 @@ export function DelegatedPage() {
               <input type="checkbox" checked={archived} onChange={(e) => setArchived(e.target.checked)} />
               <span className="muted">Mostrar arquivadas e canceladas</span>
             </label>
-          </section>
+          </section>}
         </>
       )}
       {pending?.kind === 'reopen' && <ReopenDialog card={pending.card} onClose={() => setPending(null)} />}

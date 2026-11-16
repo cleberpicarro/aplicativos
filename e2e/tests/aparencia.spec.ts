@@ -9,9 +9,15 @@ test.describe('aparência e preferências', () => {
     await expect(html).toHaveAttribute('data-theme', 'light');
     await tema.click(); // claro → escuro
     await expect(html).toHaveAttribute('data-theme', 'dark');
+    // U5 da revisão geral: o tamanho do texto fica em Meus dados
     const antes = await html.evaluate((el) => getComputedStyle(el).getPropertyValue('--fs'));
-    await page.getByRole('button', { name: 'Aumentar texto' }).click();
+    await page.getByRole('button', { name: 'Meus dados' }).click();
+    await dialogo(page, 'Meus dados').getByRole('button', { name: 'Aumentar texto' }).click();
     await expect.poll(() => html.evaluate((el) => getComputedStyle(el).getPropertyValue('--fs'))).not.toBe(antes);
+    await dialogo(page, 'Meus dados').getByRole('radio', { name: /Claro/ }).click();
+    await expect(html).toHaveAttribute('data-theme', 'light');
+    await dialogo(page, 'Meus dados').getByRole('radio', { name: /Escuro/ }).click();
+    await page.keyboard.press('Escape');
     await page.getByRole('button', { name: 'Recolher menu' }).first().click();
     await expect(page.locator('.app')).toHaveClass(/collapsed/);
     await page.reload();
@@ -63,12 +69,12 @@ test.describe('aparência e preferências', () => {
   test('ajuda e legenda abrem sem erro @celular', async ({ page }) => {
     await entrar(page, 'joao');
     await abrirMenu(page);
-    await page.getByRole('button', { name: 'Legenda' }).click();
-    await expect(dialogo(page, 'Legenda')).toBeVisible();
-    await page.keyboard.press('Escape');
-    await abrirMenu(page);
     await page.getByRole('button', { name: 'Ajuda' }).click();
     await expect(page.locator('.topbar h1')).toHaveText('Ajuda');
+    // U9 da revisão geral: a Legenda abre de dentro da Ajuda
+    await page.getByRole('button', { name: 'Legenda dos ícones' }).click();
+    await expect(dialogo(page, 'Legenda')).toBeVisible();
+    await page.keyboard.press('Escape');
   });
   test('Meus dados: desligar e religar o resumo diário e os avisos de prazo por e-mail (item 46) @celular', async ({ page }) => {
     await entrar(page, 'beatriz');

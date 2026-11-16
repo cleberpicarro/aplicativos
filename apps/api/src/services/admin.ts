@@ -26,7 +26,7 @@ export async function listUsers(db: Db) {
   return many(
     db,
     `SELECT u.id, u.name, u.email, u.level, u.role_title, u.manager_id, m.name AS manager_name, u.is_admin, u.active,
-            (u.password_hash IS NOT NULL) AS has_password,
+            (u.password_hash IS NOT NULL) AS has_password, (u.anonymized_at IS NOT NULL) AS anonymized,
             (SELECT count(*)::int FROM users s WHERE s.manager_id = u.id AND s.active) AS reports
        FROM users u LEFT JOIN users m ON m.id = u.manager_id
       ORDER BY u.level NULLS LAST, u.name`,
@@ -154,6 +154,7 @@ export async function setActive(db: Db, admin: Actor, userId: string, active: bo
   const u = await one(db, 'SELECT * FROM users WHERE id = $1', [userId]);
   if (!u) throw notFound('Pessoa não encontrada.');
   if (u.id === admin.id && !active) throw conflict('Você não pode desativar a si mesmo.');
+  if (active && u.anonymized_at) throw conflict('Os dados desta pessoa foram anonimizados; ela não pode ser reativada. Cadastre de novo, se voltar.');
   if (!active) {
     const pend = await one(
       db,
@@ -280,6 +281,82 @@ export async function deactivate(db: Db, admin: Actor, userId: string, successor
   await db.query('DELETE FROM sessions WHERE user_id = $1', [userId]);
   await db.query('UPDATE users SET active = false, updated_at = now() WHERE id = $1', [userId]);
   return result;
+}
+
+/* ---------- Item 118 (F7 da revisão geral): exportar e anonimizar quem saiu (LGPD) ---------- */
+
+/** Tudo o que é da pessoa, num arquivo: dados de cadastro, quadros, tarefas (com checklist e comentários) e comentários escritos. */
+export async function exportUser(db: Db, userId: string) {
+  const u = await one(db, 'SELECT id, name, email, role_title, level, is_admin, active, created_at, anonymized_at FROM users WHERE id = $1', [userId]);
+  if (!u) throw notFound('Pessoa não encontrada.');
+  const cards = await many(
+    db,
+    `SELECT c.id, c.num, c.title, c.description, c.due_date, c.is_private, c.completed_at, c.archived_at, c.created_at,
+            b.name AS board, l.name AS list
+       FROM cards c LEFT JOIN lists l ON l.id = c.list_id LEFT JOIN boards b ON b.id = l.board_id
+      WHERE c.owner_id = $1 ORDER BY b.name NULLS FIRST, l.position, c.position`,
+    [userId],
+  );
+  const ids = cards.map((c) => c.id);
+  const checklist = ids.length ? await many(db, 'SELECT card_id, text, done FROM checklist_items WHERE card_id = ANY($1) ORDER BY position', [ids]) : [];
+  const comments = await many(
+    db,
+    `SELECT cm.card_id, c.num, c.title, cm.body, cm.created_at, (cm.author_id = $1) AS mine, a.name AS author
+       FROM comments cm JOIN cards c ON c.id = cm.card_id JOIN users a ON a.id = cm.author_id
+      WHERE cm.author_id = $1 OR c.owner_id = $1 ORDER BY cm.created_at`,
+    [userId],
+  );
+  return {
+    exportedAt: new Date().toISOString(),
+    person: { name: u.name, email: u.email, roleTitle: u.role_title, level: u.level === null ? null : LEVEL_TITLES[u.level], admin: u.is_admin, active: u.active, createdAt: u.created_at, anonymizedAt: u.anonymized_at },
+    tasks: cards.map((c) => ({
+      number: c.num, title: c.title, description: c.description, due: c.due_date, private: c.is_private,
+      completedAt: c.completed_at, archivedAt: c.archived_at, createdAt: c.created_at,
+      board: c.board ?? null, list: c.list ?? (c.board ? null : 'Caixa de entrada'),
+      checklist: checklist.filter((i) => i.card_id === c.id).map((i) => ({ text: i.text, done: i.done })),
+      comments: comments.filter((m) => m.card_id === c.id).map((m) => ({ author: m.author, body: m.body, at: m.created_at })),
+    })),
+    commentsElsewhere: comments.filter((m) => m.mine && !ids.includes(m.card_id)).map((m) => ({ task: `#${m.num} ${m.title}`, body: m.body, at: m.created_at })),
+  };
+}
+
+export const REMOVED_NAME = 'Usuário removido';
+
+/**
+ * Anonimiza quem já foi desativado: não tem volta. Nome e e-mail somem (o log e as tarefas mostram "Usuário removido"),
+ * as tarefas privadas perdem título, descrição e checklist (os comentários são imutáveis, RN-50, e ninguém mais os vê), e saem os acessos, filtros, avisos e e-mails pendentes.
+ * Tarefas comuns, delegações e o log continuam (são da empresa e ninguém apaga tarefa, item 82).
+ */
+export async function anonymize(db: Db, admin: Actor, userId: string) {
+  const u = await one(db, 'SELECT * FROM users WHERE id = $1 FOR UPDATE', [userId]);
+  if (!u) throw notFound('Pessoa não encontrada.');
+  if (u.id === admin.id) throw conflict('Você não pode anonimizar a si mesmo.');
+  if (u.active) throw conflict('Desative a pessoa antes de anonimizar.');
+  if (u.anonymized_at) throw conflict('Esta pessoa já foi anonimizada.');
+  const open = await one(db, 'SELECT 1 FROM substitutions WHERE (absent_id = $1 OR substitute_id = $1) AND ended_at IS NULL', [userId]);
+  if (open) await db.query('UPDATE substitutions SET ended_at = now(), ended_by = $2 WHERE (absent_id = $1 OR substitute_id = $1) AND ended_at IS NULL', [userId, admin.id]);
+  const priv = await many(db, 'SELECT id FROM cards WHERE owner_id = $1 AND is_private', [userId]);
+  const privIds = priv.map((r) => r.id);
+  if (privIds.length) {
+    await db.query('DELETE FROM checklist_items WHERE card_id = ANY($1)', [privIds]);
+    await db.query(`UPDATE cards SET title = 'Tarefa privada removida', description = '', updated_at = now() WHERE id = ANY($1)`, [privIds]);
+  }
+  const email = u.email as string;
+  await db.query('DELETE FROM sessions WHERE user_id = $1', [userId]);
+  await db.query('DELETE FROM password_tokens WHERE user_id = $1', [userId]);
+  await db.query('DELETE FROM oauth_codes WHERE user_id = $1', [userId]);
+  await db.query('UPDATE oauth_grants SET revoked_at = coalesce(revoked_at, now()), access_hash = NULL, refresh_hash = NULL WHERE user_id = $1', [userId]);
+  await db.query('DELETE FROM saved_filters WHERE owner_id = $1', [userId]);
+  await db.query('DELETE FROM notifications WHERE user_id = $1', [userId]);
+  await db.query('DELETE FROM card_followers WHERE lower(email) = lower($1)', [email]);
+  await db.query(`DELETE FROM email_outbox WHERE lower(to_email) = lower($1)`, [email]);
+  await db.query(
+    `UPDATE users SET name = $2, email = $3, password_hash = NULL, role_title = '—', workspace_bg = NULL,
+            email_digest = false, email_due = false, anonymized_at = now(), updated_at = now()
+      WHERE id = $1`,
+    [userId, REMOVED_NAME, `removido-${String(userId).slice(0, 8)}@removido.invalid`],
+  );
+  return { ok: true, privateTasks: privIds.length };
 }
 
 /* ---------- Item 94: configurações que valem para todos ---------- */

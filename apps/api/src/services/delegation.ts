@@ -9,8 +9,8 @@ import { copyFollowers } from './followers.js';
 
 const first = (name: string) => name.split(' ')[0];
 
-/** Item 41: recusa ao tentar repassar uma tarefa marcada como "não pode ser repassada". */
-const noPassMessage = (delegatorName: string) => `${first(delegatorName)} pediu que você mesmo faça esta tarefa: ela não pode ser repassada.`;
+/** Item 41: recusa ao tentar repassar uma tarefa marcada como "não pode ser redelegada". */
+const noPassMessage = (delegatorName: string) => `${first(delegatorName)} pediu que você mesmo faça esta tarefa: ela não pode ser redelegada.`;
 
 /** RN-14 a RN-19: delega a partir de uma tarefa existente, criando um cartão ligado para o subordinado direto. */
 export async function delegate(db: Db, actor: Actor, cardId: string, input: { toUserId: string; suggestedDue?: string | null; note?: string; noPass?: boolean }) {
@@ -328,7 +328,7 @@ export async function nudge(db: Db, actor: Actor, delegationId: string, message?
   return { count: upd.nudge_count as number };
 }
 
-/** Item 41: só o delegador liga ou desliga a marca "não pode ser repassada", enquanto a delegação está em aberto. */
+/** Item 41: só o delegador liga ou desliga a marca "não pode ser redelegada", enquanto a delegação está em aberto. */
 export async function setNoPass(db: Db, actor: Actor, delegationId: string, noPass: boolean) {
   const { d, card } = await delegatorDelegation(db, actor, delegationId);
   if (['ACKED', 'CANCELED'].includes(d.status)) throw conflict('Esta delegação já foi encerrada.');
@@ -337,7 +337,7 @@ export async function setNoPass(db: Db, actor: Actor, delegationId: string, noPa
   await logEvent(db, card.id, actor.id, 'no_pass_changed', { noPass: d.no_pass }, { noPass });
   if (d.status !== 'DECLINED') {
     await notify(db, card.owner_id, 'no_pass',
-      noPass ? `${first(actor.name)} pediu que você mesmo faça a tarefa: ela não pode ser repassada` : `${first(actor.name)} liberou repassar a tarefa`, cardRef(card));
+      noPass ? `${first(actor.name)} pediu que você mesmo faça a tarefa: ela não pode ser redelegada` : `${first(actor.name)} liberou redelegar a tarefa`, cardRef(card));
   }
 }
 
@@ -352,7 +352,7 @@ export async function transferTargets(db: Db, actor: Actor, delegatorId: string 
      SELECT id, name, role_title, 'manager' FROM users WHERE id = $2 AND active`,
     [actor.id, actor.managerId, actor.level],
   );
-  // Item 41: tarefa que não pode ser repassada não vai para subordinado (seria outro jeito de delegar).
+  // Item 41: tarefa que não pode ser redelegada não vai para subordinado (seria outro jeito de delegar).
   return rows.filter((r) => r.id !== delegatorId && !(noPass && r.relation === 'subordinate'));
 }
 

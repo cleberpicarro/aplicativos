@@ -274,8 +274,11 @@ describe('permissões em massa (frente 2)', () => {
       { method: 'POST', url: `/api/admin/users/${target}/invite`, route: 'POST /api/admin/users/:id/invite' },
       { method: 'GET', url: `/api/admin/users/${target}/deactivation`, route: 'GET /api/admin/users/:id/deactivation' },
       { method: 'POST', url: `/api/admin/users/${target}/deactivate`, body: { successorId: null }, route: 'POST /api/admin/users/:id/deactivate' },
+      { method: 'GET', url: `/api/admin/users/${target}/export`, route: 'GET /api/admin/users/:id/export' },
+      { method: 'POST', url: `/api/admin/users/${target}/anonymize`, route: 'POST /api/admin/users/:id/anonymize' },
       { method: 'GET', url: '/api/admin/settings', route: 'GET /api/admin/settings' },
       { method: 'PATCH', url: '/api/admin/settings', body: { lateOn: true }, route: 'PATCH /api/admin/settings' },
+      { method: 'GET', url: '/api/admin/substitutions', route: 'GET /api/admin/substitutions' },
       { method: 'GET', url: '/api/admin/health', route: 'GET /api/admin/health' },
       { method: 'POST', url: '/api/admin/health/retry-mail', route: 'POST /api/admin/health/retry-mail' },
     ];
@@ -332,8 +335,8 @@ describe('permissões em massa (frente 2)', () => {
       'POST /api/cards/:id/accept', 'POST /api/cards/:id/decline', 'GET /api/cards/:id/transfer-targets', 'POST /api/cards/:id/transfer',
       'POST /api/delegations/:id/ack', 'POST /api/delegations/:id/reopen', 'POST /api/delegations/:id/cancel', 'POST /api/delegations/:id/redelegate',
       'POST /api/delegations/:id/no-pass', 'POST /api/delegations/:id/undo-cancel', 'POST /api/delegations/:id/resume', 'POST /api/delegations/:id/nudge', 'GET /api/boards/:id/match', 'POST /api/boards/:id/archive', 'POST /api/boards/:id/unarchive',
-      'GET /api/admin/users/:id/deactivation', 'POST /api/admin/users/:id/deactivate',
-      'GET /api/admin/users', 'POST /api/admin/users', 'GET /api/admin/settings', 'PATCH /api/admin/settings', 'GET /api/admin/health', 'POST /api/admin/health/retry-mail', 'PATCH /api/admin/users/:id', 'POST /api/admin/users/:id/transfer-management',
+      'GET /api/admin/users/:id/deactivation', 'POST /api/admin/users/:id/deactivate', 'GET /api/admin/users/:id/export', 'POST /api/admin/users/:id/anonymize',
+      'GET /api/admin/users', 'POST /api/admin/users', 'GET /api/admin/settings', 'PATCH /api/admin/settings', 'GET /api/admin/health', 'GET /api/admin/substitutions', 'POST /api/admin/health/retry-mail', 'PATCH /api/admin/users/:id', 'POST /api/admin/users/:id/transfer-management',
       'POST /api/admin/users/:id/active', 'POST /api/admin/users/:id/invite', 'PATCH /api/filters/:id', 'DELETE /api/filters/:id',
       'POST /api/cards/:id/accept-delegate', 'POST /api/inbox/discard', 'POST /api/inbox/restore',
       'POST /api/cards/:id/followers', 'POST /api/cards/:id/followers/remove',
@@ -349,6 +352,8 @@ describe('permissões em massa (frente 2)', () => {
       'GET /seguir/sair', 'POST /seguir/sair',
       // item 72 (substituição em férias): cobertas em substituicao.test.ts
       'GET /api/substitution', 'POST /api/substitution', 'POST /api/substitution/end',
+      // item 119 (avisos no aparelho): só os aparelhos da própria pessoa; cobertas em avisos-aparelho.test.ts
+      'GET /api/push', 'POST /api/push/subscribe', 'POST /api/push/unsubscribe',
       // públicas por natureza
       'POST /api/auth/login', 'POST /api/auth/logout', 'POST /api/auth/password/forgot', 'POST /api/auth/password/set', 'GET /api/health', 'GET /compartilhar',
     ]);

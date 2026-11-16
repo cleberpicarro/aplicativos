@@ -3,7 +3,7 @@ import { test, expect, entrar, criarTarefa, abrirTarefa, aviso, unico, dialogo }
 test.describe('uso no celular', () => {
   test('as telas principais cabem na largura, sem rolar para o lado @celular', async ({ page, isMobile }) => {
     await entrar(page, 'marina');
-    for (const rota of ['/painel', '/quadros', '/entrada', '/delegadas', '/avisos', '/ajuda']) {
+    for (const rota of ['/quadros', '/entrada', '/delegadas', '/avisos', '/ajuda']) {
       await page.goto(`/#${rota}`);
       await expect(page.locator('.topbar h1')).toBeVisible();
       const sobra = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
