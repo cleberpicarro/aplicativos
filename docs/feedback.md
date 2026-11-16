@@ -844,3 +844,25 @@ Quinta rodada do “Build ALL less R2” (16/11).
 
 118. Em **Pessoas**, o menu **…** de quem está **inativo** ganha **Baixar dados (JSON)** (cadastro, tarefas com checklist e comentários, inclusive as privadas, e comentários escritos em outras tarefas) e **Anonimizar…**. A janela avisa que não tem volta. Ao anonimizar: nome vira **Usuário removido** (no log, nas tarefas e nos comentários), o e-mail vira um endereço inválido, a senha, os logins, os acessos de assistentes, os filtros salvos, os avisos, os e-mails pendentes e os seguimentos por e-mail saem; as tarefas **privadas** ficam com o título “Tarefa privada removida”, sem descrição nem checklist. Ficam: tarefas comuns, delegações, comentários e o log (imutáveis, RN-50). A situação na lista vira **Dados removidos** e a pessoa não pode ser reativada. **Por dentro:** migração `019_anonimizar.sql` (`users.anonymized_at`), rotas `GET /api/admin/users/:id/export` e `POST /api/admin/users/:id/anonymize` (no teste de permissões), testes em `anonimizar.test.ts`, roteiro em `administracao.spec.ts`.
 119. Em **Meus dados**, bloco **Avisos neste aparelho** com **Ligar avisos neste aparelho**: o navegador pede permissão e, a partir daí, cada aviso da tela Avisos chega também como notificação (celular Android, computador; no iPhone, com o app instalado na tela inicial), mesmo com o SyncTasks fechado. Tocar abre a tarefa (ou a tela Avisos). **Desligar neste aparelho** no mesmo lugar. O bloco só aparece depois que as chaves forem cadastradas no Render (passo a passo no README, “Avisos no celular e no computador”); até lá nada muda. **Por dentro:** pacote `web-push`, migração `020_avisos_no_celular.sql` (`push_subscriptions` e `notifications.pushed_at`), o servidor entrega a cada 10 segundos os avisos dos últimos 30 minutos e tira da lista o aparelho que o navegador diz não existir mais; rotas `GET /api/push`, `POST /api/push/subscribe` e `/unsubscribe`; service worker (`sw.js`) mostra a notificação; testes em `avisos-aparelho.test.ts`. Não há roteiro de tela: o navegador de teste não recebe notificações reais.
+
+## Um controle só para filtrar (anotado)
+
+Pedido do Cleber (16/11), com print do Quadro: “Existe dois campos para fazer seleção e filtragem. Isso não tem sentido, tem?”
+
+| # | Ponto | Tela | Status |
+|---|---|---|---|
+| 120 | **Filtro e “+ Condição” fazem quase a mesma coisa.** **Antes:** na barra do topo (Quadro e Tabela) há **Filtro: …** (lista com Sem filtro, Prontos, Meus filtros e **Novo filtro**) e, ao lado, **+ Condição** (vira **Editar filtro** quando há filtro ligado). **+ Condição** abre exatamente a mesma janela que **Novo filtro** dentro da lista; é um atalho repetido. **Proposta:** ficar um botão só, **Filtro**. | Quadro e Tabela, computador e celular | Anotado |
+
+### Por que hoje são dois
+
+O botão **Filtro** serve para *escolher* um filtro pronto ou salvo. O **+ Condição** serve para *montar ou mudar* as condições (a mesma janela do “Novo filtro”). Ele nasceu na Tabela (item 36) como atalho para acrescentar uma condição sem abrir a lista, e subiu para a barra do topo junto com o Filtro no item 59. Na prática, os dois levam ao mesmo lugar, então a confusão faz sentido.
+
+### Opções
+
+- **A (recomendada): um botão Filtro só.** Some o **+ Condição**. Dentro da lista do Filtro ficam, no fim: **Editar este filtro…** (só quando há filtro ligado) e **Novo filtro (escolher condições)…**. Com filtro ligado, o botão ganha um **×** para tirar o filtro com um clique. **Para mim** e **Por mim** continuam como atalhos de um clique. Vale igual no Quadro, na Tabela e no celular (no celular a linha fica Filtro, Para mim, Por mim, sem o “+” cortado no canto). Prints: `filtro-unico/opcao-A-*`.
+- **B: tudo dentro do Filtro.** Como A, e os atalhos **Delegadas para mim / por mim** também entram na lista, como caixinhas no topo. Fica a barra mais limpa, mas **Por mim** passa a custar dois cliques. Print: `filtro-unico/opcao-B-menu-com-atalhos.png`.
+- **C: mudança mínima.** Os dois continuam, mas o segundo só aparece com filtro ligado, como **✎ Editar**. Sem filtro, fica só o Filtro. Resolve parte da confusão, mas continua havendo dois botões. Print: `filtro-unico/opcao-C-lapis-editar.png`.
+
+**Recomendação:** A. Um lugar só para filtrar, sem perder os atalhos que são usados no dia a dia.
+
+Prints de antes: `filtro-unico/antes-1-quadro.png`, `antes-2-menu-do-filtro.png`, `antes-3-condicao-abre-a-mesma-janela.png`, `antes-4-tabela.png`, `antes-5-celular.png`.
