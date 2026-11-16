@@ -21,6 +21,7 @@ const P: Record<string, ReactElement> = {
   xc: <><circle cx="12" cy="12" r="8.5" /><path d="M9 9l6 6M15 9l-6 6" /></>,
   out: <><path d="M7 7l10 10" /><path d="M17 9v8H9" /></>,
   into: <><path d="M17 7L7 17" /><path d="M7 9v8h8" /></>,
+  repeat: <><path d="M17 2.5l3 3-3 3" /><path d="M4 11.5v-1a5 5 0 0 1 5-5h11" /><path d="M7 21.5l-3-3 3-3" /><path d="M20 12.5v1a5 5 0 0 1-5 5H4" /></>,
   lock: <><rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></>,
   alert: <><path d="M12 4l9 16H3z" /><path d="M12 10v4.5M12 17.5h.01" /></>,
   check: <path d="M5 12.5l4.5 4.5L19 7.5" />,

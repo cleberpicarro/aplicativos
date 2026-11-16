@@ -18,6 +18,13 @@ const GRACE = 300;
 /** Enquanto um cartão é arrastado, nenhum balão abre (vale para todos os cartões). */
 let dragActive = false;
 export const setDragActive = (on: boolean) => { dragActive = on; };
+// Balão que parava de aparecer até apertar F5: se o navegador perde o fim do arrasto (dragend), a marca ficava
+// ligada para sempre. Durante um arrasto o navegador não manda movimentos do mouse; então, qualquer movimento,
+// clique ou soltura depois dele quer dizer que o arrasto acabou.
+if (typeof window !== 'undefined') {
+  const reset = () => { dragActive = false; };
+  for (const ev of ['mousemove', 'mousedown', 'mouseup', 'drop', 'dragend', 'blur']) window.addEventListener(ev, reset, { capture: true, passive: true });
+}
 
 const canHover = () => typeof window !== 'undefined' && !!window.matchMedia?.('(hover: hover) and (pointer: fine)').matches;
 

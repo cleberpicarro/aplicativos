@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { del, get, patch, post, type CardDetail, type Follower } from '../lib/api';
+import { WEEKDAYS, repeatLabel } from '../lib/format';
+import { del, get, patch, post, type CardDetail, type Follower, type Repeat } from '../lib/api';
 import { TIPS, cardNo, dateTime, dayOf, delegationKey, firstName, fullDate, nudgeLine, relative, statusOf } from '../lib/format';
 import { Avatar, Dialog, ErrorText, StatusPill, useMe, useToast } from './ui';
 import { Icon } from './Icons';
@@ -69,7 +70,7 @@ export function CardModal({ code, onClose }: { code: string; onClose: () => void
   const toggleDone = () =>
     run(
       () => post(`/cards/${card.id}/${card.completedAt ? 'uncomplete' : 'complete'}`),
-      card.completedAt ? 'Conclusão desfeita.' : d ? `Concluída. ${firstName(d.delegatorName)} foi avisado(a) para dar o ciente.` : 'Tarefa concluída.',
+      card.completedAt ? 'Conclusão desfeita.' : d ? `Concluída. ${firstName(d.delegatorName)} foi avisado(a) para dar o ciente.` : card.repeat ? 'Tarefa concluída. A próxima repetição já está no quadro.' : 'Tarefa concluída.',
       { optimistic: () => changeCard(qc, card.id, { completedAt: card.completedAt ? null : new Date().toISOString() }), scope: 'card' },
     );
   const canToggle = owner && !archived && !card.inInbox && (!d || d.status === 'IN_PROGRESS' || d.status === 'AWAITING_ACK');
@@ -255,6 +256,9 @@ export function CardModal({ code, onClose }: { code: string; onClose: () => void
                 {d?.suggestedDue && d.suggestedDue !== card.dueDate && <span className="hint">Sugerido: {fullDate(d.suggestedDue)}</span>}
                 {owner && d && <span className="hint">Ao mudar, {firstName(d.delegatorName)} é avisado(a).</span>}
               </div>
+              {/* Item 103: repetir. Só tarefa própria (a recebida por delegação, quem delegou decide). */}
+              {owner && !archived && !d && <RepeatField id={card.id} value={card.repeat} />}
+              {(!owner || archived) && card.repeat && <div className="field"><span className="label">Repetir</span><span>{repeatLabel(card.repeat)}</span></div>}
               {/* Item 85: a prioridade é a posição na fase; digitar outra posição muda o quadro e fica no log. */}
               {owner && !archived && priority && <PriorityField cardId={card.id} p={priority} />}
               {owner && board && !archived && card.listId && <MoveTo cardId={card.id} boardId={board.id} listId={card.listId} />}
@@ -382,6 +386,51 @@ function DueEditor({ id, value }: { id: string; value: string | null }) {
       <input type="date" className="input" aria-label="Prazo" value={value ?? ''}
         onChange={(e) => set(e.target.value || null, 'Prazo atualizado.')} />
       {value && <button className="b ghost icon" aria-label="Remover prazo" onClick={() => set(null, 'Prazo removido.')}><Icon name="x" /></button>}
+    </div>
+  );
+}
+
+/** Item 103: ao concluir, o app cria a próxima com o próximo prazo. */
+function RepeatField({ id, value }: { id: string; value: Repeat | null }) {
+  const { run } = useAction();
+  const qc = useQueryClient();
+  const set = (repeat: Repeat | null) =>
+    run(() => patch(`/cards/${id}`, { repeat }), repeat ? `Vai se repetir: ${repeatLabel(repeat).toLowerCase()}. Ao concluir, nasce a próxima.` : 'A tarefa não se repete mais.',
+      { optimistic: () => changeCard(qc, id, { repeat }), scope: 'card' });
+  const kind = value?.kind ?? '';
+  const today = new Date();
+  const dflt = (k: Repeat['kind']): Repeat =>
+    k === 'uteis' ? { kind: k, n: null } : k === 'semanal' ? { kind: k, n: ((today.getDay() + 6) % 7) + 1 } : k === 'mensal' ? { kind: k, n: today.getDate() } : { kind: k, n: 7 };
+  return (
+    <div className="field">
+      <label className="label" htmlFor={`rep-${id}`}>Repetir</label>
+      <select id={`rep-${id}`} className="input" value={kind} onChange={(e) => set(e.target.value ? dflt(e.target.value as Repeat['kind']) : null)}>
+        <option value="">Não se repete</option>
+        <option value="uteis">Todo dia útil</option>
+        <option value="semanal">Toda semana</option>
+        <option value="mensal">Todo mês</option>
+        <option value="dias">A cada N dias</option>
+      </select>
+      {value?.kind === 'semanal' && (
+        <select className="input" aria-label="Dia da semana" value={value.n ?? 1} onChange={(e) => set({ kind: 'semanal', n: Number(e.target.value) })}>
+          {WEEKDAYS.map((w, i) => <option key={w} value={i + 1}>{w[0].toUpperCase() + w.slice(1)}</option>)}
+        </select>
+      )}
+      {value?.kind === 'mensal' && (
+        <select className="input" aria-label="Dia do mês" value={value.n ?? 1} onChange={(e) => set({ kind: 'mensal', n: Number(e.target.value) })}>
+          {Array.from({ length: 31 }, (_, i) => <option key={i} value={i + 1}>Dia {i + 1}{i + 1 > 28 ? ' (ou o último)' : ''}</option>)}
+        </select>
+      )}
+      {value?.kind === 'dias' && (
+        <div className="rep-n">
+          <span>A cada</span>
+          <input type="number" className="input" aria-label="Quantos dias" min={1} max={365} defaultValue={value.n ?? 7} key={value.n}
+            onBlur={(e) => { const n = Math.round(Number(e.target.value)); if (n >= 1 && n <= 365 && n !== value.n) set({ kind: 'dias', n }); }}
+            onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }} />
+          <span>dias</span>
+        </div>
+      )}
+      {value && <span className="hint">Ao concluir, nasce a próxima com o próximo prazo.</span>}
     </div>
   );
 }
@@ -606,7 +655,9 @@ const cut = (s: string) => (s.length > 220 ? `${s.slice(0, 220)}…` : s);
 function describe(e: Ev): { text: string; change?: string } {
   const a = e.after ?? {}, b = e.before ?? {};
   switch (e.type) {
-    case 'created': return { text: 'criou a tarefa' };
+    case 'created': return a.repeatFrom ? { text: 'criou a tarefa pela repetição', change: `Repete a #${a.repeatFrom.num}` } : { text: 'criou a tarefa' };
+    case 'repeat_changed': return { text: a.repeat ? 'passou a repetir a tarefa' : 'tirou a repetição', change: a.repeat ? repeatLabel(a.repeat) : undefined };
+    case 'repeat_next': return { text: 'concluiu; a próxima repetição foi criada', change: `#${a.num}, prazo ${df(a.dueDate)}` };
     case 'imported': return { text: `importou a tarefa do ${a.source}`, change: `Quadro “${a.board}” · lista “${a.list}”` };
     case 'title_changed': return { text: 'alterou o título', change: `“${b.title}” → “${a.title}”` };
     case 'description_changed': return { text: 'alterou a descrição', change: `“${cut(b.description || '')}” → “${cut(a.description || '')}”` };

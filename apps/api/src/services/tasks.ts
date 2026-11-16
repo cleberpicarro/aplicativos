@@ -75,6 +75,8 @@ export interface CardPatch {
   dueDate?: string | null;
   isPrivate?: boolean;
   color?: string | null;
+  /** Item 103: null tira a repetição. */
+  repeat?: { kind: RepeatKind; n?: number | null } | null;
 }
 
 export async function updateCard(db: Db, actor: Actor, cardId: string, patch: CardPatch) {
@@ -104,6 +106,7 @@ export async function updateCard(db: Db, actor: Actor, cardId: string, patch: Ca
     if (patch.color !== null && !(BOARD_COLORS as readonly string[]).includes(patch.color)) throw badRequest('Cor inválida.');
     await db.query('UPDATE cards SET color = $2 WHERE id = $1', [cardId, patch.color]);
   }
+  if (patch.repeat !== undefined) await setRepeat(db, actor, row, patch.repeat);
   if (patch.isPrivate !== undefined && patch.isPrivate !== row.is_private) {
     // Item 72: só a própria pessoa decide o que é privado; o substituto não liga nem desliga.
     if (actor.sub) throw forbidden('Só a própria pessoa marca ou desmarca uma tarefa como privada.');
@@ -159,6 +162,8 @@ export async function completeCard(db: Db, actor: Actor, cardId: string) {
   }
   await db.query('UPDATE cards SET completed_at = now(), updated_at = now() WHERE id = $1', [cardId]);
   await logEvent(db, cardId, actor.id, 'completed');
+  const next = row.repeat_kind && !row.d_id ? await createRepeat(db, actor, row) : null;
+  return { next };
 }
 
 export async function uncompleteCard(db: Db, actor: Actor, cardId: string) {
@@ -172,6 +177,96 @@ export async function uncompleteCard(db: Db, actor: Actor, cardId: string) {
   }
   await db.query('UPDATE cards SET completed_at = NULL, updated_at = now() WHERE id = $1', [cardId]);
   await logEvent(db, cardId, actor.id, 'completion_undone');
+  // Item 103: desfazer a conclusão tira a próxima repetição, se ninguém mexeu nela (descartada, como no item 82).
+  if (row.repeat_next_id) {
+    const n = await one(
+      db,
+      `SELECT c.id, c.repeat_kind, c.repeat_n FROM cards c WHERE c.id = $1 AND c.owner_id = $2 AND c.archived_at IS NULL AND c.completed_at IS NULL
+          AND NOT EXISTS (SELECT 1 FROM delegations d WHERE d.card_id = c.id OR d.parent_card_id = c.id)
+          AND NOT EXISTS (SELECT 1 FROM comments m WHERE m.card_id = c.id) FOR UPDATE`,
+      [row.repeat_next_id, actor.id],
+    );
+    if (n) {
+      await db.query('UPDATE cards SET archived_at = now(), updated_at = now(), repeat_kind = NULL, repeat_n = NULL WHERE id = $1', [n.id]);
+      await logEvent(db, n.id, actor.id, 'discarded', undefined, { board: true, repeatUndone: true });
+      await db.query('UPDATE cards SET repeat_next_id = NULL, repeat_kind = $2, repeat_n = $3 WHERE id = $1', [cardId, n.repeat_kind, n.repeat_n]);
+    }
+  }
+}
+
+/* ---------- tarefas que se repetem (item 103) ---------- */
+
+export const REPEAT_KINDS = ['uteis', 'semanal', 'mensal', 'dias'] as const;
+export type RepeatKind = (typeof REPEAT_KINDS)[number];
+
+function repeatOk(kind: RepeatKind, n: number | null | undefined): number | null {
+  if (kind === 'uteis') return null;
+  const v = Number(n);
+  const [min, max] = kind === 'semanal' ? [1, 7] : kind === 'mensal' ? [1, 31] : [1, 365];
+  if (!Number.isInteger(v) || v < min || v > max) throw badRequest('Repetição inválida.');
+  return v;
+}
+
+async function setRepeat(db: Db, actor: Actor, row: any, rep: { kind: RepeatKind; n?: number | null } | null) {
+  const kind = rep?.kind ?? null;
+  const n = rep ? repeatOk(rep.kind, rep.n) : null;
+  if (kind === (row.repeat_kind ?? null) && n === (row.repeat_n ?? null)) return;
+  if (kind && row.d_id) throw conflict('Tarefa recebida por delegação não se repete: quem delegou decide.');
+  await db.query('UPDATE cards SET repeat_kind = $2, repeat_n = $3, updated_at = now() WHERE id = $1', [row.id, kind, n]);
+  await logEvent(db, row.id, actor.id, 'repeat_changed', { repeat: row.repeat_kind ? { kind: row.repeat_kind, n: row.repeat_n } : null }, { repeat: kind ? { kind, n } : null });
+}
+
+const iso = (d: Date) => d.toISOString().slice(0, 10);
+const addDays = (d: Date, n: number) => new Date(d.getTime() + n * 86400_000);
+
+/** Próximo prazo, sempre depois de hoje e depois do prazo atual (concluir atrasada não cria outra já atrasada). */
+export function nextDue(kind: RepeatKind, n: number | null, due: string | null, today: string): string {
+  const base = new Date(`${due && due > today ? due : today}T12:00:00Z`);
+  if (kind === 'dias') {
+    let d = new Date(`${due ?? today}T12:00:00Z`);
+    do d = addDays(d, n!); while (iso(d) <= today);
+    return iso(d);
+  }
+  let d = addDays(base, 1);
+  if (kind === 'uteis') {
+    while ([0, 6].includes(d.getUTCDay())) d = addDays(d, 1);
+    return iso(d);
+  }
+  if (kind === 'semanal') {
+    while (((d.getUTCDay() + 6) % 7) + 1 !== n) d = addDays(d, 1);
+    return iso(d);
+  }
+  // mensal: o dia n deste mês (se ainda vier) ou do próximo; em mês curto, o último dia.
+  for (let k = 0; k < 3; k++) {
+    const y = base.getUTCFullYear();
+    const m = base.getUTCMonth() + k;
+    const last = new Date(Date.UTC(y, m + 1, 0, 12)).getUTCDate();
+    const cand = new Date(Date.UTC(y, m, Math.min(n!, last), 12));
+    if (iso(cand) > iso(base)) return iso(cand);
+  }
+  throw new Error('repetição mensal sem data');
+}
+
+async function createRepeat(db: Db, actor: Actor, row: any) {
+  const today = (await one(db, `SELECT (now() AT TIME ZONE 'America/Sao_Paulo')::date::text AS d`))!.d as string;
+  const due = nextDue(row.repeat_kind, row.repeat_n, row.due_date, today);
+  // Fica na mesma fase, no topo da parte aberta (logo acima da que foi concluída).
+  const listId = row.list_id;
+  if (!listId) return null;
+  const c = await one(
+    db,
+    `INSERT INTO cards (owner_id, list_id, position, title, description, created_by, due_date, color, is_private, repeat_kind, repeat_n)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id, code, num, title, due_date`,
+    [row.owner_id, listId, row.position - 0.5, row.title, row.description, actor.id, due, row.color, row.is_private, row.repeat_kind, row.repeat_n],
+  );
+  await db.query(
+    `INSERT INTO checklist_items (card_id, text, done, position) SELECT $2, text, false, position FROM checklist_items WHERE card_id = $1`,
+    [row.id, c.id],
+  );
+  await db.query('UPDATE cards SET repeat_kind = NULL, repeat_n = NULL, repeat_next_id = $2 WHERE id = $1', [row.id, c.id]);
+  await logEvent(db, c.id, actor.id, 'created', undefined, { title: row.title, repeatFrom: { id: row.id, num: row.num } });
+  await logEvent(db, row.id, actor.id, 'repeat_next', undefined, { id: c.id, num: c.num, dueDate: due });
+  return { id: c.id, num: c.num, dueDate: due as string };
 }
 
 /* ---------- arquivar tarefa concluída (item 23) ---------- */

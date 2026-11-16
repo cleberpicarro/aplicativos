@@ -190,15 +190,15 @@ test.describe('meus quadros', () => {
     await expect(pergunta.locator('.lines-preview li')).toHaveText(['Ligar para o cliente', 'Enviar proposta', 'Revisar contrato']);
     await pergunta.getByRole('button', { name: 'Criar 3 tarefas' }).click();
     await expect(cards).toHaveText(['Ligar para o cliente', 'Enviar proposta', 'Revisar contrato']);
-    await expect(campo).toHaveValue('');
-    // Item 67: depois de criar em lote, o campo vazio volta ao tamanho de uma linha
-    await expect.poll(altura).toBe(umaLinha);
+    // Item 83: depois de criar em lote, o campo fecha (e, aberto de novo, tem uma linha só: item 67)
+    await expect(campo).toBeHidden();
     await page.locator('.toast', { hasText: '3 tarefas criadas.' }).getByRole('button', { name: 'Desfazer' }).click();
     await aviso(page, 'Criação desfeita.');
     await expect(cards).toHaveCount(0);
 
     // Shift+Enter pula linha; “Criar 1 tarefa” usa a primeira linha como título e o resto como descrição
-    await campo.click();
+    await col.getByRole('button', { name: 'Adicionar tarefa' }).click();
+    expect(await altura()).toBe(umaLinha);
     await page.keyboard.type('Reunião de equipe');
     await page.keyboard.press('Shift+Enter');
     await page.keyboard.type('pauta: metas');
@@ -206,10 +206,28 @@ test.describe('meus quadros', () => {
     await page.keyboard.press('Enter');
     await dialogo(page, 'O texto tem 2 linhas').getByRole('button', { name: 'Criar 1 tarefa' }).click();
     await expect(cards).toHaveText(['Reunião de equipe']);
-    await expect.poll(altura).toBe(umaLinha);
+    await expect(campo).toBeHidden();
     const codigo = (await col.locator('article.kc').getAttribute('data-id'))!;
     const dlg = await abrirTarefa(page, codigo);
     await expect(dlg.getByTestId('descricao')).toHaveText('pauta: metas');
+  });
+
+  test('tarefa que se repete: ao concluir, nasce a próxima com o próximo prazo (item 103)', async ({ page }) => {
+    await entrar(page, 'beatriz');
+    const titulo = unico('Relatório semanal');
+    const codigo = await criarTarefa(page, titulo);
+    const dlg = await abrirTarefa(page, codigo);
+    await dlg.getByLabel('Repetir').selectOption('dias');
+    await aviso(page, /Vai se repetir: a cada 7 dias/);
+    await dlg.getByLabel('Quantos dias').fill('3');
+    await dlg.getByLabel('Quantos dias').press('Enter');
+    await aviso(page, /a cada 3 dias/);
+    await dlg.getByRole('button', { name: 'Concluir' }).click();
+    await aviso(page, 'Tarefa concluída. A próxima repetição já está no quadro.');
+    await page.keyboard.press('Escape');
+    const cartoes = page.locator('article.kc', { hasText: titulo });
+    await expect(cartoes).toHaveCount(2);
+    await expect(page.locator('article.kc:not(.done)', { hasText: titulo }).locator('.opt[data-opt="Repete"]')).toHaveCount(1);
   });
 
   test('tarefa privada não aparece para a gestora', async ({ page, browser }) => {

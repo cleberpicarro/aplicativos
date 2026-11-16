@@ -71,7 +71,7 @@ export function addPendingCard(qc: QueryClient, listId: string, title: string): 
     const card: Card = {
       id: `novo-${Math.random().toString(36).slice(2)}`, code: '', num: 0, color: null, title, description: '', dueDate: null, isPrivate: false,
       completedAt: null, archivedAt: null, ownerId: '', ownerName: '', boardId: data.id, boardName: data.name, listId, position: last + 1,
-      inInbox: false, discarded: false, transferredFrom: null, delegation: null, child: null, checklist: { done: 0, total: 0 }, source: null, createdAt: now,
+      inInbox: false, discarded: false, transferredFrom: null, delegation: null, child: null, checklist: { done: 0, total: 0 }, repeat: null, source: null, createdAt: now,
     };
     qc.setQueryData(key, { ...data, cards: [...data.cards, card] });
   }

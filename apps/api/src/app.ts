@@ -16,6 +16,7 @@ import * as misc from './services/misc.js';
 import * as subs from './services/substitution.js';
 import * as followers from './services/followers.js';
 import * as phase from './services/phase.js';
+import * as health from './services/health.js';
 import { importTrello, trelloImportSchema } from './services/importer.js';
 import { exportAll } from './services/exporter.js';
 import { captureWeb } from './services/capture.js';
@@ -35,6 +36,20 @@ declare module 'fastify' {
 }
 
 const SESSION_COOKIE = 'synctasks_sid';
+const CSP = [
+  "default-src 'self'",
+  "script-src 'self'",
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+  "font-src 'self' data: https://fonts.gstatic.com",
+  "img-src 'self' data: blob:",
+  "connect-src 'self'",
+  "manifest-src 'self'",
+  "worker-src 'self'",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "frame-ancestors 'none'",
+].join('; ');
 
 /** Item 72: o que o substituto pode fazer em nome da pessoa (o resto responde 403). */
 const SUBSTITUTE_ROUTES = new Set([
@@ -67,6 +82,17 @@ export async function buildApp({ pool, logger = false, serveWeb = false }: AppOp
   await app.register(cookie);
   app.decorateRequest('actor', null);
 
+  /* Item 99 (R4): proteções padrão do navegador em todas as respostas. Nenhum outro site pode embutir o
+     SyncTasks escondido (clickjacking), o navegador só aceita HTTPS e a página só carrega código dela mesma. */
+  app.addHook('onSend', async (_req, reply) => {
+    reply.header('X-Content-Type-Options', 'nosniff');
+    reply.header('X-Frame-Options', 'DENY');
+    reply.header('Referrer-Policy', 'strict-origin-when-cross-origin');
+    reply.header('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+    reply.header('Content-Security-Policy', CSP);
+    if (config.production) reply.header('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  });
+
   /* Proteção CSRF: toda requisição que altera dados precisa do cabeçalho X-SyncTasks (navegadores não o enviam entre sites sem CORS). */
   app.addHook('onRequest', async (req) => {
     if (req.url.startsWith('/api/') && !['GET', 'HEAD', 'OPTIONS'].includes(req.method) && req.headers['x-synctasks'] !== '1') {
@@ -94,6 +120,8 @@ export async function buildApp({ pool, logger = false, serveWeb = false }: AppOp
     const status = (err as { statusCode?: number }).statusCode;
     if (status && status < 500) return reply.status(status).send({ error: (err as Error).message });
     req.log.error(err);
+    // Item 100: guarda o erro para o aviso diário da administração.
+    health.recordError(pool, `${req.method} ${req.routeOptions?.url ?? req.url.split('?')[0]}`, err).catch((e) => req.log.error(e));
     return reply.status(500).send({ error: 'Erro inesperado. Tente novamente.' });
   });
 
@@ -261,7 +289,8 @@ export async function buildApp({ pool, logger = false, serveWeb = false }: AppOp
   app.patch('/api/cards/:id', async (req) => {
     const { id } = z.object({ id: uuid }).parse(req.params);
     const body = z
-      .object({ title: z.string().max(200).optional(), description: z.string().max(20000).optional(), dueDate: date.optional(), isPrivate: z.boolean().optional(), color: z.string().max(20).nullable().optional() })
+      .object({ title: z.string().max(200).optional(), description: z.string().max(20000).optional(), dueDate: date.optional(), isPrivate: z.boolean().optional(), color: z.string().max(20).nullable().optional(),
+        repeat: z.object({ kind: z.enum(tasks.REPEAT_KINDS), n: z.number().int().nullable().optional() }).nullable().optional() })
       .parse(req.body);
     await inTx(req, (db) => tasks.updateCard(db, need(req), id, body));
     return { ok: true };
@@ -296,8 +325,8 @@ export async function buildApp({ pool, logger = false, serveWeb = false }: AppOp
   });
   app.post('/api/cards/:id/complete', async (req) => {
     const { id } = z.object({ id: uuid }).parse(req.params);
-    await inTx(req, (db) => tasks.completeCard(db, need(req), id));
-    return { ok: true };
+    const r = await inTx(req, (db) => tasks.completeCard(db, need(req), id));
+    return { ok: true, next: r.next };
   });
   app.post('/api/cards/:id/uncomplete', async (req) => {
     const { id } = z.object({ id: uuid }).parse(req.params);
@@ -614,6 +643,15 @@ export async function buildApp({ pool, logger = false, serveWeb = false }: AppOp
       .parse(req.body);
     return inTx(req, (db) => admin.updateSettings(db, a, body));
   });
+  // Item 100: problemas dos últimos 7 dias (erros e e-mails que falharam) e tentar de novo os e-mails.
+  app.get('/api/admin/health', async (req) => {
+    const a = needAdmin(req);
+    return health.getHealth(pool, a);
+  });
+  app.post('/api/admin/health/retry-mail', async (req) => {
+    const a = needAdmin(req);
+    return inTx(req, (db) => health.retryFailedMail(db, a));
+  });
   app.get('/api/admin/users', async (req) => {
     needAdmin(req);
     return admin.listUsers(pool);
@@ -732,13 +770,13 @@ export async function buildApp({ pool, logger = false, serveWeb = false }: AppOp
   });
   // Leva à tela "Permitir" do app (que pede o login antes, se preciso), com os mesmos parâmetros.
   app.get('/oauth/authorize', async (req, reply) => {
-    const q = z.record(z.string()).parse(req.query);
+    const q = z.record(z.string(), z.string()).parse(req.query);
     return reply.redirect(`/#/conectar?${new URLSearchParams(q).toString()}`);
   });
   app.post('/oauth/token', async (req, reply) => {
     reply.header('Cache-Control', 'no-store');
     try {
-      const body = z.record(z.string().max(4000)).catch({}).parse(req.body ?? {});
+      const body = z.record(z.string(), z.string().max(4000)).catch({}).parse(req.body ?? {});
       return await inTx(req, (db) => oauth.token(db, body));
     } catch (err) {
       return oauthFail(reply, err);

@@ -89,6 +89,23 @@ No **Railway** ou em outro provedor, crie um serviço a partir deste repositóri
 
 Sem compilar, também dá para rodar com `npm run build && npm start`.
 
+### Cópia de segurança (fora do Render)
+
+Todo domingo às 3h (Brasília) o GitHub copia o banco inteiro, **testa a restauração** num banco vazio (confere pessoas, quadros, tarefas, comentários, log e delegações) e guarda a cópia **trancada com senha** por 90 dias (`.github/workflows/copia-seguranca.yml` e `scripts/copia-seguranca.sh`). Para ligar, uma vez só:
+
+1. No Render, abra o banco **nerus-db** → **Connect** → copie o **External Database URL**.
+2. No GitHub, abra o repositório → **Settings** → **Secrets and variables** → **Actions** → **New repository secret** e crie `BACKUP_DATABASE_URL` com o endereço copiado.
+3. Crie também `BACKUP_PASSWORD` com uma senha longa (guarde-a num gerenciador de senhas: sem ela a cópia não abre).
+4. Para testar na hora: aba **Actions** → **Cópia de segurança** → **Run workflow**.
+
+Sem os dois segredos, a tarefa só mostra um aviso amarelo e não faz nada. Se a restauração não bater, ela fica vermelha e o GitHub manda e-mail.
+
+**Para restaurar:** baixe a cópia na aba **Actions** (execução mais recente → **Artifacts**), destranque com `gpg -d synctasks-AAAA-MM-DD.dump.gpg > copia.dump` (pede a senha) e restaure num banco vazio com `pg_restore --no-owner --dbname=ENDERECO copia.dump`.
+
+### Avisos de problemas e faxina
+
+Se um e-mail não sair (depois de 5 tentativas), ficar parado na fila ou houver um erro inesperado no servidor, cada administrador recebe **um e-mail por dia**, a partir das 8h, com o resumo; a tela **Configurações** mostra os últimos 7 dias e tem **Tentar de novo** para os e-mails. Uma vez por dia o app apaga logins vencidos, e-mails enviados há mais de 90 dias, avisos lidos há mais de 180 dias e erros com mais de 90 dias. Tarefas, comentários e o log nunca são apagados. As tarefas automáticas usam uma trava no banco (`pg_try_advisory_xact_lock`), então dois servidores ligados ao mesmo tempo não mandam e-mail em dobro.
+
 ## Estrutura
 
 ```

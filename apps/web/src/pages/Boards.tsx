@@ -2,7 +2,7 @@ import { Fragment, useEffect, useLayoutEffect, useRef, useState, type CSSPropert
 import { useQuery } from '@tanstack/react-query';
 import { get, patch, post, type Board, type Card } from '../lib/api';
 import { go, useRoute } from '../lib/router';
-import { cardNo, dueTone, firstName } from '../lib/format';
+import { repeatLabel, cardNo, dueTone, firstName } from '../lib/format';
 import { CardStatusIcon, Dialog, Due, Menu, TipIcon, ErrorText, useMe, useToast } from '../components/ui';
 import { useQueryClient } from '@tanstack/react-query';
 import { Icon } from '../components/Icons';
@@ -649,7 +649,7 @@ function Tile({ card, today, dragging, onDragStart, onDragEnd, onDragOver, onDro
   const canToggle = !pending && (!d || d.status === 'IN_PROGRESS' || d.status === 'AWAITING_ACK');
   const toggle = () =>
     run(() => post(`/cards/${card.id}/${done ? 'uncomplete' : 'complete'}`),
-      done ? 'Conclusão desfeita.' : d ? `Concluída. ${firstName(d.delegatorName)} foi avisado(a) para dar o ciente.` : 'Tarefa concluída.',
+      done ? 'Conclusão desfeita.' : d ? `Concluída. ${firstName(d.delegatorName)} foi avisado(a) para dar o ciente.` : card.repeat ? 'Tarefa concluída. A próxima repetição já está no quadro.' : 'Tarefa concluída.',
       { optimistic: () => changeCard(qc, card.id, { completedAt: done ? null : new Date().toISOString() }), scope: 'card' });
   const showStatus = d && (d.status === 'AWAITING_ACK' || d.reopened);
   const toast = useToast();
@@ -681,6 +681,7 @@ function Tile({ card, today, dragging, onDragStart, onDragEnd, onDragOver, onDro
         {child && <span className="dtag to" title={`Repassada para ${child.ownerName}`}><Icon name="out" /><span className="nm">Para {firstName(child.ownerName)}</span></span>}
         {showStatus && <CardStatusIcon card={card} />}
         {card.checklist.total > 0 && <span className="cl" data-opt={`Checklist ${card.checklist.done}/${card.checklist.total}`} title="Checklist"><Icon name="checks" />{card.checklist.done}/{card.checklist.total}</span>}
+        {card.repeat && <span className="opt" data-opt="Repete"><TipIcon name="repeat" tip={`Repete: ${repeatLabel(card.repeat).toLowerCase()}`} /></span>}
         {card.isPrivate && <span className="opt" data-opt="Privada"><TipIcon name="lock" tip="Privada: nenhum superior vê" /></span>}
         {d?.noPass && <span className="opt" data-opt="Não pode ser repassada"><TipIcon name="self" tip={`Não pode ser repassada: ${firstName(d.delegatorName)} pediu que você mesmo faça`} /></span>}
         {child?.noPass && child.status !== 'ACKED' && <span className="opt" data-opt="Não pode ser repassada"><TipIcon name="self" tip={`Não pode ser repassada por ${firstName(child.ownerName)}`} /></span>}
@@ -726,7 +727,9 @@ function AddCard({ listId, first }: { listId: string; first?: boolean }) {
     if (text) el.style.height = `${el.scrollHeight + 2}px`;
   }, [text, open]);
 
-  const done = () => { setText(''); setAsking(null); };
+  // Item 83: depois de criar pela pergunta das várias linhas (lote ou “Criar 1 tarefa”), o campo sempre fecha.
+  // O Enter de uma tarefa só (em submit) continua deixando o campo aberto para a próxima (item 54).
+  const done = () => setOpen(false);
   const tooLong = (titles: string[]) => {
     const long = titles.find((t) => t.length > MAX_TITLE);
     if (long) setError(new Error(`Cada título pode ter até ${MAX_TITLE} caracteres. Encurte: “${long.slice(0, 40)}…”`));
