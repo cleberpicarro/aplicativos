@@ -20,6 +20,7 @@ const br = (iso: string | null) => { const d = spDay(iso); return d ? fullDate(d
 const sourceLabel = (s: Card['source']) => SOURCE_VALUES.find((x) => x.id === (s ?? 'manual'))?.label ?? '';
 
 function delegationText(r: Row): { text: string; kind: 'del' | 'rec' } | null {
+  if (r.child?.status === 'DECLINED') return { text: `Devolvida por ${r.child.ownerName} · precisa da sua ação`, kind: 'del' };
   if (r.child) return { text: `Delegada para ${r.child.ownerName}${r.child.status === 'AWAITING_ACK' ? ' · aguarda seu ciente' : ''}`, kind: 'del' };
   if (r.delegation) return { text: `Recebida de ${r.delegation.delegatorName}`, kind: 'rec' };
   if (r.transferredFrom) return { text: `Transferida por ${r.transferredFrom.name}`, kind: 'rec' };

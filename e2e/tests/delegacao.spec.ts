@@ -165,6 +165,12 @@ test.describe('delegação de ponta a ponta', () => {
       await joao.fechar();
     }
 
+    // Item 120: no Quadro, a tarefa de origem mostra que foi devolvida (e não mais “Para João”).
+    await irPara(page, 'Tarefas');
+    await page.reload(); // a devolução foi feita em outra janela (João)
+    await expect(page.locator('article.kc', { hasText: retomar }).locator('.dtag.back')).toHaveText('Devolvida por João');
+    await expect(page.locator('article.kc', { hasText: retomar }).locator('.dtag.to')).toHaveCount(0);
+
     await irPara(page, 'Tarefas delegadas');
     const precisa = page.locator('section[aria-labelledby="h-need"]');
     const linhaR = precisa.locator('.row', { hasText: retomar });

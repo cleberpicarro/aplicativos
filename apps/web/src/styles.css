@@ -757,13 +757,16 @@ table.t .desc { display: inline-block; max-width: 20rem; overflow: hidden; text-
   font-size: 0.76rem; font-weight: 500; white-space: nowrap; max-width: 10rem; overflow: hidden; text-overflow: ellipsis;
   background: color-mix(in srgb, var(--dt) 15%, var(--bg)); color: color-mix(in srgb, var(--dt) 82%, #000); }
 .dtag.to { --dt: #0f8187; }
+.dtag.back { --dt: #b4580f; }
 .dtag svg { width: 0.85rem; height: 0.85rem; flex: none; }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) .dtag { --dt: #b49cf2; background: color-mix(in srgb, var(--dt) 20%, var(--bg)); color: var(--dt); }
   :root:not([data-theme='light']) .dtag.to { --dt: #5fd0cc; }
+  :root:not([data-theme='light']) .dtag.back { --dt: #f2a65a; }
 }
 :root[data-theme='dark'] .dtag { --dt: #b49cf2; background: color-mix(in srgb, var(--dt) 20%, var(--bg)); color: var(--dt); }
 :root[data-theme='dark'] .dtag.to { --dt: #5fd0cc; }
+:root[data-theme='dark'] .dtag.back { --dt: #f2a65a; }
 /* No cartão colorido, a etiqueta ganha fundo próprio para não sumir na cor. */
 .kc.painted .dtag { background: var(--bg); }
 
