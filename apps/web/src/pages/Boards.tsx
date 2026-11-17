@@ -679,7 +679,9 @@ function Tile({ card, today, dragging, onDragStart, onDragEnd, onDragOver, onDro
         {/* Opção A do ícone de delegada: etiqueta com o nome (roxa = recebida de alguém; verde-azulada = você delegou). */}
         {/* U10 da revisão geral: recebida e delegada de novo mostra só o “Para”, que é o que você acompanha; o “De” fica no balão. */}
         {d && !child && <span className="dtag from" title={`Delegada por ${d.delegatorName}`}><Icon name="into" /><span className="nm">De {firstName(d.delegatorName)}</span></span>}
-        {child && <span className="dtag to" title={`Delegada para ${child.ownerName}`}><Icon name="out" /><span className="nm">Para {firstName(child.ownerName)}</span></span>}
+        {/* Item 120: devolvida não está mais com a pessoa; a etiqueta mostra isso (laranja), em vez de “Para …”. */}
+        {child && child.status === 'DECLINED' && <span className="dtag back" title={`Devolvida por ${child.ownerName}: precisa da sua ação (Redelegar, Retomar ou Cancelar)`}><Icon name="undo" /><span className="nm">Devolvida por {firstName(child.ownerName)}</span></span>}
+        {child && child.status !== 'DECLINED' && <span className="dtag to" title={`Delegada para ${child.ownerName}`}><Icon name="out" /><span className="nm">Para {firstName(child.ownerName)}</span></span>}
         {showStatus && <CardStatusIcon card={card} />}
         {card.checklist.total > 0 && <span className="cl" data-opt={`Checklist ${card.checklist.done}/${card.checklist.total}`} title="Checklist"><Icon name="checks" />{card.checklist.done}/{card.checklist.total}</span>}
         {card.repeat && <span className="opt" data-opt="Repete"><TipIcon name="repeat" tip={`Repete: ${repeatLabel(card.repeat).toLowerCase()}`} /></span>}

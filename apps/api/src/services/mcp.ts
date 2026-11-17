@@ -229,7 +229,7 @@ async function listTool(pool: Pool, actor: Actor, args: unknown) {
     const parts = [c.boardName ? `${c.boardName}${'listName' in c && c.listName ? ` › ${c.listName}` : ''}` : 'Caixa de entrada'];
     if (c.dueDate) parts.push(`prazo ${brDate(c.dueDate)}`);
     if (c.delegation) parts.push(`delegada por ${c.delegation.delegatorName}`);
-    if (c.child) parts.push(`delegada para ${c.child.ownerName}`);
+    if (c.child) parts.push(c.child.status === 'DECLINED' ? `devolvida por ${c.child.ownerName}, aguardando sua decisão` : `delegada para ${c.child.ownerName}`);
     if (c.isPrivate) parts.push('privada');
     return `- #${c.num} ${c.title} (${parts.join(', ')}) ${link(c.id)}`;
   });
