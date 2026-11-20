@@ -856,3 +856,12 @@ Pedido do Cleber (17/11): a tarefa #353 “Contatar Francisco (Itatiaia)…” a
 ### Como ficou (devolvida que parecia delegada)
 
 120. No **Quadro**, a tarefa de origem cuja delegação foi devolvida troca a etiqueta verde **Para Daniel** pela laranja **Devolvida por Daniel** (seta de voltar; o balão explica que precisa da sua ação: Redelegar, Retomar ou Cancelar). Ao redelegar, volta a ser **Para …**. Na **Tabela**, a coluna da delegação mostra “Devolvida por … · precisa da sua ação”, e o conector de IA (ver_tarefas) diz “devolvida por …, aguardando sua decisão”. Não houve dado errado: nenhuma correção de banco foi necessária. A data “Delegada por você em …” na tarefa aberta é a da última vez que ela foi delegada ou redelegada (correto). **Por dentro:** `Boards.tsx` (classe `.dtag.back` em `styles.css`), `Table.tsx`, `mcp.ts`; roteiro `delegacao.spec.ts` (item 75) confere a etiqueta.
+
+## Gráfico de uso da plataforma (anotado)
+
+Pedido do Cleber (19/11): “quero um gráfico de barras demonstrando o uso da plataforma neste mês. quantidade de transações realizadas”.
+
+| # | Ponto | Tela | Status |
+|---|---|---|---|
+| 121 | **Gráfico de uso do mês.** **Transação** = cada ação gravada no log das tarefas (`card_events`), uma vez cada, no dia de Brasília: criar, editar, mover, concluir/ciente, delegar/transferir, aceitar/devolver/cobrar, comentar. Não contam: só abrir uma tarefa, logins (a faxina apaga os antigos) e os registros espelho na tarefa de origem (`delegated_down`, `child_*`), para uma delegação não contar duas vezes. **Opções:** **A (recomendada)** bloco “Uso da plataforma” no alto de Configurações (só admin): números do mês (ações, pessoas que usaram, dia de mais uso, média por dia útil), barras por dia (fim de semana mais claro, número ao passar o mouse), barras por tipo de ação e setas para meses anteriores; **B** = A + “Por pessoa” e barras divididas por tipo; **C** = só barras por dia e total. Proposta e prints (dados de exemplo) em project-files `uso-da-plataforma/`. **Por dentro (A):** rota `GET /api/admin/usage?month=AAAA-MM` (no teste de permissões), consulta agrupada em `card_events`, sem migração. | Configurações | Anotado |
+
