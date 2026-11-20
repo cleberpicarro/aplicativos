@@ -141,6 +141,29 @@ test.describe('administração de pessoas', () => {
     await expect(page.locator('table')).toBeVisible();
   });
 
+  test('uso da plataforma: botão em Pessoas, períodos e volta para a lista (item 121) @celular', async ({ page }) => {
+    await entrar(page, 'renata');
+    await page.getByRole('button', { name: 'Uso da plataforma' }).click();
+    await expect(page.getByRole('heading', { name: 'Uso da plataforma' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Este mês' })).toHaveAttribute('aria-pressed', 'true');
+    // a equipe de exemplo já tem ações hoje (criou e delegou tarefas)
+    const tiles = page.locator('.usage-tiles');
+    await expect(tiles).toContainText('ações no período');
+    await expect(page.locator('.usage-chart svg rect').first()).toBeVisible();
+    await expect(page.locator('.usage-rows').first()).toContainText('Marina Teixeira');
+    // outros períodos: o ano vira barras por mês; datas escolhidas à mão
+    await page.getByRole('button', { name: 'Este ano' }).click();
+    await expect(page.getByRole('heading', { name: 'Ações por mês, por pessoa' })).toBeVisible();
+    await page.getByRole('button', { name: 'Escolher datas' }).click();
+    await page.getByLabel('De', { exact: true }).fill('2025-01-01');
+    await page.getByLabel('até', { exact: true }).fill('2025-01-31');
+    await expect(page.getByText('Nenhuma ação registrada neste período.')).toBeVisible();
+    await page.getByLabel('até', { exact: true }).fill('2024-12-01');
+    await expect(page.getByText('A data final precisa ser igual ou depois da inicial.')).toBeVisible();
+    await page.locator('.usage-head').getByRole('button', { name: 'Pessoas' }).click();
+    await expect(page.getByRole('button', { name: 'Nova pessoa' })).toBeVisible();
+  });
+
   test('quem não é administrador não vê a tela Pessoas', async ({ page }) => {
     await entrar(page, 'helena');
     await expect(page.getByRole('link', { name: /Pessoas/ })).toHaveCount(0);

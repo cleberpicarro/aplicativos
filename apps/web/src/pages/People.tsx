@@ -8,6 +8,7 @@ import { firstName } from '../lib/format';
 import { ConfirmDialog, useAction } from '../components/dialogs';
 import { OrgChart } from '../components/OrgChart';
 import { AbsencesBlock, absenceText, useAbsences } from '../components/AbsencesAdmin';
+import { UsagePanel } from '../components/Usage';
 
 interface Person {
   id: string; name: string; email: string; level: number | null; role_title: string; manager_id: string | null;
@@ -39,10 +40,10 @@ export function PeoplePage() {
     setHideChoice(v);
     patch('/me/prefs', { hideInactive: v }).then(() => qc.invalidateQueries({ queryKey: ['me'] }), () => { /* não gravou: vale só nesta visita */ });
   };
-  const [choice, setView] = useState<'list' | 'org'>('list');
-  /** Item 95: o organograma é só para o computador; no celular fica só a lista. */
+  const [choice, setView] = useState<'list' | 'org' | 'usage'>('list');
+  /** Item 95: o organograma é só para o computador; no celular fica só a lista. Item 121: o uso abre nos dois. */
   const wide = useWide();
-  const view = wide ? choice : 'list';
+  const view = wide || choice === 'usage' ? choice : 'list';
   const { run, error } = useAction();
   const toast = useToast();
   const abs = useAbsences(me.user.isAdmin);
@@ -50,6 +51,7 @@ export function PeoplePage() {
   const people = q.data ?? [];
   const shown = hideInactive ? people.filter((p) => p.active) : people;
   const inactive = people.filter((p) => !p.active).length;
+  if (view === 'usage') return <div className="page"><UsagePanel onBack={() => setView('list')} /></div>;
   return (
     <div className="page">
       <div className="page-actions" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
@@ -58,6 +60,7 @@ export function PeoplePage() {
           {inactive > 0 && (
             <label className="check"><input type="checkbox" checked={hideInactive} onChange={(e) => setHideInactive(e.target.checked)} />Esconder inativas ({inactive})</label>
           )}
+          <button className="b" onClick={() => setView('usage')}><Icon name="chart" />Uso da plataforma</button>
           <button className="b pri" onClick={() => setDlg({ kind: 'new' })}><Icon name="plus" />Nova pessoa</button>
         </span>
       </div>
