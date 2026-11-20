@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="g" gradientUnits="userSpaceOnUse" x1="6" y1="32" x2="58" y2="32">
+      <stop offset="0" stop-color="#1E5BC6"/>
+      <stop offset="0.6" stop-color="#1A8FC4"/>
+      <stop offset="1" stop-color="#1BB59A"/>
+    </linearGradient>
+  </defs>
+  <!-- Infinito (sincronia) com um "check" sobre o laço direito -->
+  <path d="M32 32 C27 25 23 21.5 17 21.5 C11.2 21.5 6.5 26.2 6.5 32 C6.5 37.8 11.2 42.5 17 42.5 C23 42.5 27 39 32 32 C37 25 41 21.5 47 21.5 C52.8 21.5 57.5 26.2 57.5 32 C57.5 37.8 52.8 42.5 47 42.5 C41 42.5 37 39 32 32 Z"
+        fill="none" stroke="url(#g)" stroke-width="6" stroke-linejoin="round"/>
+  <path d="M40.5 30 L47 36.5 L59.5 20.5" fill="none" stroke="#fff" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M40.5 30 L47 36.5 L59.5 20.5" fill="none" stroke="#1BB59A" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
