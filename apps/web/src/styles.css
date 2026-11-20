@@ -24,6 +24,8 @@
   --mono: var(--f);
   --pri-bg: var(--accent);
   --pri-fg: var(--accent-fg);
+  /* Item 121: cores das pessoas no gráfico de uso (paleta validada para daltonismo). */
+  --u1: #2a78d6; --u2: #eb6834; --u3: #1baf7a; --u4: #eda100; --u5: #e87ba4; --u6: #008300; --u7: #6250d6; --u8: #e34948; --u-rest: #a3a8ad;
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
@@ -32,6 +34,7 @@
     --hover: #212326; --sunk: #1b1c1e; --accent: #6fb6ea; --accent-fg: #0a1826; --late: #f08174; --attn: #e2b25c;
     --attn-bg: #2c2416; --scrim: rgba(0, 0, 0, 0.55); --shadow: 0 12px 32px rgba(0, 0, 0, 0.5); color-scheme: dark;
     --pri-bg: #2f78cf; --pri-fg: #ffffff;
+    --u1: #3987e5; --u2: #d95926; --u3: #199e70; --u4: #c98500; --u5: #d55181; --u6: #0ca30c; --u7: #9085e9; --u8: #e66767; --u-rest: #6b7075;
   }
 }
 :root[data-theme='dark'] {
@@ -39,6 +42,7 @@
   --hover: #212326; --sunk: #1b1c1e; --accent: #6fb6ea; --accent-fg: #0a1826; --late: #f08174; --attn: #e2b25c;
   --attn-bg: #2c2416; --scrim: rgba(0, 0, 0, 0.55); --shadow: 0 12px 32px rgba(0, 0, 0, 0.5); color-scheme: dark;
     --pri-bg: #2f78cf; --pri-fg: #ffffff;
+    --u1: #3987e5; --u2: #d95926; --u3: #199e70; --u4: #c98500; --u5: #d55181; --u6: #0ca30c; --u7: #9085e9; --u8: #e66767; --u-rest: #6b7075;
 }
 
 * { box-sizing: border-box; }
@@ -560,7 +564,7 @@ table.t tr.off td { color: var(--faint); }
 .load-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 12px; margin-bottom: 6px; }
 .load-head h2 { margin: 0; }
 .load-sort { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 0 8px; color: var(--muted); font-size: 0.82rem; }
-.seg button[aria-pressed='true'] { background: var(--hover); color: var(--fg); font-weight: 500; }
+.usage-seg button[aria-pressed='true'], .usage-seg button[aria-pressed='true']:hover:not(:disabled) { background: var(--hover); color: var(--fg); font-weight: 500; }
 .tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 26px; }
 .tile-n { display: grid; gap: 2px; text-align: left; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); cursor: pointer; color: var(--muted); font-size: 0.86rem; }
 .tile-n:hover { border-color: var(--edge); background: var(--hover); }
@@ -1111,4 +1115,36 @@ table.t.phase tr:focus-visible { outline: 2px solid var(--accent); outline-offse
   .row.inbox .note { display: none; }
   .row.inbox .from-m { display: block; font-size: 0.82rem; color: var(--muted); }
   .row.inbox .due { display: none; }
+}
+
+/* ---------- item 121: uso da plataforma (Pessoas) ---------- */
+.usage-seg button[aria-pressed='true'], .usage-seg button[aria-pressed='true']:hover:not(:disabled) { background: var(--pri-bg); color: var(--pri-fg); }
+.usage { max-width: 1100px; }
+.usage-head { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.usage-head h2 { font-size: 1.15rem; margin: 0; }
+.usage-period { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; margin-bottom: 6px; }
+.usage-seg { flex-wrap: wrap; }
+.usage-dates { display: inline-flex; gap: 10px; align-items: center; font-size: 0.9rem; }
+.usage-dates label { display: inline-flex; gap: 6px; align-items: center; }
+.usage-dates .input { width: auto; }
+.usage-range { margin: 6px 0 12px; }
+.usage-tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 16px; }
+.usage-tiles > div { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
+.usage-tiles b { display: block; font-size: 1.6rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.usage-tiles span { color: var(--muted); font-size: 0.86rem; }
+.usage h3 { font-size: 0.98rem; margin: 18px 0 8px; }
+.usage-legend { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 0.86rem; color: var(--muted); margin-bottom: 4px; }
+.usage i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+.usage-chart { overflow-x: auto; }
+.usage-chart svg { display: block; width: 100%; height: auto; }
+.usage-rows { display: flex; flex-direction: column; gap: 6px; }
+.usage-row { display: grid; grid-template-columns: minmax(0, 260px) minmax(60px, 1fr) 84px; gap: 10px; align-items: center; font-size: 0.9rem; }
+.usage-bar { background: var(--sunk); height: 12px; border-radius: 4px; }
+.usage-bar b { display: block; height: 12px; border-radius: 0 4px 4px 0; min-width: 2px; }
+.usage-n { text-align: right; font-variant-numeric: tabular-nums; }
+.usage-n em { color: var(--muted); font-style: normal; }
+.usage-note { margin-top: 12px; }
+@media (max-width: 820px) {
+  .usage-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .usage-row { grid-template-columns: minmax(0, 1.3fr) minmax(40px, 1fr) 72px; }
 }

@@ -29,6 +29,7 @@ import { canSeeLog } from './services/actors.js';
 import * as oauth from './services/oauth.js';
 import { handleRpc } from './services/mcp.js';
 import { isoDate } from './lib/dates.js';
+import { usage } from './services/usage.js';
 
 declare module 'fastify' {
   interface FastifyRequest {
@@ -659,6 +660,12 @@ export async function buildApp({ pool, logger = false, serveWeb = false }: AppOp
       .object({ lateOn: z.boolean().optional(), lateColor: z.enum(admin.LATE_COLORS).optional(), todayOn: z.boolean().optional(), todayColor: z.enum(admin.TODAY_COLORS).optional() })
       .parse(req.body);
     return inTx(req, (db) => admin.updateSettings(db, a, body));
+  });
+  // Item 121: uso da plataforma (ações do log por dia ou mês e por pessoa), botão em Pessoas.
+  app.get('/api/admin/usage', async (req) => {
+    needAdmin(req);
+    const q = z.object({ from: isoDate, to: isoDate }).parse(req.query);
+    return usage(pool, q.from, q.to);
   });
   // Item 100: problemas dos últimos 7 dias (erros e e-mails que falharam) e tentar de novo os e-mails.
   // Item 76: quadro “Férias e ausências” em Pessoas.
