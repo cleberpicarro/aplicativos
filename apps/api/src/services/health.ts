@@ -32,6 +32,47 @@ export interface HealthSummary {
   failedMail: number;
   failedSamples: { id: string; to: string; subject: string; error: string | null; at: string }[];
   stuckMail: number;
+  /** Item 122: delegações fora de sincronia agora (não depende do período). */
+  syncIssues: number;
+  syncSamples: { kind: 'estado' | 'neta'; text: string }[];
+}
+
+/**
+ * Item 122: conferência das delegações. Procura, nos dados de agora:
+ * - "estado": a situação da delegação não bate com a tarefa (ex.: "em andamento" mas fora do quadro);
+ * - "neta": delegação repassada para baixo ainda em aberto, mas a tarefa do meio já saiu de quem a repassou
+ *   (cancelada, devolvida, concluída ou arquivada). Quando o acompanhamento passou a outra pessoa de propósito
+ *   (desativação com sucessor, troca de superior), não conta. As regras do item 122 impedem casos novos; as netas
+ *   anteriores à correção (24/11/2026, 20h) ficam de fora porque o Cleber decidiu que seguem como estão (ex.: #6 com o Marcelo Jr.).
+ */
+export const NETA_DESDE = '2026-11-24T20:00:00-03:00';
+export async function syncCheck(db: Db): Promise<{ syncIssues: number; syncSamples: HealthSummary['syncSamples'] }> {
+  const rows = await many(
+    db,
+    `SELECT 'estado' AS kind, u.name AS who, c.num, c.title, d.status, NULL::text AS other
+       FROM delegations d JOIN cards c ON c.id = d.card_id JOIN users u ON u.id = c.owner_id
+      WHERE (d.status = 'PENDING_ACCEPT' AND (c.list_id IS NOT NULL OR c.archived_at IS NOT NULL OR c.completed_at IS NOT NULL))
+         OR (d.status = 'IN_PROGRESS'    AND (c.list_id IS NULL OR c.completed_at IS NOT NULL OR c.archived_at IS NOT NULL))
+         OR (d.status = 'AWAITING_ACK'   AND (c.completed_at IS NULL OR c.archived_at IS NOT NULL))
+         OR (d.status = 'DECLINED'       AND (c.list_id IS NOT NULL OR c.archived_at IS NOT NULL))
+         OR (d.status IN ('ACKED','CANCELED') AND c.archived_at IS NULL)
+     UNION ALL
+     SELECT 'neta', u.name, c.num, c.title, d.status, g.name
+       FROM delegations d JOIN cards c ON c.id = d.card_id JOIN users u ON u.id = c.owner_id JOIN users g ON g.id = d.delegator_id
+       JOIN cards p ON p.id = d.parent_card_id LEFT JOIN delegations pd ON pd.card_id = p.id
+      WHERE d.status IN ('PENDING_ACCEPT','IN_PROGRESS','AWAITING_ACK','DECLINED') AND d.created_at >= $1::timestamptz
+        AND p.owner_id = d.delegator_id AND (p.archived_at IS NOT NULL OR pd.status IN ('DECLINED','CANCELED','ACKED','AWAITING_ACK'))
+      ORDER BY 1, 3`,
+    [NETA_DESDE],
+  );
+  const label: Record<string, string> = { PENDING_ACCEPT: 'na caixa de entrada', IN_PROGRESS: 'em andamento', AWAITING_ACK: 'aguardando ciente', DECLINED: 'devolvida', ACKED: 'com ciente', CANCELED: 'cancelada' };
+  const syncSamples = rows.slice(0, 10).map((r) => ({
+    kind: r.kind as 'estado' | 'neta',
+    text: r.kind === 'neta'
+      ? `#${r.num} “${r.title}”: ${r.who} está com ela (${label[r.status]}), delegada por ${r.other}, mas a tarefa de ${r.other} já foi encerrada.`
+      : `#${r.num} “${r.title}” de ${r.who}: a delegação diz “${label[r.status]}”, mas a tarefa não está nessa situação.`,
+  }));
+  return { syncIssues: rows.length, syncSamples };
 }
 
 async function summary(db: Db, since: string): Promise<HealthSummary> {
@@ -60,6 +101,7 @@ async function summary(db: Db, since: string): Promise<HealthSummary> {
     failedMail: f.n,
     failedSamples: failedSamples.map((r) => ({ ...r, at: new Date(r.at).toISOString() })),
     stuckMail: s.n,
+    ...(await syncCheck(db)),
   };
 }
 
@@ -95,7 +137,7 @@ export async function runHealthReport(db: Db, at: Date = new Date()): Promise<nu
   const since = new Date(st.since).toISOString();
   const s = await summary(db, since);
   await db.query(`UPDATE app_settings SET problems_reported_at = $1, health_report_on = $2::date`, [at.toISOString(), clock.today]);
-  if (!s.errors && !s.failedMail && !s.stuckMail) return 0;
+  if (!s.errors && !s.failedMail && !s.stuckMail && !s.syncIssues) return 0;
 
   const lines: string[] = ['Olá! Este é o aviso diário do SyncTasks, enviado só quando algo não saiu como devia.', ''];
   if (s.failedMail) {
@@ -107,6 +149,11 @@ export async function runHealthReport(db: Db, at: Date = new Date()): Promise<nu
   if (s.errors) {
     lines.push(`• ${s.errors} erro(s) inesperado(s) no servidor. Os mais recentes:`);
     for (const e of s.errorSamples) lines.push(`   - ${e.detail}${e.count > 1 ? ` (${e.count} vezes)` : ''}`);
+  }
+  if (s.syncIssues) {
+    lines.push(`• ${s.syncIssues} delegação(ões) fora de sincronia:`);
+    for (const x of s.syncSamples) lines.push(`   - ${x.text}`);
+    lines.push('  Isso não deveria acontecer. Encaminhe este e-mail para quem cuida do SyncTasks investigar.');
   }
   lines.push('', `Detalhes em Configurações: ${config.appUrl}/#/configuracoes`);
   const admins = await many(db, `SELECT email FROM users WHERE is_admin AND active ORDER BY name`);

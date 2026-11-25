@@ -5,6 +5,7 @@ import { loadCard, nextPosition, cardRef, numOf, isDiscarded } from './cards.js'
 import { BOARD_COLORS, ownList } from './boards.js';
 import { logEvent } from './events.js';
 import { notify } from './notify.js';
+import { openChildOf, settleNotices } from './delegation.js';
 
 const OPEN = ['PENDING_ACCEPT', 'IN_PROGRESS', 'AWAITING_ACK'];
 
@@ -155,6 +156,10 @@ export async function completeCard(db: Db, actor: Actor, cardId: string) {
   if (row.completed_at) throw conflict('A tarefa já está concluída.');
   if (row.d_id) {
     if (row.d_status !== 'IN_PROGRESS') throw conflict('Aceite a tarefa na caixa de entrada antes de concluí-la.');
+    // Item 122: tarefa recebida e repassada a alguém da equipe só é concluída depois que essa delegação terminar.
+    const open = await openChildOf(db, cardId);
+    if (open) throw conflict(`Você delegou esta tarefa para ${open.owner_name}. Dê o ciente, retome ou cancele essa delegação antes de concluir.`);
+    await settleNotices(db, row.d_delegator_id, cardId, ['completed']);
     await db.query(`UPDATE delegations SET status = 'AWAITING_ACK', reopened = false, updated_at = now() WHERE id = $1`, [row.d_id]);
     await notify(db, row.d_delegator_id, 'completed', `${actor.name.split(' ')[0]} concluiu a tarefa: aguardando seu ciente`, cardRef(row));
   } else if (!row.list_id) {
@@ -174,6 +179,9 @@ export async function uncompleteCard(db: Db, actor: Actor, cardId: string) {
   if (row.d_id) {
     if (row.d_status !== 'AWAITING_ACK') throw conflict('Não é possível desfazer a conclusão agora.');
     await db.query(`UPDATE delegations SET status = 'IN_PROGRESS', updated_at = now() WHERE id = $1`, [row.d_id]);
+    // Item 122: quem delegou recebeu "concluiu: aguardando seu ciente". Esse aviso deixa de valer e ele fica sabendo.
+    await settleNotices(db, row.d_delegator_id, cardId, ['completed']);
+    await notify(db, row.d_delegator_id, 'completion_undone', `${actor.name.split(' ')[0]} desfez a conclusão: a tarefa voltou para andamento`, cardRef(row));
   }
   await db.query('UPDATE cards SET completed_at = NULL, updated_at = now() WHERE id = $1', [cardId]);
   await logEvent(db, cardId, actor.id, 'completion_undone');
