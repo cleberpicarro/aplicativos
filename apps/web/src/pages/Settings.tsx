@@ -79,6 +79,8 @@ interface Health {
   failedMail: number;
   failedSamples: { id: string; to: string; subject: string; error: string | null; at: string }[];
   stuckMail: number;
+  syncIssues: number;
+  syncSamples: { kind: 'estado' | 'neta'; text: string }[];
 }
 
 const when = (iso: string) => new Date(iso).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
@@ -88,12 +90,12 @@ function HealthBlock() {
   const q = useQuery({ queryKey: ['admin-health'], queryFn: () => get<Health>('/admin/health') });
   const { run, busy, error } = useAction();
   const h = q.data;
-  const ok = h && !h.errors && !h.failedMail && !h.stuckMail;
+  const ok = h && !h.errors && !h.failedMail && !h.stuckMail && !h.syncIssues;
   const retry = () => run(() => post<{ queued: number }>('/admin/health/retry-mail'), 'E-mails de volta na fila. O app tenta enviar de novo agora.').then(() => q.refetch());
   return (
     <section className="settings-block" aria-labelledby="st-health">
       <h2 id="st-health">Problemas nos últimos 7 dias</h2>
-      <p className="hint" style={{ margin: 0 }}>Se algo der errado (e-mail que não saiu ou erro no servidor), a administração recebe um e-mail por dia, a partir das 8h, com o resumo.</p>
+      <p className="hint" style={{ margin: 0 }}>Se algo der errado (e-mail que não saiu, erro no servidor ou delegação fora de sincronia), a administração recebe um e-mail por dia, a partir das 8h, com o resumo.</p>
       {q.isLoading && <p className="loading">Carregando…</p>}
       <ErrorText error={q.error ?? error} />
       {ok && <p className="health-ok">Nenhum problema. Tudo funcionando.</p>}
@@ -110,6 +112,15 @@ function HealthBlock() {
         </div>
       )}
       {h && h.stuckMail > 0 && <div className="health-part"><b>{h.stuckMail} e-mail(s) na fila há mais de 1 hora</b></div>}
+      {h && h.syncIssues > 0 && (
+        <div className="health-part">
+          <b>{h.syncIssues === 1 ? '1 delegação fora de sincronia' : `${h.syncIssues} delegações fora de sincronia`}</b>
+          <ul className="health-list">
+            {h.syncSamples.map((x, i) => <li key={i}>{x.text}</li>)}
+          </ul>
+          <p className="hint" style={{ margin: 0 }}>A conferência roda sobre os dados de agora. Isso não deveria acontecer: avise quem cuida do SyncTasks.</p>
+        </div>
+      )}
       {h && h.errors > 0 && (
         <div className="health-part">
           <b>{h.errors === 1 ? '1 erro inesperado no servidor' : `${h.errors} erros inesperados no servidor`}</b>

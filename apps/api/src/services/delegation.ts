@@ -12,6 +12,82 @@ const first = (name: string) => name.split(' ')[0];
 /** Item 41: recusa ao tentar repassar uma tarefa marcada como "não pode ser redelegada". */
 const noPassMessage = (delegatorName: string) => `${first(delegatorName)} pediu que você mesmo faça esta tarefa: ela não pode ser redelegada.`;
 
+/**
+ * Item 122: avisos de "concluiu: aguardando seu ciente" e "devolveu" que ainda não foram lidos deixam de valer quando a
+ * situação muda (quem delegou já agiu, ou quem recebeu desfez a conclusão). Ficam como lidos, para não parecer pendência.
+ */
+export async function settleNotices(db: Db, delegatorId: string, cardId: string, types: string[] = ['completed', 'declined']) {
+  await db.query(
+    `UPDATE notifications SET read_at = now() WHERE user_id = $1 AND card_id = $2 AND type = ANY($3::text[]) AND read_at IS NULL`,
+    [delegatorId, cardId, types],
+  );
+}
+
+/** Item 122: a delegação "para baixo" ainda em aberto de uma tarefa (quem recebeu repassou a alguém da equipe). */
+export async function openChildOf(db: Db, cardId: string) {
+  return one<{ id: string; owner_name: string }>(
+    db,
+    `SELECT d.id, u.name AS owner_name FROM delegations d JOIN cards c ON c.id = d.card_id JOIN users u ON u.id = c.owner_id
+      WHERE d.parent_card_id = $1 AND d.status IN ('PENDING_ACCEPT','IN_PROGRESS','AWAITING_ACK','DECLINED')`,
+    [cardId],
+  );
+}
+
+/**
+ * Item 122: quando uma delegação é cancelada ou retomada por quem delegou, a tarefa de quem recebeu sai do quadro dela.
+ * Se essa pessoa tinha repassado a tarefa a alguém da equipe, essa delegação "neta" é cancelada junto (no mesmo instante,
+ * para o Desfazer trazer tudo de volta), e assim por diante para baixo. Quem estava com a neta é avisado.
+ */
+async function cascadeCancel(db: Db, actor: Actor, cardId: string, depth = 0) {
+  if (depth > 20) return;
+  const child = await one(
+    db,
+    `SELECT d.id, d.status, d.card_id, d.delegator_id, c.owner_id, c.num, c.code, c.title, c.list_id, c.position
+       FROM delegations d JOIN cards c ON c.id = d.card_id
+      WHERE d.parent_card_id = $1 AND d.status IN ('PENDING_ACCEPT','IN_PROGRESS','AWAITING_ACK','DECLINED') FOR UPDATE OF d`,
+    [cardId],
+  );
+  if (!child) return;
+  await db.query(
+    `UPDATE delegations SET status = 'CANCELED', canceled_at = now(), updated_at = now(),
+       cancel_prev_status = $2, cancel_prev_list_id = $3, cancel_prev_position = $4 WHERE id = $1`,
+    [child.id, child.status, child.list_id, child.position],
+  );
+  await db.query('UPDATE cards SET archived_at = now(), list_id = NULL, updated_at = now() WHERE id = $1', [child.card_id]);
+  await logEvent(db, child.card_id, actor.id, 'canceled', undefined, { cascade: true, by: actor.name });
+  await settleNotices(db, child.delegator_id, child.card_id);
+  if (child.status !== 'DECLINED') {
+    await notify(db, child.owner_id, 'canceled', `${first(actor.name)} cancelou a tarefa de origem: você não precisa mais fazer esta tarefa`, { id: child.card_id, num: child.num, title: child.title });
+  }
+  await cascadeCancel(db, actor, child.card_id, depth + 1);
+}
+
+/** Item 122: o Desfazer de um cancelamento traz de volta também as delegações netas canceladas junto (mesmo instante). */
+async function cascadeUndo(db: Db, actor: Actor, cardId: string, canceledAt: string, depth = 0) {
+  if (depth > 20) return;
+  const child = await one(
+    db,
+    `SELECT d.id, d.card_id, d.cancel_prev_status, d.cancel_prev_list_id, d.cancel_prev_position, c.owner_id, c.num, c.code, c.title
+       FROM delegations d JOIN cards c ON c.id = d.card_id
+      WHERE d.parent_card_id = $1 AND d.status = 'CANCELED' AND d.canceled_at = $2::timestamptz AND d.cancel_prev_status IS NOT NULL
+      FOR UPDATE OF d`,
+    [cardId, canceledAt],
+  );
+  if (!child) return;
+  await db.query('UPDATE cards SET list_id = $2, position = coalesce($3, position), updated_at = now() WHERE id = $1', [child.card_id, child.cancel_prev_list_id, child.cancel_prev_position]);
+  await db.query('UPDATE cards SET archived_at = NULL, updated_at = now() WHERE id = $1', [child.card_id]);
+  await db.query(
+    `UPDATE delegations SET status = $2, canceled_at = NULL, updated_at = now(),
+       cancel_prev_status = NULL, cancel_prev_list_id = NULL, cancel_prev_position = NULL WHERE id = $1`,
+    [child.id, child.cancel_prev_status],
+  );
+  await logEvent(db, child.card_id, actor.id, 'cancel_undone', undefined, { status: child.cancel_prev_status, cascade: true });
+  if (child.cancel_prev_status !== 'DECLINED') {
+    await notify(db, child.owner_id, 'cancel_undone', `${first(actor.name)} desfez o cancelamento: a tarefa voltou para você`, { id: child.card_id, num: child.num, title: child.title });
+  }
+  await cascadeUndo(db, actor, child.card_id, canceledAt, depth + 1);
+}
+
 /** RN-14 a RN-19: delega a partir de uma tarefa existente, criando um cartão ligado para o subordinado direto. */
 export async function delegate(db: Db, actor: Actor, cardId: string, input: { toUserId: string; suggestedDue?: string | null; note?: string; noPass?: boolean }) {
   const { row, role } = await loadCard(db, actor, cardId, { lock: true });
@@ -100,6 +176,9 @@ export async function decline(db: Db, actor: Actor, cardId: string, reason: stri
   if (!['PENDING_ACCEPT', 'IN_PROGRESS'].includes(row.d_status)) throw conflict('Esta tarefa não pode ser devolvida agora.');
   const r = (reason ?? '').trim();
   if (r.length < 3) throw badRequest('A justificativa é obrigatória.');
+  // Item 122: quem repassou a tarefa para alguém da equipe precisa encerrar essa delegação antes de devolver.
+  const open = await openChildOf(db, cardId);
+  if (open) throw conflict(`Você delegou esta tarefa para ${open.owner_name}. Cancele ou retome essa delegação antes de devolver.`);
   await db.query(
     `UPDATE delegations SET status = 'DECLINED', decline_reason = $2, updated_at = now() WHERE id = $1`,
     [row.d_id, r],
@@ -122,6 +201,7 @@ export async function ack(db: Db, actor: Actor, delegationId: string) {
   await db.query(`UPDATE delegations SET status = 'ACKED', acked_at = now(), updated_at = now() WHERE id = $1`, [d.id]);
   await db.query('UPDATE cards SET archived_at = now(), updated_at = now() WHERE id = $1', [card.id]);
   await logEvent(db, card.id, actor.id, 'acked');
+  await settleNotices(db, actor.id, card.id);
   await notify(db, card.owner_id, 'acked', `${first(actor.name)} deu ciente: tarefa arquivada`, cardRef(card));
 }
 
@@ -136,6 +216,7 @@ export async function reopen(db: Db, actor: Actor, delegationId: string, comment
   await db.query('UPDATE cards SET completed_at = NULL, updated_at = now() WHERE id = $1', [card.id]);
   await db.query('INSERT INTO comments (card_id, author_id, body) VALUES ($1, $2, $3)', [card.id, actor.id, c]);
   await logEvent(db, card.id, actor.id, 'reopened', undefined, { reason: c });
+  await settleNotices(db, actor.id, card.id);
   await notify(db, card.owner_id, 'reopened', `${first(actor.name)} reabriu a tarefa: ${c}`, cardRef(card));
 }
 
@@ -151,6 +232,8 @@ export async function cancel(db: Db, actor: Actor, delegationId: string) {
   );
   await db.query('UPDATE cards SET archived_at = now(), list_id = NULL, updated_at = now() WHERE id = $1', [card.id]);
   await logEvent(db, card.id, actor.id, 'canceled');
+  await settleNotices(db, actor.id, card.id);
+  await cascadeCancel(db, actor, card.id);
   // Item 75: cancelar uma devolvida arquiva também a tarefa de origem, que sai do quadro de quem delegou.
   // Item 93: vale também para a delegação em aberto: Cancelar é desistir da tarefa (para ficar com ela, existe Retomar).
   const parent = d.parent_card_id ? await parentCard(db, d.parent_card_id) : null;
@@ -195,6 +278,8 @@ export async function resume(db: Db, actor: Actor, delegationId: string) {
   const body = `Devolvida por ${owner.name}: “${d.decline_reason ?? ''}”`;
   await db.query('INSERT INTO comments (card_id, author_id, body) VALUES ($1, $2, $3)', [parent.id, actor.id, body]);
   await logEvent(db, card.id, actor.id, 'resumed');
+  await settleNotices(db, actor.id, card.id);
+  await cascadeCancel(db, actor, card.id);
   await logEvent(db, parent.id, actor.id, 'child_resumed', undefined, { childNum: card.num, inbox, num: await numOf(db, parent.id) });
   await logEvent(db, parent.id, actor.id, 'comment_added', undefined, { body });
   return { cardId: parent.id, inbox };
@@ -213,6 +298,8 @@ async function resumeOpen(db: Db, actor: Actor, d: any, card: { id: string; num:
   await db.query('UPDATE cards SET archived_at = now(), list_id = NULL, updated_at = now() WHERE id = $1', [card.id]);
   const inPhase = await one(db, 'SELECT list_id IS NOT NULL AS ok FROM cards WHERE id = $1', [parent.id]);
   await logEvent(db, card.id, actor.id, 'resumed', undefined, { open: true });
+  await settleNotices(db, actor.id, card.id);
+  await cascadeCancel(db, actor, card.id);
   await logEvent(db, parent.id, actor.id, 'child_resumed', undefined, { childNum: card.num, inbox: !inPhase.ok, open: true, num: await numOf(db, parent.id) });
   await notify(db, card.owner_id, 'canceled', `${first(actor.name)} retomou a tarefa: você não precisa mais fazê-la`, cardRef(card));
   return { cardId: parent.id, inbox: !inPhase.ok };
@@ -230,6 +317,12 @@ export async function undoCancel(db: Db, actor: Actor, delegationId: string) {
   if (d.status !== 'CANCELED' || !d.cancel_prev_status) throw conflict('Esta delegação não está cancelada.');
   const recent = await one(db, `SELECT $1::timestamptz > now() - make_interval(mins => $2) AS ok`, [d.canceled_at, UNDO_CANCEL_MINUTES]);
   if (!recent.ok) throw conflict('Já passou o tempo para desfazer o cancelamento. Se precisar, delegue a tarefa de novo.');
+  // Item 122: se a tarefa de origem foi cancelada por quem delegou a ela (cancelamento em cascata), só esse cancelamento pode ser desfeito.
+  if (d.parent_card_id && (await one(db, `SELECT 1 FROM delegations WHERE card_id = $1 AND status = 'CANCELED'`, [d.parent_card_id]))) {
+    throw conflict('A tarefa de origem foi cancelada por quem a delegou a você: não dá para desfazer este cancelamento.');
+  }
+  // Horário exato do cancelamento, em texto (o horário em JavaScript perde os microssegundos), para o Desfazer em cascata.
+  const canceledAt = (await one(db, 'SELECT canceled_at::text AS t FROM delegations WHERE id = $1', [d.id])).t as string;
   if (d.parent_card_id) {
     // Itens 75 e 93: o cancelamento arquivou junto a tarefa de origem (no mesmo instante); o Desfazer a traz de volta.
     // (Compara no banco: o horário em JavaScript perde os microssegundos.)
@@ -264,6 +357,7 @@ export async function undoCancel(db: Db, actor: Actor, delegationId: string) {
     [d.id, d.cancel_prev_status],
   );
   await logEvent(db, card.id, actor.id, 'cancel_undone', undefined, { status: d.cancel_prev_status });
+  await cascadeUndo(db, actor, card.id, canceledAt);
   if (d.parent_card_id) {
     const back = await one(db, 'UPDATE cards SET archived_at = NULL, updated_at = now() WHERE id = $1 AND archived_at IS NOT NULL RETURNING id', [d.parent_card_id]);
     await logEvent(db, d.parent_card_id, actor.id, 'child_cancel_undone', undefined, { childNum: card.num, ...(back ? { unarchived: true } : {}) });
@@ -291,6 +385,7 @@ export async function redelegate(db: Db, actor: Actor, delegationId: string, inp
     [card.id, input.toUserId, due],
   );
   const to = await one(db, 'SELECT name FROM users WHERE id = $1', [input.toUserId]);
+  await settleNotices(db, actor.id, card.id);
   await logEvent(db, card.id, actor.id, 'redelegated', undefined, { to: to.name, suggestedDue: due, ...(noPass ? { noPass } : {}) });
   await notify(db, input.toUserId, 'delegated', `${first(actor.name)} delegou: ${card.title}`, { ...cardRef(card), num: await numOf(db, card.id) });
 }

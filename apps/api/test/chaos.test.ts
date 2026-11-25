@@ -322,6 +322,15 @@ async function runChaos(seed: number) {
     const multi = await q(`SELECT parent_card_id, count(*) FROM delegations WHERE status NOT IN ('ACKED','CANCELED') GROUP BY parent_card_id HAVING count(*) > 1`);
     if (multi.length) fail('mais de uma delegação ativa na mesma tarefa', multi);
 
+    // 3b. Item 122: delegação repassada para baixo em aberto só existe enquanto a tarefa do meio, de quem a repassou, está em aberto
+    // (se o acompanhamento passou a um sucessor ou novo superior, item 44, a tarefa do meio pode seguir outro caminho).
+    const orphanNeta = await q(`
+      SELECT c.code, d.status, pd.status AS meio FROM delegations d JOIN cards c ON c.id = d.card_id JOIN cards p ON p.id = d.parent_card_id
+        LEFT JOIN delegations pd ON pd.card_id = p.id
+       WHERE d.status IN ('PENDING_ACCEPT','IN_PROGRESS','AWAITING_ACK','DECLINED')
+         AND p.owner_id = d.delegator_id AND (p.archived_at IS NOT NULL OR pd.status IN ('DECLINED','CANCELED','ACKED','AWAITING_ACK'))`);
+    if (orphanNeta.length) fail('delegação neta fora de sincronia com a tarefa do meio', orphanNeta);
+
     // 4. Tarefa que tem ou teve delegação (recebida, ou delegada e não cancelada) nunca é privada (RN-08, item 43).
     const privDeleg = await q(`SELECT c.code FROM cards c WHERE c.is_private
       AND (EXISTS (SELECT 1 FROM delegations d WHERE d.card_id = c.id) OR EXISTS (SELECT 1 FROM delegations d WHERE d.parent_card_id = c.id AND d.status <> 'CANCELED'))`);

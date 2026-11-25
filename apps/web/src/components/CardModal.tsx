@@ -693,12 +693,12 @@ function describe(e: Ev): { text: string; change?: string } {
     case 'discarded': return { text: a.board ? 'descartou a tarefa, sem concluir' : 'descartou a tarefa da caixa de entrada' };
     case 'acked': return { text: 'deu ciente: tarefa arquivada' };
     case 'reopened': return { text: 'reabriu a tarefa', change: `“${a.reason}”` };
-    case 'canceled': return { text: 'cancelou a delegação' };
+    case 'canceled': return { text: a?.cascade ? 'cancelou a tarefa de origem: esta delegação foi cancelada junto' : 'cancelou a delegação' };
     case 'child_canceled': return { text: a.archived ? 'cancelou a delegação devolvida e arquivou a tarefa' : 'cancelou a delegação para baixo', change: a.childNum ? `#${a.childNum}` : a.childCode };
     case 'resumed': return { text: a.open ? 'retomou a tarefa (delegação encerrada)' : 'retomou a tarefa devolvida (delegação encerrada)' };
     case 'child_resumed': return { text: a.open ? 'retomou a tarefa delegada' : a.inbox ? 'retomou a tarefa devolvida: voltou para a caixa de entrada' : 'retomou a tarefa devolvida', change: a.childNum ? `#${a.childNum}` : undefined };
     case 'nudged': return { text: `cobrou ${a.to}${a.count > 1 ? ` (${a.count}ª vez)` : ''}`, change: a.message ? `“${cut(a.message)}”` : undefined };
-    case 'cancel_undone': return { text: 'desfez o cancelamento da delegação' };
+    case 'cancel_undone': return { text: a?.cascade ? 'desfez o cancelamento da tarefa de origem: esta delegação voltou junto' : 'desfez o cancelamento da delegação' };
     case 'child_cancel_undone': return { text: 'desfez o cancelamento da delegação para baixo', change: a.childNum ? `#${a.childNum}` : undefined };
     case 'redelegated': return { text: `redelegou para ${a.to}`, change: `Prazo sugerido: ${df(a.suggestedDue)}${a.noPass ? ' · não pode ser redelegada' : ''}` };
     case 'transferred': return { text: `transferiu de ${b.owner} para ${a.owner}`, change: a.reason === 'deactivated' ? `${b.owner} foi desativado(a); a tarefa foi para a caixa de entrada de ${a.owner}` : undefined };
