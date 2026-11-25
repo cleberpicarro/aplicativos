@@ -1,0 +1,21 @@
+# Item 98 (revisão geral, R3): o GitHub avisa (e abre uma PR) quando sai correção de segurança
+# para alguma peça usada pelo app. Uma vez por semana, no máximo 5 PRs abertas.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    target-branch: claude/tender-volta-yd7999
+    schedule:
+      interval: weekly
+      day: monday
+      time: '07:00'
+      timezone: America/Sao_Paulo
+    open-pull-requests-limit: 5
+    groups:
+      correcoes-pequenas:
+        update-types: [minor, patch]
+  - package-ecosystem: github-actions
+    directory: /
+    target-branch: claude/tender-volta-yd7999
+    schedule:
+      interval: monthly
